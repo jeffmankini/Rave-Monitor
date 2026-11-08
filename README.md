@@ -1,6 +1,6 @@
 # Rave Monitor, by Geff Bohm
 
-Live at [ravemonitor.splitshift.fm](https://ravemonitor.splitshift.fm). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
+Live at [ravemonitor.com](https://ravemonitor.com). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
 
 A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps the electronic ones, merges nights listed on more than one platform, and writes one `events.json`. The site is a single HTML page that reads that file. Without a feed, it falls back to a built-in demo with fictional events.
 
@@ -78,7 +78,7 @@ To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switc
 
 - `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE browse page (the part after dice.fm/browse/), the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a city comes back empty, copy the right URL from ra.co. A city can list more than one RA page, and a wrong one simply returns nothing.
 - `config/sources.json` turns sources on or off and sets cities, caps, spending limits and how long a scrape stays fresh. Any Apify actor can be swapped in by changing `actor` and its `normalize()` in `pipeline/sources/`.
-- Link previews: the title, description and share image are in the head of `site/index.html`. Their URLs use `SITE_URL` (default `https://ravemonitor.splitshift.fm`); set it as an environment variable when building for another address. The share image, `site/static/og-image.jpg`, is a screenshot of `scripts/og-card.html` at 1200×630 (instructions are in that file). Everything in `site/static` (icons, share image) is copied next to the page.
+- Link previews: the title, description and share image are in the head of `site/index.html`. Their URLs use `SITE_URL` (default `https://ravemonitor.com`); set it as an environment variable when building for another address. The share image, `site/static/og-image.jpg`, is a screenshot of `scripts/og-card.html` at 1200×630 (instructions are in that file). Everything in `site/static` (icons, share image) is copied next to the page.
 
 ## Scraping responsibly
 
