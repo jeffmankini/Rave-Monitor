@@ -1,10 +1,10 @@
 {
  "updatedAt": "2026-11-08",
- "events": 1306,
+ "events": 1307,
  "firstEvent": "2026-11-05T00:30:00.000Z",
- "lastEvent": "2026-11-22T21:00:00.000Z",
+ "lastEvent": "2026-11-22T23:00:00.000Z",
  "months": {
-  "2026-11": 1306
+  "2026-11": 1307
  },
  "cities": {
   "london": 196,
@@ -27,7 +27,7 @@
   "leeds": 32,
   "denver": 31,
   "toronto": 28,
-  "tokyo": 24,
+  "tokyo": 25,
   "lasvegas": 20,
   "sydney": 18,
   "tbilisi": 16,
@@ -51,7 +51,7 @@
   "stockholm": 1
  },
  "genres": {
-  "other": 547,
+  "other": 548,
   "house": 389,
   "techno": 228,
   "afro": 135,
@@ -66,7 +66,7 @@
   "Ticketmaster": 398,
   "Skiddle": 285,
   "Posh": 56,
-  "Luma": 22,
+  "Luma": 23,
   "Partiful": 11
  }
 }
