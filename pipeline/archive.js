@@ -7,6 +7,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isContactLine, positionQuality, jitter } from './lib/normalize.js';
+import { norm } from './lib/util.js';
 
 const uniq = a => [...new Set(a.filter(x => x !== undefined && x !== null && x !== ''))];
 
@@ -34,7 +36,18 @@ export function loadArchive(dir) {
   }
   const cityFile = path.join(dir, 'cities.json');
   const cities = fs.existsSync(cityFile) ? JSON.parse(fs.readFileSync(cityFile, 'utf8')) : {};
+  for (const r of records.values()) tidy(r, cities);
   return { records, cities };
+}
+
+/** Clean up records saved before the feed's own checks: contact lines in lineups, venues at 0,0. */
+function tidy(r, cities) {
+  if (Array.isArray(r.lineup)) r.lineup = r.lineup.filter(n => !isContactLine(n));
+  const v = r.venue, c = cities[r.cityId];
+  if (v && c && positionQuality(v.lat, v.lon) === 'none') {
+    const [lat, lon] = jitter(`${r.cityId}:${norm(v.name || r.id)}`, c.lat, c.lon);
+    r.venue = { ...v, lat: +lat.toFixed(5), lon: +lon.toFixed(5), approx: true };
+  }
 }
 
 const FIELDS = ['title', 'start', 'end', 'tz', 'cityId', 'venue', 'type', 'price', 'age', 'popularity'];

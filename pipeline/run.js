@@ -117,7 +117,7 @@ async function main() {
           const got = await loadOrCollect({
             file: cacheFile, fresh: fresh || !!pulls[src.id], now, warn: ctx.warn,
             key: scrapeKey(src.id, settings, windowDays, cityCfg.cities),
-            maxAgeHours: settings.maxAgeHours || 24,
+            maxAgeHours: settings.maxAgeHours || 24, retryHours: settings.retryHours || 0,
             collect: () => src.collect(ctx)
           });
           raw = got.items;

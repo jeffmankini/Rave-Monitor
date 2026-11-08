@@ -131,3 +131,34 @@ test('forcing a city pulls it now and adds the new listings to what was saved; o
   assert.equal(stats.scraped, 1); assert.equal(stats.saved, 1);
   assert.equal(stats.scrapedItems, 2); // only the new pull counts toward cost
 });
+
+test('after a failed or empty paid pull, the next try waits retryHours instead of every run', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cache-retry-'));
+  const file = path.join(dir, 'ra', 'berlin.json');
+  const t0 = Date.parse('2026-11-08T10:00:00Z'), H = 3600e3;
+  let calls = 0;
+  const fail = async () => { calls++; throw new Error('HTTP 403'); };
+  const opts = { file, key: 'k', maxAgeHours: 720, retryHours: 20 };
+  await assert.rejects(loadOrCollect({ ...opts, now: t0, collect: fail }), /HTTP 403/);
+  // Three hours later: no new paid run, the last error is reported with when it will try again.
+  await assert.rejects(loadOrCollect({ ...opts, now: t0 + 3 * H, collect: fail }), /HTTP 403 \(tried .* next try after 20 hours\)/);
+  assert.equal(calls, 1);
+  // An explicit fresh pull doesn't wait.
+  await assert.rejects(loadOrCollect({ ...opts, now: t0 + 4 * H, fresh: true, collect: fail }), /HTTP 403/);
+  assert.equal(calls, 2);
+  // After the wait it tries again, and a good pull clears the wait.
+  const got = await loadOrCollect({ ...opts, now: t0 + 25 * H, collect: async () => { calls++; return [{ id: 'e1' }]; } });
+  assert.deepEqual([calls, got.items.length, got.cached], [3, 1, false]);
+  assert.ok(!fs.existsSync(path.join(dir, 'ra', 'berlin.tried.json')));
+  // With a saved scrape, a failure keeps showing it during the wait, without pulling.
+  await loadOrCollect({ ...opts, now: t0 + 25 * H + 800 * H, collect: fail }).then(r => assert.equal(r.stale, true));
+  const during = await loadOrCollect({ ...opts, now: t0 + 25 * H + 803 * H, collect: fail });
+  assert.deepEqual([calls, during.stale, during.items.length], [4, true, 1]);
+  // Sources without retryHours (the free APIs) try again on every run.
+  const free = { file: path.join(dir, 'tm.json'), key: 'k', maxAgeHours: 20 };
+  let tm = 0;
+  await assert.rejects(loadOrCollect({ ...free, now: t0, collect: async () => { tm++; throw new Error('HTTP 500'); } }));
+  await assert.rejects(loadOrCollect({ ...free, now: t0 + 3 * H, collect: async () => { tm++; throw new Error('HTTP 500'); } }));
+  assert.equal(tm, 2);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

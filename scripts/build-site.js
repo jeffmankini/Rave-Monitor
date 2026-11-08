@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Assembles dist/: one self-contained index.html (map data, demo engine and app inlined)
-// plus the files in site/static and events.json from the pipeline, if it exists.
+// plus the files in site/static, and events.json and streams.json from the pipeline if they exist.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,4 +35,8 @@ for (const f of copied) fs.copyFileSync(path.join(statics, f), path.join(dist, f
 const feed = path.join(ROOT, 'public', 'events.json');
 if (fs.existsSync(feed)) fs.copyFileSync(feed, path.join(dist, 'events.json'));
 else if (fs.existsSync(path.join(dist, 'events.json'))) fs.rmSync(path.join(dist, 'events.json'));
+// Livestreams for the Streams tab (pipeline/streams.js); the page reads NTS live on its own too.
+const streams = path.join(ROOT, 'public', 'streams.json');
+if (fs.existsSync(streams)) fs.copyFileSync(streams, path.join(dist, 'streams.json'));
+else if (fs.existsSync(path.join(dist, 'streams.json'))) fs.rmSync(path.join(dist, 'streams.json'));
 console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB${fs.existsSync(feed) ? ', dist/events.json copied' : ', no feed (the page will show demo data)'}`);

@@ -2,7 +2,13 @@
 
 Live at [ravemonitor.com](https://ravemonitor.com). Like it? [Buy me a coffee](https://buymeacoffee.com/geffbohm). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
 
-A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps the electronic ones, merges nights listed on more than one platform, and writes one `events.json`. The site is a single HTML page that reads that file. Without a feed, it falls back to a built-in demo with fictional events.
+A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps the electronic ones, merges nights listed on more than one platform, and writes one `events.json`. A second step writes `streams.json`, the livestreams for the Streams tab. The site is a single HTML page that reads those files. Without a feed, it falls back to a built-in demo with fictional events.
+
+On the page:
+
+- **The map.** Zoomed out, each city is a cluster of dots. Zoom in and a street map fades in (OpenStreetMap data from OpenFreeMap's free vector tiles, drawn with MapLibre and loaded only when you zoom), with neighbourhoods, streets and each venue in its place. Selecting a city frames its venues.
+- **Lists follow the map.** Once you zoom in yourself (scroll, pinch, the + button or picking a city), Live now, Wire, Scene heat, Genres and the other lists only show what's in the map area, and "Show everywhere" zooms back out. Opening an event from a list moves the map without narrowing the list.
+- **Streams.** What's on air on NTS Radio right now and its coming club shows, plus live and scheduled YouTube streams from Boiler Room, Cercle, HÖR and other channels.
 
 ## How it works
 
@@ -13,8 +19,9 @@ Free APIs (Ticketmaster, Skiddle) ───────────────�
    pipeline/run.js: normalize → electronic-music filter → genre families → merge duplicates
                                                  ▼
                                public/events.json  →  dist/ (index.html + events.json)
+NTS Radio + YouTube → pipeline/streams.js → public/streams.json ─┘
                                                  ▼
-                     GitHub Actions, daily → GitHub Pages (and optionally Netlify)
+                 GitHub Actions, every 3 hours → GitHub Pages (and optionally Netlify)
 ```
 
 - **Normalize.** Every source maps to one event shape: title, start and end, venue and coordinates, lineup, genres, price, ticket status and source links.
@@ -39,14 +46,21 @@ npm test
    - `APIFY_TOKEN`: from the Apify console (Settings → API & Integrations). Turns on RA, DICE, Posh, Partiful and Luma.
    - `TICKETMASTER_KEY`: free at developer.ticketmaster.com.
    - `SKIDDLE_KEY`: free at skiddle.com/api/join.php (UK listings).
+   - `YOUTUBE_KEY`: a free YouTube Data API v3 key, for livestreams (see below).
 3. In **Settings → Pages**, set the source to **GitHub Actions**.
 4. In **Actions → Refresh listings**, choose **Run workflow**.
 
-The job then runs daily. Sources without a key are skipped and reported on the page (open "Live listings" in the header). To pull every source again right away, run it with "Ignore saved scrapes" ticked. To pull only some again, fill in "Pull just these again now" with sources or source:city pairs, such as `ra:berlin,ra:london`; their new listings are added to what was saved.
+The job then runs every 3 hours. Sources without a key are skipped and reported on the page (open "Live listings" in the header). To pull every source again right away, run it with "Ignore saved scrapes" ticked. To pull only some again, fill in "Pull just these again now" with sources or source:city pairs, such as `ra:berlin,ra:london`; their new listings are added to what was saved.
 
 To deploy to Netlify as well, add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` secrets.
 
 To run locally with real data, copy `.env.example` to `.env`, fill it in, then `npm run build && npm run serve`.
+
+### Livestreams
+
+NTS Radio needs nothing: the pipeline reads its public schedule (with genres, so only club shows are listed as coming up), and the page also reads NTS's live list straight from the browser, so what's on air is always current.
+
+YouTube needs a free API key. In the Google Cloud console, create a project, enable **YouTube Data API v3** (APIs & Services → Library), then create an API key (APIs & Services → Credentials); restricting it to that API is a good idea. Add it as the `YOUTUBE_KEY` secret. The channels are in `config/streams.json`. Each run reads each channel's uploads list rather than searching, so it costs about one unit of the free 10,000 a day per channel. YouTube's live status is as of the last run (every 3 hours); a scheduled stream counts as live once its start time passes.
 
 ## Costs
 
@@ -62,11 +76,11 @@ Ticketmaster and Skiddle are free. The Apify scrapers charge per result. These a
 
 DICE is switched off: as of November 2026 it answers these scrapers with 403 Forbidden, even through Apify Proxy. Set `enabled: true` to try it again.
 
-With DICE off, that's at most about $3.85 per full scrape. Paid sources scrape once a month (`maxAgeHours: 720`), reaching 31 days ahead (`scrapeDays`), so the default schedule costs at most about $3.85 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
+With DICE off, that's at most about $3.85 per full scrape. Paid sources scrape once a month (`maxAgeHours: 720`), reaching 31 days ahead (`scrapeDays`), so the default schedule costs at most about $3.85 a month, while the free APIs refresh daily. The job runs every 3 hours for the Streams tab, but the other runs reuse the saved scrapes and cost nothing. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
 
 Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. The monthly default fits inside it. For weekly scrapes (`maxAgeHours: 168`, about $17 a month) you'd need a paid Apify plan.
 
-Scrapes are saved per city. If a city's scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing that city's last good scrape, for up to 30 days past its usual refresh, and the next daily run tries that city again. Editing a city's entry or adding a city pulls just that city again on the next run; editing a source's settings pulls all its cities again.
+Scrapes are saved per city. If a city's scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing that city's last good scrape, for up to 30 days past its usual refresh, and the job tries that city again after `retryHours` (20 hours for the paid scrapers, so a failing page isn't paid for on every 3-hourly run). Editing a city's entry or adding a city pulls just that city again on the next run; editing a source's settings pulls all its cities again.
 
 Apify also limits how many runs you can have going at once and how much memory they use (5 runs and 16 GB on the free plan). The job queues runs to stay under `apifyMaxRuns` and `apifyMemoryMb` in `config/sources.json`; raise them if your plan allows more.
 
@@ -87,6 +101,7 @@ To build it locally: `node pipeline/archive.js <dir> public/events.json`, then `
 ## Configuration
 
 - `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE browse page (the part after dice.fm/browse/), the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a city comes back empty, copy the right URL from ra.co. A city can list more than one RA page, and a wrong one simply returns nothing.
+- `config/streams.json` sets the YouTube channels for the Streams tab (add any channel id; `genres` and `city` are optional) and how far ahead NTS shows are listed.
 - `config/sources.json` turns sources on or off and sets cities, caps, spending limits and how long a scrape stays fresh. Any Apify actor can be swapped in by changing `actor` and its `normalize()` in `pipeline/sources/`.
 - Link previews: the title, description and share image are in the head of `site/index.html`. Their URLs use `SITE_URL` (default `https://ravemonitor.com`); set it as an environment variable when building for another address. The share image, `site/static/og-image.jpg`, is a screenshot of `scripts/og-card.html` at 1200×630 (instructions are in that file). Everything in `site/static` (icons, share image) is copied next to the page.
 
@@ -94,7 +109,7 @@ To build it locally: `node pipeline/archive.js <dir> public/events.json`, then `
 
 This is a non-commercial demo built on third-party scrapers. It tries to be a good citizen:
 
-- **Event details only.** It keeps titles, times, venues, lineups, prices, status and links. It never stores descriptions, attendee or guest lists, or organizer contact details, even where a scraper offers them.
+- **Event details only.** It keeps titles, times, venues, lineups, prices, status and links. It never stores descriptions, attendee or guest lists, or organizer contact details, even where a scraper offers them. Contact or credit lines that turn up in a lineup ("booking: name@…", "Instagram: …", "Founder @…") are dropped too.
 - **Opt-outs are respected.** Posh events whose organizers turned off third-party display are skipped, and only public Partiful events are used.
 - **Light load.** Sources are scraped on a schedule and cached, never on page views, and every listing links back to its source.
 - **Event facts only, in the archive too.** Raw scrapes live only in the job's cache. The archive branch and the deployed files keep the same event facts as the site (title, time, venue, lineup, genres, price, status, links), never descriptions, attendee lists or organizer contacts.
@@ -135,6 +150,7 @@ Each scraper is run by its own author under the platform's terms. Check those te
 ```
 config/            cities and source settings
 pipeline/run.js    builds public/events.json
+pipeline/streams.js builds public/streams.json (NTS and YouTube)
 pipeline/lib/      normalize, merge duplicates, Apify client, helpers
 pipeline/sources/  one adapter per source
 pipeline/sample/   sample input in each platform's format
@@ -145,4 +161,4 @@ test/              node --test
 
 ## License
 
-MIT. Map shapes are from Natural Earth via world-atlas, in the public domain.
+MIT. Map shapes are from Natural Earth via world-atlas, in the public domain. The street map is © OpenStreetMap contributors (ODbL), with tiles from OpenFreeMap and the OpenMapTiles schema, drawn with MapLibre GL JS (BSD-3-Clause).

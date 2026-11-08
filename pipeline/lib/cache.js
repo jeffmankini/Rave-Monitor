@@ -11,7 +11,7 @@ export const STALE_LIMIT_DAYS = 30;
  * Settings that change how a scrape runs, is paid for or how far ahead the next one reaches, not what
  * it asks for now; changing them waits for the next scheduled pull instead of forcing one.
  */
-const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled', 'scrapeDays', 'spreadCities', 'spreadNights'];
+const NOT_ASKS = ['maxAgeHours', 'retryHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled', 'scrapeDays', 'spreadCities', 'spreadNights'];
 
 /** Fingerprint of everything that changes what a source asks for, so editing it triggers a new pull. */
 export function scrapeKey(srcId, settings = {}, windowDays = 14, cities = []) {
@@ -27,23 +27,41 @@ function readSaved(file) {
   } catch { return null; }
 }
 
+const triedFile = file => file.replace(/\.json$/, '') + '.tried.json';
+function readTried(file) { try { return JSON.parse(fs.readFileSync(triedFile(file), 'utf8')); } catch { return null; } }
+
 /**
  * Returns { items, cached, stale, at }.
  * cached: the items came from a saved scrape. stale: they did because the new pull failed or came back empty.
+ * retryHours: after a failed or empty pull, wait this long before pulling again (paid scrapers set it,
+ * so a page that keeps failing isn't paid for on every run). fresh skips the wait.
  */
-export async function loadOrCollect({ file, key, maxAgeHours = 24, fresh = false, now = Date.now(), collect, warn = () => {} }) {
+export async function loadOrCollect({ file, key, maxAgeHours = 24, retryHours = 0, fresh = false, now = Date.now(), collect, warn = () => {} }) {
   const saved = readSaved(file);
   if (!fresh && saved && saved.key === key && now - saved.at < maxAgeHours * 3600e3) {
     return { items: saved.items, cached: true, stale: false, at: saved.at };
   }
+  const usable = saved && now - saved.at < maxAgeHours * 3600e3 + STALE_LIMIT_DAYS * 86400e3;
+  const tried = readTried(file);
   let items = null, failure = null;
+  if (!fresh && tried && tried.key === key && now - tried.at < retryHours * 3600e3) {
+    const why = `${tried.error || 'the last scrape came back empty'} (tried ${new Date(tried.at).toISOString().slice(0, 16).replace('T', ' ')} UTC; next try after ${retryHours} hours)`;
+    if (usable) { warn(`${why}; showing the scrape from ${new Date(saved.at).toISOString().slice(0, 10)} instead`); return { items: saved.items, cached: true, stale: true, at: saved.at }; }
+    if (tried.error) throw new Error(why);
+    return { items: [], cached: false, stale: false, at: now };
+  }
   try { items = await collect(); } catch (err) { failure = err; }
   if (items && items.length) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ at: now, key, items }));
+    fs.rmSync(triedFile(file), { force: true });
     return { items, cached: false, stale: false, at: now };
   }
-  if (saved && now - saved.at < maxAgeHours * 3600e3 + STALE_LIMIT_DAYS * 86400e3) {
+  if (retryHours > 0) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(triedFile(file), JSON.stringify({ at: now, key, error: failure ? failure.message : null }));
+  }
+  if (usable) {
     const why = failure ? failure.message : 'the new scrape came back empty';
     warn(`${why}; showing the scrape from ${new Date(saved.at).toISOString().slice(0, 10)} instead`);
     return { items: saved.items, cached: true, stale: true, at: saved.at };
@@ -74,7 +92,7 @@ export function cityCache({ dir, srcId, settings = {}, windowDays = 14, fresh = 
       return items.concat(before.items.filter(i => !i.id || !ids.has(i.id)));
     };
     const got = await loadOrCollect({
-      file, key: scrapeKey(srcId, asks, windowDays, [city]), maxAgeHours: settings.maxAgeHours || 24,
+      file, key: scrapeKey(srcId, asks, windowDays, [city]), maxAgeHours: settings.maxAgeHours || 24, retryHours: settings.retryHours || 0,
       fresh: fresh || forced, now, collect: pull, warn: m => warn(`${city.name}: ${m}`)
     });
     const kind = got.stale ? 'stale' : got.cached ? 'saved' : 'scraped';

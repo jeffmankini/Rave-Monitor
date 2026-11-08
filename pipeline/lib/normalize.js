@@ -120,23 +120,43 @@ export function jitter(id, lat, lon) {
 
 const cleanName = s => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 
+// Lineups sometimes carry contact or credit lines instead of names ('booking: x@y.com',
+// 'Instagram: handle', 'Founder @label'). Those stay out: no contact details in the feed.
+// Handles billed as names ('@veralyn', 'DJ SILK (@SILKSHUTDOWN)') are kept.
+const CONTACT = /\S+@\S+\.[a-z]{2,}|https?:\/\/|www\.|^\s*(bookings?|contact|instagram|insta|ig|email|e-mail|mgmt|management|press|promo)\s*[:\-–]|\b(co-?founder|founder|initiator)\b[^@]*@|^[\s@._-]*$/i;
+export const isContactLine = s => CONTACT.test(String(s ?? ''));
+
 /**
  * Build the shared event shape. Returns null when required fields are missing.
  * Only event-level facts are kept: no descriptions, attendee lists or organizer contact details.
  */
+/**
+ * How much a venue position can be trusted: 'none' for missing, 0,0 ('null island') or whole-degree
+ * points (listings use these when there's no real position; 53,13 is 55 km from Berlin), 'rough'
+ * when both numbers have at most one decimal (a city-level guess), else 'exact'.
+ */
+export function positionQuality(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return 'none';
+  if ((Math.abs(lat) < 1e-6 && Math.abs(lon) < 1e-6) || (Number.isInteger(lat) && Number.isInteger(lon))) return 'none';
+  const oneDecimal = v => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6;
+  return oneDecimal(lat) && oneDecimal(lon) ? 'rough' : 'exact';
+}
+
 export function makeEvent(ctx, f) {
   if (!f.title || !Number.isFinite(f.startMs)) return null;
-  let lat = f.lat, lon = f.lon, approx = false;
+  const quality = positionQuality(f.lat, f.lon);
+  let lat = quality === 'none' ? undefined : f.lat, lon = quality === 'none' ? undefined : f.lon, approx = quality === 'rough';
   const city = assignCity(ctx, lat, lon, { cityId: f.cityHint, name: f.cityName, country: f.country, tz: f.tz });
   if (!city) return null;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) { [lat, lon] = jitter(f.id, city.lat, city.lon); approx = true; }
+  // No usable position: place it near the city center (one spot per venue name).
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) { [lat, lon] = jitter(`${city.id}:${norm(f.venueName || f.id)}`, city.lat, city.lon); approx = true; }
   const tz = f.tz || city.tz;
   const type = f.type || eventType({ title: f.title, startMs: f.startMs, tz, isFestival: f.isFestival, isConcert: f.isConcert });
   const dur = { club: 6, after: 6, day: 7, concert: 3.5, festival: 12 }[type] || 5;
   let endMs = Number.isFinite(f.endMs) && f.endMs > f.startMs ? f.endMs : f.startMs + dur * 3600e3;
   if (endMs - f.startMs > 4 * 86400e3) endMs = f.startMs + 4 * 86400e3;
   const genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
-  const lineup = [...new Set((f.lineup || []).map(cleanName).filter(n => n && n.length < 80))].slice(0, 24);
+  const lineup = [...new Set((f.lineup || []).map(cleanName).filter(n => n && n.length < 80 && !isContactLine(n)))].slice(0, 24);
   return {
     id: `${f.source}:${f.id}`,
     title: cleanName(f.title).slice(0, 160),

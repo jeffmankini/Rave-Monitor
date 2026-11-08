@@ -159,6 +159,9 @@ body.narrow .rail-right { border-left: 0; }
 body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border-bottom: 1px solid var(--line); }
 .stage canvas { position: absolute; inset: 0; display: block; }
 #map-over { cursor: grab; touch-action: none; }
+/* The street map (MapLibre) sits between the base canvas and the event canvas. */
+#streets { position: absolute; inset: 0; pointer-events: none; visibility: hidden; background: transparent; }
+#streets .maplibregl-canvas { outline: none; }
 #map-over:active { cursor: grabbing; }
 
 /* ---------- map overlay ui ---------- */
@@ -196,6 +199,9 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .lg-fest { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink-2); }
 .lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(246,236,216,.08); }
 .legend .demo-note { color: var(--ink-3); }
+.legend .lg-attrib { color: var(--ink-3); font-size: 10px; white-space: normal; display: inline; }
+.legend .lg-attrib[hidden] { display: none; }
+.legend .lg-attrib a { color: inherit; }
 .tip {
   position: absolute; z-index: 5; pointer-events: none; max-width: 270px; padding: 8px 10px; border-radius: 8px;
   background: rgba(12,15,34,.97); border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.5); font-size: var(--s-12); color: var(--ink-2);
@@ -312,6 +318,21 @@ body.narrow .tab kbd { display: none; }
 .odds .bar { width: 100%; height: 5px; border-radius: 3px; background: rgba(169,171,203,.12); overflow: hidden; }
 .odds .bar i { display: block; height: 100%; background: var(--ink-2); border-radius: 3px; }
 .subhead { margin: 18px 16px 6px; font-size: var(--s-12); color: var(--ink-3); font-weight: 600; }
+.subhead.first { margin-top: 10px; }
+/* Stream rows are links to the stream itself. */
+a.strow { color: inherit; text-decoration: none; }
+a.strow .viewers { color: var(--ink-3); }
+a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
+/* Shown above a list while it only covers the map area. */
+.areabar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 16px 4px; padding: 6px 6px 6px 10px;
+  border-radius: 8px; background: rgba(246,236,216,.07); border: 1px solid rgba(246,236,216,.16); color: var(--ink-2); font-size: var(--s-12);
+}
+.areabar button {
+  flex: none; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--deck);
+  color: var(--ink); font-size: var(--s-12); cursor: pointer;
+}
+.areabar button:hover, .areabar button:focus-visible { border-color: var(--now); }
 
 /* peakcon */
 .pc-hero { display: flex; align-items: center; gap: 18px; padding: 6px 16px 14px; }
@@ -495,6 +516,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   <aside class="rail rail-left" id="rail-left" aria-label="Live now and scene heat"></aside>
   <section class="stage" id="stage" aria-label="Event map">
     <canvas id="map-base" aria-hidden="true"></canvas>
+    <div id="streets" aria-hidden="true"></div>
     <canvas id="map-over" tabindex="0" aria-label="Map of events. Drag to pan, scroll or pinch to zoom, select a city to zoom in. The lists beside the map hold the same events."></canvas>
     <div class="mapui">
       <div class="seg view-toggle" role="radiogroup" aria-label="Map view" id="viewtoggle">
@@ -512,7 +534,8 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <label><input type="checkbox" id="ly-heat" checked> <span>Scene heat<small>Glow by activity, next 72 hours</small></span></label>
         <label><input type="checkbox" id="ly-fest" checked> <span>Festivals</span></label>
         <label><input type="checkbox" id="ly-tours"> <span>Headliner tour routes<small>Next gig to next gig</small></span></label>
-        <label><input type="checkbox" id="ly-labels" checked> <span>City and venue names</span></label>
+        <label><input type="checkbox" id="ly-streets" checked> <span>Street map<small>Streets and neighbourhoods as you zoom in</small></span></label>
+        <label><input type="checkbox" id="ly-labels" checked> <span>Place names</span></label>
       </div>
       <div class="route-chip" id="route-chip" hidden></div>
       <div class="legend" id="legend">
@@ -523,6 +546,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <span class="lg-extra"><i class="lg-fest"></i>Festival</span>
         <span class="lg-extra"><i class="lg-band"></i>Club hours</span>
         <span class="demo-note">Demo listings, fictional</span>
+        <span class="lg-attrib" id="attrib" hidden>Map &copy; <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a>, <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
       </div>
     </div>
     <div class="tip" id="tip" hidden></div>
@@ -549,6 +573,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <ul>
       <li><b>Scrapers on a schedule.</b> Ready-made Apify scrapers pull public listings from Resident Advisor, Posh, Partiful and Luma once a month.</li>
       <li><b>Free APIs.</b> Ticketmaster Discovery (free key, 5,000 calls a day) and Skiddle (free key, strong on UK club nights).</li>
+      <li><b>Livestreams.</b> NTS Radio's public schedule, read live in your browser, and YouTube's API for live and scheduled streams on channels like Boiler Room, Cercle and HÖR.</li>
       <li><b>One feed.</b> Every source is converted to one event format, duplicates across platforms are merged, and each listing links back to its source page.</li>
       <li><b>Event details only.</b> Title, time, venue, lineup, price and link. No attendee lists or organizer contact details.</li>
       <li><b>Open source, for fun.</b> A non-commercial proof of concept. The code is public; the scraped data is rebuilt by each deployment rather than stored in the repo.</li>

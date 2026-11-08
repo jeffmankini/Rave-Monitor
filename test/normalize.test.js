@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { genresFrom, electronicScore, parsePrice, fromMinor, eventType } from '../pipeline/lib/normalize.js';
+import { genresFrom, electronicScore, parsePrice, fromMinor, eventType, positionQuality, makeEvent, isContactLine } from '../pipeline/lib/normalize.js';
 import { localToUtc } from '../pipeline/lib/util.js';
 
 test('genre rules pick the specific family first', () => {
@@ -42,4 +42,33 @@ test('ticket-site shows that start late count as club nights', () => {
   assert.equal(eventType(at('2026-11-21T22:30:00')), 'club');
   assert.equal(eventType(at('2026-11-22T01:00:00')), 'club');
   assert.equal(eventType(at('2026-11-21T15:00:00')), 'day');
+});
+
+test('venue positions at 0,0 or on whole degrees are treated as missing', () => {
+  assert.equal(positionQuality(0, 0), 'none');
+  assert.equal(positionQuality(53, 13), 'none');
+  assert.equal(positionQuality(undefined, 13.4), 'none');
+  assert.equal(positionQuality(52.5, 13.4), 'rough');
+  assert.equal(positionQuality(52.5111, 13.4432), 'exact');
+  const berlin = { id: 'berlin', name: 'Berlin', lat: 52.52, lon: 13.405, tz: 'Europe/Berlin' };
+  const ctx = { cities: [berlin], cityById: { berlin } };
+  const base = { source: 'ra', title: 'Techno night', startMs: Date.parse('2026-11-14T22:00:00Z'), cityHint: 'berlin' };
+  const lost = makeEvent(ctx, { ...base, id: '1', venueName: 'AMT', lat: 0, lon: 0 });
+  assert.equal(lost.cityId, 'berlin');
+  assert.equal(lost.venue.approx, true);
+  assert.ok(Math.abs(lost.venue.lat - 52.52) < 0.05 && Math.abs(lost.venue.lon - 13.405) < 0.08, 'placed near the city center');
+  const again = makeEvent(ctx, { ...base, id: '2', venueName: 'AMT', lat: 0, lon: 0 });
+  assert.deepEqual([again.venue.lat, again.venue.lon], [lost.venue.lat, lost.venue.lon], 'one spot per venue');
+  const coarse = makeEvent(ctx, { ...base, id: '3', venueName: 'Dunckerclub', lat: 53, lon: 13 });
+  assert.equal(coarse.venue.approx, true);
+  const exact = makeEvent(ctx, { ...base, id: '4', venueName: 'Berghain', lat: 52.5111, lon: 13.4432 });
+  assert.equal(exact.venue.approx, undefined);
+  assert.equal(exact.venue.lat, 52.5111);
+});
+
+test('contact and credit lines are dropped from lineups, billed handles are kept', () => {
+  for (const bad of ['booking: someone.berlin@gmail.com', 'Instagram: somepromoter', 'Founder @somelabel', '(Ex) Initiator and co-founder @club_x', '@', 'https://instagram.com/x', 'Bookings - agent@agency.co'])
+    assert.equal(isContactLine(bad), true, bad);
+  for (const ok of ['@veralyn', 'DJ SILK (@SILKSHUTDOWN)', 'Z@p', 'Second Contact', 'Club Nights @ The Jazz Cafe', 'Ben UFO'])
+    assert.equal(isContactLine(ok), false, ok);
 });

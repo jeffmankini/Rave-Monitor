@@ -1,0 +1,26 @@
+{
+  "_comment": "Livestreams for the Streams tab. NTS needs no key. YouTube needs a free YOUTUBE_KEY secret (YouTube Data API v3); without it, YouTube is skipped. Each YouTube channel costs about 1 unit of the 10,000 free daily quota per run.",
+  "nts": {
+    "hours": 36,
+    "maxDetails": 30
+  },
+  "youtube": {
+    "perChannel": 15,
+    "upcomingDays": 7,
+    "channels": [
+      { "id": "UCGBpxWJr9FNOcFYA5GkKrMg", "name": "Boiler Room" },
+      { "id": "UCPKT_csvP72boVX0XrMtagQ", "name": "Cercle", "genres": ["house"] },
+      { "id": "UCmfF7JZv26UUKyRedViGIlw", "name": "HÖR Berlin", "city": "Berlin" },
+      { "id": "UCJOtExbMu0RqIdiE4nMUPxQ", "name": "The Lot Radio", "city": "New York" },
+      { "id": "UCgGfSxNOBkJDtCQ932iQU7Q", "name": "Rinse FM", "city": "London" },
+      { "id": "UCQAnY_suiNH0MvdTHk5GiBA", "name": "Keep Hush", "city": "London" },
+      { "id": "UCQdCIrTpkhEH5Z8KPsn7NvQ", "name": "Mixmag" },
+      { "id": "UCJEKlziKdxoos1qbptjGgLg", "name": "DJ Mag" },
+      { "id": "UCJUSZH98MEv0Sa5KKeP-PPQ", "name": "Defected", "genres": ["house"] },
+      { "id": "UC6VVpeOjds3UhVKsUuuK6mQ", "name": "Afterlife", "genres": ["techno"] },
+      { "id": "UCbDgBFAketcO26wz-pR6OKA", "name": "Anjunadeep", "genres": ["house"] },
+      { "id": "UCndfUzXCcrgdE4ecZhr79yw", "name": "Ultra Music Festival" },
+      { "id": "UCX4sShAQf01LYjYQhG2ZgKg", "name": "Monstercat Silk", "genres": ["house"] }
+    ]
+  }
+}

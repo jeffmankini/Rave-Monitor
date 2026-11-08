@@ -1,10 +1,11 @@
 name: Refresh listings
 
-# Daily: free APIs refresh every run; paid scrapers reuse their last pull until it is
-# older than maxAgeHours in config/sources.json (weekly by default) to keep costs down.
+# Every 3 hours, mainly so the Streams tab stays current. Each source reuses its last pull until it
+# is older than maxAgeHours in config/sources.json: the free APIs refresh about daily, the paid
+# scrapers monthly, so the extra runs cost nothing.
 on:
   schedule:
-    - cron: '23 10 * * *'
+    - cron: '23 */3 * * *'
   workflow_dispatch:
     inputs:
       fresh:
@@ -49,6 +50,12 @@ jobs:
         run: |
           mkdir -p cache && touch cache/.keep
           node pipeline/run.js ${{ inputs.fresh && '--fresh' || '' }} ${PULL:+--pull "$PULL"}
+      - name: Build the livestream list
+        # NTS needs no key. YouTube needs the free YOUTUBE_KEY secret and is skipped without it.
+        continue-on-error: true
+        env:
+          YOUTUBE_KEY: ${{ secrets.YOUTUBE_KEY }}
+        run: node pipeline/streams.js
       - name: Update the archive
         # Every listing is kept in the archive branch, merged across platforms. A problem here
         # shouldn't stop the site from deploying.

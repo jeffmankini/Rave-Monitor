@@ -12,8 +12,11 @@
   /* ---------- state ---------- */
   const S = {
     now: Date.now(), win: '24h', genres: new Set(), view: 'map',
-    layers: { belt: true, heat: true, fest: true, tours: false, labels: true },
-    sel: null, route: null, mode: null, tab: { right: 'wire', single: 'live' }, liveAll: false, ds: null
+    layers: { belt: true, heat: true, fest: true, tours: false, labels: true, streets: true },
+    sel: null, route: null, mode: null, tab: { right: 'wire', single: 'live' }, liveAll: false, ds: null,
+    // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
+    area: null, areaOn: false,
+    streams: [], streamFile: null, streamsAt: 0, ntsLive: null, streamsTried: false
   };
   const D = {};
 
@@ -116,6 +119,31 @@
       }
     });
     D.tours = tours;
+    deriveLists();
+  }
+  // What the lists show: everything, or only what's inside the map once you've zoomed in.
+  // The map itself always draws everything (D.*); the lists read D.L.
+  function deriveLists() {
+    const ds = S.ds, t = S.now, A = S.area;
+    if (!A) { D.L = { area: false, live: D.live, soon: D.soon, win: D.win, wire: D.wire, heat: D.heat, genres: D.genres, surges: D.surges, events: ds.events, cities: D.byCity.size }; return; }
+    const inA = e => A.has(e.venueId);
+    const events = ds.events.filter(inA), view = Object.assign({}, ds, { events: events });
+    const win = D.win.filter(inA);
+    D.L = {
+      area: true, live: D.live.filter(inA), soon: D.soon.filter(inA), win: win, wire: D.wire.filter(w => inA(w.e)),
+      heat: RM.heatIndex(view, t, S.genres), genres: RM.genreIndex(view, t), surges: ds.source === 'demo' ? RM.surges(view, t) : [],
+      events: events, cities: new Set(win.map(e => e.cityId)).size
+    };
+  }
+  function areaBar() {
+    if (!D.L.area) return '';
+    return '<div class="areabar"><span>Showing the map area only</span><button type="button" data-act="area-all" aria-label="Zoom out and show listings everywhere">Show everywhere</button></div>';
+  }
+  /** Called by the map when the area in view changes (null: not zoomed in, so lists show everything). */
+  function areaChanged(ids) {
+    S.area = ids;
+    deriveLists();
+    renderAll();
   }
   function routeGigs(aid) {
     return S.ds.events.filter(e => e.end > S.now && (e.heads.indexOf(aid) >= 0 || e.support.indexOf(aid) >= 0)).sort((a, b) => a.start - b.start).slice(0, 12);
@@ -157,16 +185,18 @@
   }
 
   function briefHTML() {
-    const t = S.now, live = D.live, ds = S.ds;
+    const t = S.now, live = D.L.live, ds = S.ds, area = D.L.area, here = area ? ' in this area' : '';
     const gl = S.genres.size ? ' ' + Array.from(S.genres).map(g => RM.GENRE[g].name.toLowerCase()).join(' and ') : '';
     if (!live.length) {
-      const next = ds.events.filter(e => e.start > t && RM.inGenres(e, S.genres))[0];
-      return 'No' + gl + ' parties are live right now.' + (next ? ' Next doors: <b>' + esc(next.title) + '</b> in ' + esc(city(next).name) + ' at ' + tTime(next.start, city(next).tz) + ' local time.' : '');
+      const next = D.L.events.filter(e => e.start > t && RM.inGenres(e, S.genres))[0];
+      return 'No' + gl + ' parties are live' + here + ' right now.' + (next ? ' Next doors: <b>' + esc(next.title) + '</b> in ' + esc(city(next).name) + ' at ' + tTime(next.start, city(next).tz) + ' local time.' : '');
     }
     const regions = RM.regionCounts(live, ds), top = regions[0];
-    const cities = RM.cityCounts(live.filter(e => ds.cityById[e.cityId].region === top.id)).slice(0, 2).map(x => esc(ds.cityById[x.id].name) + ' (' + x.n + ')');
-    let s = '<b>' + plural(live.length, gl.trim() ? gl.trim() + ' party is' : 'party is', (gl ? gl.trim() + ' ' : '') + 'parties are').replace(/^(\d[\d,]*) /, '$1</b> ') + ' live right now. ' + esc(top.name) + ' is carrying the night, led by ' + cities.join(' and ') + '.';
-    const soonReg = RM.regionCounts(D.soon, ds)[0];
+    const cities = RM.cityCounts(area ? live : live.filter(e => ds.cityById[e.cityId].region === top.id)).slice(0, 2).map(x => esc(ds.cityById[x.id].name) + ' (' + x.n + ')');
+    let s = '<b>' + plural(live.length, gl.trim() ? gl.trim() + ' party is' : 'party is', (gl ? gl.trim() + ' ' : '') + 'parties are').replace(/^(\d[\d,]*) /, '$1</b> ') + ' live' + here + ' right now. ' +
+      (area ? 'Busiest: ' + cities.join(' and ') + '.' : esc(top.name) + ' is carrying the night, led by ' + cities.join(' and ') + '.');
+    const soonReg = area ? null : RM.regionCounts(D.soon, ds)[0];
+    if (area && D.L.soon.length) s += ' ' + plural(D.L.soon.length, 'more party opens', 'more parties open') + ' here in the next three hours.';
     if (soonReg && soonReg.id !== top.id) {
       const sc = RM.cityCounts(D.soon.filter(e => ds.cityById[e.cityId].region === soonReg.id)).slice(0, 2).map(x => esc(ds.cityById[x.id].name));
       s += ' Next wave: ' + esc(soonReg.name) + ', where ' + plural(soonReg.n, 'party opens', 'parties open') + ' in the next three hours, led by ' + sc.join(' and ') + '.';
@@ -177,19 +207,19 @@
   }
 
   function renderLive() {
-    const t = S.now, live = D.live.slice().sort((a, b) => RM.importance(b, t) - RM.importance(a, t));
+    const t = S.now, live = D.L.live.slice().sort((a, b) => RM.importance(b, t) - RM.importance(a, t));
     const n = S.liveAll ? live.length : Math.min(live.length, 25);
-    body('live').innerHTML = '<p class="brief">' + briefHTML() + '</p>' +
+    body('live').innerHTML = areaBar() + '<p class="brief">' + briefHTML() + '</p>' +
       (live.length ? '<ol class="rows">' + live.slice(0, n).map(eventRow).join('') + '</ol>' : '') +
       (live.length > n ? '<button class="more" type="button" data-act="live-all">Show all ' + fmtN(live.length) + '</button>' : '');
-    meta('live', fmtN(live.length) + ' live');
+    meta('live', fmtN(live.length) + ' live' + (D.L.area ? ' here' : ''));
   }
 
   function renderHeat() {
-    const rows = D.heat.slice(0, 30);
+    const rows = D.L.heat.slice(0, 30);
     const fmtChg = c => c == null ? 'new' : (c >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(c * 100)) + '%';
-    if (!rows.length) { body('heat').innerHTML = '<p class="fine">No events in the next 72 hours for this filter.</p>'; meta('heat', 'next 72 hours'); return; }
-    body('heat').innerHTML = '<div class="hhead" aria-hidden="true"><span></span><span>City</span><span>Heat</span><span>vs last wk</span><span>7 nights</span></div><ol class="rows">' +
+    if (!rows.length) { body('heat').innerHTML = areaBar() + '<p class="fine">No events in the next 72 hours ' + (D.L.area ? 'in this area' : 'for this filter') + '.</p>'; meta('heat', 'next 72 hours'); return; }
+    body('heat').innerHTML = areaBar() + '<div class="hhead" aria-hidden="true"><span></span><span>City</span><span>Heat</span><span>vs last wk</span><span>7 nights</span></div><ol class="rows">' +
       rows.map((h, i) => {
         const mx = Math.max(1, Math.max.apply(null, h.nights));
         const bars = h.nights.map((v, j) => '<i class="' + (j === 0 ? 'tonight' : '') + '" style="height:' + Math.max(6, Math.round(v / mx * 100)) + '%"></i>').join('');
@@ -199,7 +229,7 @@
           '<span class="hbar"><i style="width:' + h.heat + '%"></i><em>' + h.heat + '</em></span>' +
           '<span class="chg">' + fmtChg(h.change) + '</span>' +
           '<span class="nights" title="Events per night, starting tonight: ' + h.nights.join(', ') + '">' + bars + '</span></li>';
-      }).join('') + '</ol><p class="fine">Heat scores the next 72 hours by room size, demand and headliner pull. 100 is the busiest city.</p>';
+      }).join('') + '</ol><p class="fine">Heat scores the next 72 hours by room size, demand and headliner pull. 100 is the busiest city' + (D.L.area ? ' in view' : '') + '.</p>';
     meta('heat', 'next 72 hours');
   }
 
@@ -222,12 +252,12 @@
     return e.title;
   }
   function renderWire() {
-    const items = D.wire.slice(0, 90);
-    body('wire').innerHTML = items.length ? '<ol class="rows">' + items.map(w => {
+    const items = D.L.wire.slice(0, 90);
+    body('wire').innerHTML = areaBar() + (items.length ? '<ol class="rows">' + items.map(w => {
       const c = city(w.e), v = venue(w.e);
       return '<li class="wrow" data-ev="' + esc(w.e.id) + '" tabindex="0" role="button"><time>' + ago(w.ts) + '</time><div>' +
         '<span class="wtype t-' + w.type + '"><i></i>' + WIRE_TYPE[w.type] + '</span><p>' + esc(wireText(w)) + '</p><small>' + esc(v.name) + ', ' + esc(c.name) + '</small></div></li>';
-    }).join('') + '</ol>' : '<p class="fine">Nothing on the wire for this filter yet.</p>';
+    }).join('') + '</ol>' : '<p class="fine">Nothing on the wire ' + (D.L.area ? 'in this area' : 'for this filter') + ' yet.</p>');
     meta('wire', S.ds.source === 'demo' ? 'last 36 hours' : 'doors from live listings');
   }
 
@@ -244,8 +274,8 @@
   }
   function renderGenres() {
     const fmtChg = c => c == null ? '' : (c >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(c * 100)) + '%';
-    body('genres').innerHTML = '<div class="ghead" aria-hidden="true"><span>Genre</span><span>Next 7d</span><span>vs last</span><span>Daily, past and coming week</span></div><ol class="rows">' +
-      D.genres.map(r => '<li class="grow" data-genre="' + r.genre.id + '" tabindex="0" role="button" aria-pressed="' + S.genres.has(r.genre.id) + '" aria-label="Filter to ' + esc(r.genre.name) + '">' +
+    body('genres').innerHTML = areaBar() + '<div class="ghead" aria-hidden="true"><span>Genre</span><span>Next 7d</span><span>vs last</span><span>Daily, past and coming week</span></div><ol class="rows">' +
+      D.L.genres.map(r => '<li class="grow" data-genre="' + r.genre.id + '" tabindex="0" role="button" aria-pressed="' + S.genres.has(r.genre.id) + '" aria-label="Filter to ' + esc(r.genre.name) + '">' +
         '<span class="gname"><i class="gdot" style="--c:' + r.genre.color + '"></i><b>' + esc(r.genre.name) + '</b><small>' + r.genre.bpm + ' BPM, ' + Math.round(r.share * 100) + '% of listings</small></span>' +
         '<span class="gnum"><b>' + fmtN(r.next) + '</b><small>events</small></span>' +
         '<span class="chg">' + fmtChg(r.change) + '</span>' + spark(r.daily, 7) + '</li>').join('') +
@@ -253,10 +283,132 @@
     meta('genres', 'like a ticker, for scenes');
   }
 
-  function viewers(e) { return Math.round((e.headTier === 1 ? 1800 : 300) + e.seed * (e.headTier === 1 ? 22000 : 4000)); }
+  /* ---------- livestreams: streams.json from the pipeline, plus NTS's live list read in the browser ---------- */
+  // The pipeline's genre rules (pipeline/lib/normalize.js), for NTS shows the browser reads itself.
+  const FAM_RULES = [
+    ['afro', /\b(amapiano|afro ?house|afro ?tech|gqom|baile funk|3 ?step)\b/],
+    ['bass', /\b(dubstep|riddim|bass house|bass music|future bass|grime|wave music|halftime)\b/],
+    ['dnb', /\b(drum ?(?:&|and|n) ?bass|dnb|d&b|d ?n ?b|jungle|liquid funk|neurofunk|jump ?up)\b/],
+    ['garage', /\b(uk ?g(?:arage)?|ukg|speed garage|2[- ]?step|garage|breakbeat|breaks|electro|bassline)\b/],
+    ['trance', /\b(psytrance|psy[- ]?trance|goa trance|trance|hard ?style|hard ?dance|hardcore|gabber)\b/],
+    ['disco', /\b(nu[- ]?disco|disco|italo|balearic|edits|cosmic)\b/],
+    ['techno', /\b(techno|hard groove|acid|industrial|ebm|hypnotic|peak[- ]?time)\b/],
+    ['house', /\b(tech ?house|deep house|house music|house|minimal|lo-?fi house|progressive house|jackin)\b/]
+  ];
+  function famsFrom(texts) {
+    let rest = norm(texts.join(' | '));
+    const out = [];
+    FAM_RULES.forEach(r => { if (r[1].test(rest)) { out.push(r[0]); rest = rest.replace(new RegExp(r[1].source, 'g'), ' '); } });
+    return out;
+  }
+  const NTS_CLUB = ['housetechno', 'ukdance', 'newclub', 'discoboogie', 'electronicadowntempo'];
+  const unent = str => { const d = document.createElement('textarea'); d.innerHTML = String(str || ''); return d.value; };
+  function ntsSlot(ch, b) {
+    const raw = unent(b.broadcast_title).trim(), d = b.embeds && b.embeds.details;
+    const href = (b.links || []).map(l => l && l.href).find(h => /\/shows\/[^/]+\/episodes\//.test(h || ''));
+    const m = href && href.match(/\/shows\/([^/?#]+)\/episodes\/([^/?#]+)/);
+    const known = !!(d && d.genres && d.genres.length);
+    const club = known ? d.genres.filter(x => NTS_CLUB.indexOf(String(x.id).replace(/^genres-/, '').split('-')[0]) >= 0) : [];
+    return {
+      id: 'nts:' + ch + ':' + b.start_timestamp, platform: 'NTS', kind: 'radio', channel: 'NTS ' + ch,
+      title: raw.replace(/\s*\(R\)\s*$/i, ''), rerun: /\(R\)\s*$/i.test(raw), start: b.start_timestamp, end: b.end_timestamp,
+      url: m ? 'https://www.nts.live/shows/' + m[1] + '/episodes/' + m[2] : 'https://www.nts.live/',
+      genres: known ? famsFrom(club.map(x => unent(x.value))) : null, club: known ? club.length > 0 : null,
+      tags: known ? d.genres.map(x => unent(x.value).trim()).slice(0, 4) : [], location: d && d.location_long ? unent(d.location_long) : null
+    };
+  }
+  async function getJson(url, ms) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+    try { const res = await fetch(url, { cache: 'no-store', signal: ctl.signal }); return res.ok ? await res.json() : null; }
+    finally { clearTimeout(timer); }
+  }
+  async function loadStreamFile() {
+    try { const j = await getJson('streams.json', 5000); if (j && Array.isArray(j.streams)) { S.streamFile = j; S.streamsAt = Date.parse(j.generatedAt) || 0; } }
+    catch (err) { /* no streams file yet */ }
+  }
+  async function loadNtsLive() {
+    try {
+      const j = await getJson('https://www.nts.live/api/v2/live', 6000), out = [];
+      ((j && j.results) || []).forEach(ch => Object.keys(ch).forEach(k => {
+        const b = ch[k];
+        if (/^(now|next\d*)$/.test(k) && b && b.start_timestamp && b.end_timestamp) out.push(ntsSlot(String(ch.channel_name), b));
+      }));
+      if (out.length) S.ntsLive = out;
+    } catch (err) { /* NTS unreachable: the pipeline's copy of the schedule stands */ }
+  }
+  function mergeStreams() {
+    const map = new Map();
+    ((S.streamFile && S.streamFile.streams) || []).forEach(x => map.set(x.id, x));
+    if (S.ntsLive) {
+      // The browser's copy of NTS is newer, so it decides which shows exist in the hours it covers.
+      // Later shows keep the genres the pipeline looked up.
+      const starts = S.ntsLive.map(x => Date.parse(x.start)), from = Math.min.apply(null, starts), to = Math.max.apply(null, starts);
+      const fresh = new Set(S.ntsLive.map(x => x.id));
+      map.forEach((x, id) => { const t0 = Date.parse(x.start); if (x.platform === 'NTS' && t0 >= from && t0 <= to && !fresh.has(id)) map.delete(id); });
+      S.ntsLive.forEach(x => {
+        const old = map.get(x.id);
+        map.set(x.id, old && x.genres == null ? Object.assign({}, x, { genres: old.genres, club: old.club, tags: old.tags, location: x.location || old.location }) : x);
+      });
+    }
+    S.streams = Array.from(map.values()).map(x => Object.assign({}, x, { t0: Date.parse(x.start), t1: x.end ? Date.parse(x.end) : NaN }))
+      .filter(x => isFinite(x.t0)).sort((a, b) => a.t0 - b.t0);
+  }
+  async function refreshStreams(withFile) {
+    await Promise.all([withFile ? loadStreamFile() : null, loadNtsLive()]);
+    S.streamsTried = true;
+    mergeStreams();
+    renderStreams();
+  }
+  function streamState(x, t) {
+    if (x.kind === 'radio') return t >= x.t1 ? 'past' : x.t0 <= t ? 'live' : 'soon';
+    // YouTube: live when last checked (a few hours at most), or due to have started in the last two hours.
+    if (x.status === 'live') return t - S.streamsAt < 4 * HOUR ? 'live' : 'past';
+    if (x.t0 > t) return 'soon';
+    return t - x.t0 < 2 * HOUR ? 'live' : 'past';
+  }
+  function streamRow(x, st) {
+    const radio = x.kind === 'radio', G = x.genres && x.genres.length ? RM.GENRE[x.genres[0]] : null;
+    const bits = [];
+    if (x.tags && x.tags.length) bits.push(x.tags.slice(0, 3).join(', '));
+    if (x.rerun) bits.push('Repeat');
+    if (st === 'live') bits.push(radio ? 'until ' + tTime(x.t1) : x.viewers ? fmtN(x.viewers) + ' watching' : x.status === 'live' ? 'since ' + tTime(x.t0) : 'due ' + tTime(x.t0));
+    else bits.push('in ' + dur(x.t0 - S.now));
+    const chip = st === 'live' ? '<span class="st st-live"><i></i>' + (radio ? 'On air' : 'Live') + '</span>' : '';
+    return '<li><a class="erow strow" href="' + esc(x.url) + '" target="_blank" rel="noopener">' +
+      '<div class="when"><b>' + tTime(x.t0) + '</b><span>' + tDay(x.t0) + '</span></div>' +
+      '<div class="what"><span class="title">' + esc(x.title) + '</span><div class="sub"><span>' + esc([x.channel, x.location || x.city].filter(Boolean).join(', ')) + '</span></div>' +
+      '<div class="sub2">' + bits.map(b => '<span>' + esc(b) + '</span>').join('') + '</div></div>' +
+      '<div class="side">' + chip + (G ? '<i class="gdot" style="--c:' + G.color + '" title="' + esc(G.name) + '"></i>' : '') +
+      '<span class="viewers">' + (radio ? (st === 'live' ? 'Listen' : 'Details') : 'Watch') + ' &#8599;</span></div></a></li>';
+  }
   function renderStreams() {
+    const t = S.now, list = S.streams;
+    if (!list.length) {
+      if (S.ds.source === 'demo' && S.streamsTried) return renderDemoStreams();
+      body('streams').innerHTML = '<p class="fine">' + (S.streamsTried ? 'Livestream listings couldn\'t be loaded just now.' : 'Loading livestreams…') + '</p>'; meta('streams', ''); return;
+    }
+    const gOK = x => !S.genres.size || (x.genres || []).some(g => S.genres.has(g));
+    const live = [], soon = [];
+    list.forEach(x => {
+      const st = streamState(x, t);
+      if (!gOK(x)) return;
+      if (st === 'live') live.push(x);
+      // Coming up: club shows on NTS (repeats and unknowns left out) and every scheduled YouTube stream.
+      else if (st === 'soon' && (x.kind !== 'radio' || (!x.rerun && x.club === true))) soon.push(x);
+    });
+    live.sort((a, b) => (b.kind === 'video') - (a.kind === 'video') || (b.viewers || 0) - (a.viewers || 0) || (b.club === true) - (a.club === true) || a.channel.localeCompare(b.channel));
+    const yt = S.streamFile && (S.streamFile.sources || []).find(x => x.id === 'youtube');
+    body('streams').innerHTML = '<h3 class="subhead first">Live now</h3>' +
+      (live.length ? '<ol class="rows">' + live.map(x => streamRow(x, 'live')).join('') + '</ol>' : '<p class="fine">Nothing streaming live for this filter.</p>') +
+      '<h3 class="subhead">Coming up</h3>' +
+      (soon.length ? '<ol class="rows">' + soon.slice(0, 30).map(x => streamRow(x, 'soon')).join('') + '</ol>' : '<p class="fine">No club shows or streams scheduled for this filter yet.</p>') +
+      '<p class="fine">NTS shows follow the station\'s schedule; repeats are marked. ' +
+      (yt && (yt.ok || yt.stale) ? 'YouTube streams from Boiler Room, Cercle, HÖR and others are checked every few hours. ' : '') + 'Times are in your time zone.</p>';
+    meta('streams', live.length + ' live');
+  }
+  function viewers(e) { return Math.round((e.headTier === 1 ? 1800 : 300) + e.seed * (e.headTier === 1 ? 22000 : 4000)); }
+  function renderDemoStreams() {
     const t = S.now;
-    if (S.ds.source !== 'demo') { body('streams').innerHTML = '<p class="fine">The live feed doesn\'t include livestream schedules yet. Boiler Room, radio stations and promoters would be the sources to add.</p>'; meta('streams', ''); return; }
     const live = D.live.filter(e => e.streamed).sort((a, b) => viewers(b) - viewers(a));
     const soon = S.ds.events.filter(e => e.streamed && e.start > t && e.start < t + DAY && RM.inGenres(e, S.genres)).slice(0, 12);
     const row = (e, isLive) => {
@@ -273,10 +425,10 @@
   function renderSellouts() {
     const t = S.now;
     if (S.ds.source !== 'demo') { body('sellouts').innerHTML = '<p class="fine">Sell-out odds need ticket sales over time. The feed records each listing\'s current status, so sold-out events are marked on the map and in lists; odds need a few weeks of history first.</p>'; meta('sellouts', ''); return; }
-    const list = S.ds.events.filter(e => e.start > t && e.start < t + 7 * DAY && RM.inGenres(e, S.genres) && RM.statusAt(e, t) !== 'soldout' && !e.door && !e.free)
+    const list = D.L.events.filter(e => e.start > t && e.start < t + 7 * DAY && RM.inGenres(e, S.genres) && RM.statusAt(e, t) !== 'soldout' && !e.door && !e.free)
       .map(e => ({ e: e, p: RM.selloutOdds(e, t) })).sort((a, b) => b.p - a.p).slice(0, 15);
-    const gone = D.wire.filter(w => w.type === 'soldout').slice(0, 8);
-    body('sellouts').innerHTML = '<ol class="rows">' + list.map(x => {
+    const gone = D.L.wire.filter(w => w.type === 'soldout').slice(0, 8);
+    body('sellouts').innerHTML = areaBar() + '<ol class="rows">' + list.map(x => {
       const e = x.e, c = city(e);
       return '<li class="orow" data-ev="' + esc(e.id) + '" tabindex="0" role="button"><div class="what"><span class="title" style="font-weight:620;font-size:13px">' + esc(e.title) + '</span>' +
         '<div class="sub2" style="display:flex;gap:10px;flex-wrap:wrap;color:var(--ink-3);font-size:12px"><span>' + esc(c.name) + '</span><span>' + tDate(e.start, c.tz) + '</span><span>' + statusWord(e) + '</span></div></div>' +
@@ -336,10 +488,10 @@
 
   function renderSurges() {
     if (S.ds.source !== 'demo') { body('surges').innerHTML = '<p class="fine">Surges compare this week with the last, so they need at least two weeks of listings history.</p>'; meta('surges', ''); return; }
-    body('surges').innerHTML = D.surges.length ? '<ol class="rows">' + D.surges.map(r => '<li class="srow" data-city="' + r.cityId + '" data-sgenre="' + r.genre + '" tabindex="0" role="button">' +
+    body('surges').innerHTML = areaBar() + (D.L.surges.length ? '<ol class="rows">' + D.L.surges.map(r => '<li class="srow" data-city="' + r.cityId + '" data-sgenre="' + r.genre + '" tabindex="0" role="button">' +
       '<span class="sx">' + r.ratio.toFixed(1) + '×</span><div><b><i class="gdot" style="--c:' + r.g.color + '"></i>' + esc(r.g.name) + ' in ' + esc(r.city.name) + '</b>' +
       '<small>' + r.next + ' events this week against ' + r.prev + ' last week. Mostly ' + esc((r.topSub || '').toLowerCase()) + '.</small></div>' + spark(r.daily, 7) + '</li>').join('') + '</ol>' +
-      '<p class="fine">A surge is a city and genre pair booking at least 1.8 times last week\'s count. Select one to see it on the map.</p>' : '<p class="fine">No surges this week.</p>';
+      '<p class="fine">A surge is a city and genre pair booking at least 1.8 times last week\'s count. Select one to see it on the map.</p>' : '<p class="fine">No surges this week' + (D.L.area ? ' in this area' : '') + '.</p>');
     meta('surges', 'this week vs last');
   }
 
@@ -483,7 +635,7 @@
   function renderAll() {
     renderHeader();
     Object.keys(PANELS).forEach(id => { if (id === 'ask') renderAskMeta(); else if (!PANELS[id].el.hidden || S.mode === 'wide' && (id === 'live' || id === 'heat')) PANELS[id].render(); });
-    $('#count').textContent = plural(D.win.length, 'event', 'events') + ' in ' + plural(D.byCity.size, 'city', 'cities');
+    $('#count').textContent = plural(D.L.win.length, 'event', 'events') + (D.L.area ? ' in view' : ' in ' + plural(D.L.cities, 'city', 'cities'));
     $$('#gchips .gchip').forEach(b => b.setAttribute('aria-pressed', b.dataset.genre === 'all' ? String(!S.genres.size) : String(S.genres.has(b.dataset.genre))));
     $$('#win button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.win === S.win)));
   }
@@ -642,7 +794,7 @@
     else if (r.kind === 'genre') setGenre(r.id, true);
     else if (r.kind === 'artist') setRoute(r.id);
     else if (r.kind === 'event') openEvent(r.id);
-    else if (r.kind === 'venue') { const v = ds.venueById[r.id]; MapView.flyTo(v.lon, v.lat, 360); }
+    else if (r.kind === 'venue') MapView.flyToVenue(ds.venueById[r.id]);
   }
 
   /* ---------- map ---------- */
@@ -667,8 +819,9 @@
     let proj = null, ppd = 1, inited = false, venueMode = false;
     let baseDirty = true, posDirty = true, overDirty = true, rafId = 0, lastDraw = 0, lastPointer = 'mouse';
     let marks = [], cityMarks = [], festMarks = [], stopMarks = [], venueLabels = [], liveMarks = 0;
+    let areaTimer = 0, areaSig = 'all';
     const sel = d3.select(co);
-    const zMap = d3.zoom().on('zoom', ev => { mapT = ev.transform; changed(true); hideTip(); });
+    const zMap = d3.zoom().on('zoom', ev => { mapT = ev.transform; if (ev.sourceEvent) userMoved(); changed(true); hideTip(); });
     let gPrev = null;
     const zGlobe = d3.zoom().scaleExtent([0.7, 500])
       .on('start', ev => { gPrev = ev.transform; })
@@ -679,10 +832,16 @@
           globe.rot[0] += (t.x - gPrev.x) * sens;
           globe.rot[1] = Math.max(-85, Math.min(85, globe.rot[1] - (t.y - gPrev.y) * sens));
         }
-        globe.k = t.k; gPrev = t; changed(true); hideTip();
+        globe.k = t.k; gPrev = t; if (ev.sourceEvent) userMoved(); changed(true); hideTip();
       });
 
     const globeR = () => Math.min(W, H) * 0.43 * globe.k;
+    const homeK = () => W < 760 ? kMin * 1.45 : Math.max(kMin, W < 1100 ? 1.2 : 1.06);
+    const unitPpd = () => base * Math.PI / 180; // pixels per degree at zoom 1
+    // The lists follow the map once you zoom in yourself; zooming back out to the world lets them go.
+    // Opening an event from a list moves the map without narrowing the list.
+    const zoomedIn = () => S.view === 'map' ? mapT.k > homeK() * 1.2 : globe.k > 1.3;
+    function userMoved() { S.areaOn = zoomedIn(); }
     const baseProj = () => d3.geoMercator().rotate([-lon0, 0]).scale(base).translate([0, 0]);
     function setProj() {
       if (S.view === 'map') {
@@ -722,7 +881,7 @@
         const step = 60;
         if (S.view !== 'map') return;
         const m = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[ev.key];
-        if (m) { ev.preventDefault(); sel.call(zMap.translateBy, m[0] / mapT.k, m[1] / mapT.k); }
+        if (m) { ev.preventDefault(); sel.call(zMap.translateBy, m[0] / mapT.k, m[1] / mapT.k); userMoved(); }
         if (ev.key === '+' || ev.key === '=') zoomBy(2);
         if (ev.key === '-') zoomBy(0.5);
       });
@@ -741,17 +900,19 @@
       const p0 = baseProj();
       const yTop = p0([lon0, 82])[1], yBot = p0([lon0, -60])[1];
       kMin = Math.max(1, H / (yBot - yTop));
-      kMax = 1600 / (base * Math.PI / 180);
-      zMap.extent([[0, 0], [W, H]]).translateExtent([[-Math.PI * base, yTop], [Math.PI * base, yBot]]).scaleExtent([kMin, kMax]);
+      zMap.extent([[0, 0], [W, H]]).translateExtent([[-Math.PI * base, yTop], [Math.PI * base, yBot]]);
+      setZoomLimit();
       zGlobe.extent([[0, 0], [W, H]]);
+      if (streets.map) streets.map.resize();
       if (!inited) { inited = true; home(false); }
       else if (keep && keep.c && S.view === 'map') flyTo(keep.c[0], keep.c[1], keep.ppd, false);
       changed(true);
     }
     function home(animate) {
       const band = RM.clubBand(S.now);
+      S.areaOn = false;
       if (S.view === 'map') {
-        const k = W < 760 ? kMin * 1.45 : Math.max(kMin, W < 1100 ? 1.2 : 1.06);
+        const k = homeK();
         const p = baseProj()([band.mid, 28]);
         const t = d3.zoomIdentity.translate(W / 2 - k * p[0], H / 2 - k * p[1]).scale(k);
         (animate && !reduceMotion ? sel.transition().duration(700) : sel).call(zMap.transform, t);
@@ -785,8 +946,14 @@
       requestAnimationFrame(step);
     }
     function zoomBy(f) {
-      if (S.view === 'map') (reduceMotion ? sel : sel.transition().duration(350)).call(zMap.scaleBy, f);
-      else animateGlobe(globe.rot.slice(), Math.max(0.7, Math.min(500, globe.k * f)), true);
+      if (S.view === 'map') {
+        S.areaOn = Math.max(kMin, Math.min(kMax, mapT.k * f)) > homeK() * 1.2;
+        (reduceMotion ? sel : sel.transition().duration(350)).call(zMap.scaleBy, f);
+      } else {
+        const k = Math.max(0.7, Math.min(500, globe.k * f));
+        S.areaOn = k > 1.3;
+        animateGlobe(globe.rot.slice(), k, true);
+      }
     }
     function setView(v) {
       if (v === S.view) return;
@@ -806,8 +973,28 @@
       $$('#viewtoggle button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === v)));
       changed(true);
     }
-    function flyToCity(c) { flyTo(c.lon, c.lat, 260); }
-    function flyToEvent(e) { const v = venue(e); flyTo(v.lon, v.lat, Math.max(ppd, 300)); }
+    // Choosing a city frames its venues (the middle 90% of them, so one far-off listing can't
+    // zoom the map out); with the street map on, that can go down to neighbourhood level.
+    function flyToCity(c) {
+      S.areaOn = true;
+      if (S.view !== 'map' || !streetsOn()) return flyTo(c.lon, c.lat, 260);
+      const vs = (D.byCity.get(c.id) || []).map(venue).filter(v => v && !v.approx);
+      const lons = vs.map(v => v.lon).sort((a, b) => a - b), lats = vs.map(v => v.lat).sort((a, b) => a - b);
+      const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round((arr.length - 1) * f)))];
+      const cut = vs.length >= 10 ? 0.05 : 0;
+      const box = vs.length ? [[q(lons, cut), q(lats, cut)], [q(lons, 1 - cut), q(lats, 1 - cut)]] : [[c.lon, c.lat], [c.lon, c.lat]];
+      fitBox(box, 260, 1500);
+    }
+    function flyToVenue(v) { S.areaOn = true; flyTo(v.lon, v.lat, streetsOn() ? 2900 : 360); }
+    function flyToEvent(e) { const v = venue(e); flyTo(v.lon, v.lat, Math.max(ppd, streetsOn() ? 1400 : 300)); }
+    function fitBox(box, minPpd, maxPpd) {
+      const p0 = baseProj(), a = p0(box[0]), b = p0(box[1]);
+      const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+      const kFit = Math.min(W * 0.7 / Math.max(1e-6, x1 - x0), H * 0.62 / Math.max(1e-6, y1 - y0));
+      const k = Math.max(kMin, Math.min(kMax, Math.max(minPpd / unitPpd(), Math.min(kFit, maxPpd / unitPpd()))));
+      const t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
+      (reduceMotion ? sel : sel.transition().duration(900)).call(zMap.transform, t);
+    }
     function fitEvents(list) {
       if (!list.length) return;
       const pts = list.map(e => { const v = venue(e); return [v.lon, v.lat]; });
@@ -826,8 +1013,146 @@
       }
     }
 
+
+    /* ---------- street map ----------
+       MapLibre draws OpenFreeMap's vector tiles (OpenStreetMap data, no key) between the base
+       canvas and the event canvas. It's loaded the first time you zoom in, fades in from regional
+       zoom, and follows the d3 camera: same Web Mercator, so zoom = log2(360 * ppd / 512). */
+    const ML = 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl';
+    const ST = { load: 25, preload: 60, from: 110, to: 240, maxPpd: 93000, flatMaxPpd: 1600 };
+    const LABEL_LAYERS = ['water-name', 'street-name', 'neighbourhood', 'suburb', 'town'];
+    const streets = { el: $('#streets'), map: null, state: 'off', t: 0, labels: true };
+    const streetsOn = () => S.layers.streets && streets.state !== 'failed';
+    function streetStyle() {
+      const name = ['coalesce', ['get', 'name:latin'], ['get', 'name']];
+      const width = stops => ['interpolate', ['exponential', 1.4], ['zoom']].concat(stops);
+      const isLine = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
+      const isArea = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
+      const road = (id, classes, color, stops, minzoom) => ({
+        id: id, type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: minzoom,
+        filter: ['all', isLine, ['match', ['get', 'class'], classes, true, false]],
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': width(stops) }
+      });
+      const label = (id, layer, filter, size, color, minzoom, maxzoom, layout) => ({
+        id: id, type: 'symbol', source: 'omt', 'source-layer': layer, minzoom: minzoom, maxzoom: maxzoom, filter: filter,
+        layout: Object.assign({ 'text-field': name, 'text-font': ['Noto Sans Regular'], 'text-size': size, 'text-max-width': 8 }, layout || {}),
+        paint: { 'text-color': color, 'text-halo-color': 'rgba(7,8,20,0.92)', 'text-halo-width': 1.4 }
+      });
+      const caps = { 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 };
+      return {
+        version: 8,
+        sources: { omt: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' } },
+        glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+        layers: [
+          { id: 'land', type: 'background', paint: { 'background-color': C.land } },
+          { id: 'green', type: 'fill', source: 'omt', 'source-layer': 'landcover', minzoom: 9, filter: ['all', isArea, ['match', ['get', 'class'], ['wood', 'grass'], true, false]], paint: { 'fill-color': '#15283d', 'fill-opacity': 0.6 } },
+          { id: 'park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 9, filter: isArea, paint: { 'fill-color': '#15293f', 'fill-opacity': 0.8 } },
+          { id: 'water', type: 'fill', source: 'omt', 'source-layer': 'water', filter: ['all', isArea, ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'fill-color': C.sea } },
+          { id: 'waterway', type: 'line', source: 'omt', 'source-layer': 'waterway', minzoom: 9, filter: isLine, paint: { 'line-color': C.sea, 'line-width': width([9, 0.6, 14, 2, 18, 6]) } },
+          { id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#1f2650', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 15, 0.9] } },
+          { id: 'runway', type: 'line', source: 'omt', 'source-layer': 'aeroway', minzoom: 11, filter: ['all', isLine, ['match', ['get', 'class'], ['runway', 'taxiway'], true, false]], paint: { 'line-color': '#262e5c', 'line-width': width([11, 1, 16, 12]) } },
+          road('path', ['path', 'track'], 'rgba(169,171,203,0.10)', [14, 0.5, 18, 2], 14),
+          road('minor', ['minor', 'service'], 'rgba(169,171,203,0.15)', [12, 0.3, 14, 1.2, 18, 9], 12),
+          road('secondary', ['secondary', 'tertiary'], 'rgba(169,171,203,0.22)', [9, 0.4, 12, 1, 14, 2.4, 18, 12], 9),
+          road('primary', ['primary', 'trunk'], 'rgba(169,171,203,0.30)', [7, 0.4, 10, 1, 14, 3.2, 18, 15], 7),
+          road('motorway', ['motorway'], 'rgba(184,188,228,0.38)', [5, 0.4, 8, 1, 12, 2.4, 14, 4, 18, 18], 5),
+          { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 12, filter: ['all', isLine, ['match', ['get', 'class'], ['rail', 'transit'], true, false]], paint: { 'line-color': 'rgba(169,171,203,0.18)', 'line-width': width([12, 0.6, 18, 2.5]), 'line-dasharray': [3, 3] } },
+          { id: 'border', type: 'line', source: 'omt', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': 'rgba(160,170,230,0.3)', 'line-width': 1, 'line-dasharray': [3, 2] } },
+          label('water-name', 'water_name', ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false], 11, '#555d93', 8, 24, { 'text-font': ['Noto Sans Italic'] }),
+          label('street-name', 'transportation_name', ['all', isLine, ['!=', ['get', 'class'], 'motorway']], ['interpolate', ['linear'], ['zoom'], 13, 9.5, 17, 12], '#8d90b5', 13, 24,
+            { 'symbol-placement': 'line', 'symbol-spacing': 320, 'text-max-angle': 30, 'text-rotation-alignment': 'map', 'text-field': ['coalesce', ['get', 'name'], ''] }),
+          label('neighbourhood', 'place', ['match', ['get', 'class'], ['neighbourhood', 'quarter'], true, false], ['interpolate', ['linear'], ['zoom'], 12, 9.5, 16, 12], '#8d90b5', 12, 17, caps),
+          label('suburb', 'place', ['==', ['get', 'class'], 'suburb'], ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 13], '#a9abcb', 10, 16, caps),
+          label('town', 'place', ['match', ['get', 'class'], ['town', 'village'], true, false], ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 13], '#a9abcb', 8, 15)
+        ]
+      };
+    }
+    function loadStreets() {
+      if (streets.state !== 'off') return;
+      streets.state = 'loading';
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = ML + '.css'; document.head.appendChild(css);
+      const js = document.createElement('script'); js.src = ML + '.js'; js.async = true;
+      js.onload = createStreets;
+      js.onerror = () => streetsFailed('the map library did not load');
+      document.head.appendChild(js);
+    }
+    function createStreets() {
+      try {
+        const c = proj && proj.invert([W / 2, H / 2]);
+        const m = streets.map = new window.maplibregl.Map({
+          container: streets.el, style: streetStyle(), interactive: false, attributionControl: false, trackResize: false,
+          pixelRatio: DPR, center: c && isFinite(c[0]) ? c : [0, 0], zoom: zoomFor(ppd), maxZoom: 19, fadeDuration: 150
+        });
+        const ready = () => { if (streets.state === 'ready') { streets.state = 'live'; changed(true); } };
+        m.once('load', ready);
+        m.once('idle', ready);
+        m.on('error', ev => { if (ev && ev.error) console.warn('street map:', ev.error.message || ev.error); });
+        streets.state = 'ready';
+        changed(true);
+      } catch (err) { streetsFailed(err && err.message); }
+    }
+    function streetsFailed(why) {
+      console.warn('Street map unavailable' + (why ? ': ' + why : ''));
+      streets.state = 'failed'; streets.t = 0;
+      streets.el.style.visibility = 'hidden';
+      $('#attrib').hidden = true;
+      setZoomLimit();
+    }
+    const zoomFor = p => Math.max(0, Math.min(19, Math.log2(360 * p / 512)));
+    function syncStreets() {
+      const want = streetsOn() && S.view === 'map';
+      if (want && ppd >= ST.load) loadStreets();
+      const m = streets.map;
+      const t = want && streets.state === 'live' ? Math.max(0, Math.min(1, (ppd - ST.from) / (ST.to - ST.from))) : 0;
+      if (m && want && streets.state !== 'loading' && (t > 0 || ppd >= ST.preload)) {
+        // Tiles load just before the fade starts, so the streets don't pop in.
+        const c = proj.invert([W / 2, H / 2]);
+        if (c && isFinite(c[0]) && isFinite(c[1])) {
+          m.jumpTo({ center: c, zoom: zoomFor(ppd) });
+          if (t > 0) { try { m.redraw(); } catch (err) { /* draws on its next frame instead */ } }
+        }
+      }
+      if (m && streets.state === 'live' && streets.labels !== S.layers.labels) {
+        streets.labels = S.layers.labels;
+        LABEL_LAYERS.forEach(id => { try { m.setLayoutProperty(id, 'visibility', S.layers.labels ? 'visible' : 'none'); } catch (err) { /* style not ready */ } });
+      }
+      if (t !== streets.t) {
+        streets.t = t;
+        streets.el.style.opacity = t < 1 ? t.toFixed(3) : '';
+        streets.el.style.visibility = t > 0 ? 'visible' : 'hidden';
+        $('#attrib').hidden = !(t > 0);
+      }
+    }
+    function setZoomLimit() {
+      kMax = (streetsOn() ? ST.maxPpd : ST.flatMaxPpd) / unitPpd();
+      zMap.scaleExtent([kMin, kMax]);
+      if (inited && S.view === 'map' && mapT.k > kMax) sel.call(zMap.scaleTo, kMax);
+    }
+    function setStreets(on) { S.layers.streets = on; setZoomLimit(); changed(true); }
+
+    /* ---------- the map area, for the lists ---------- */
+    function updateArea() {
+      if (!inited || !S.ds) return;
+      setProj();
+      if (!zoomedIn()) S.areaOn = false;
+      let ids = null, sig = 'all';
+      if (S.areaOn) {
+        ids = new Set();
+        let h = 0;
+        S.ds.venues.forEach((v, i) => {
+          if (!vis(v.lon, v.lat)) return;
+          const p = proj([v.lon, v.lat]);
+          if (p && p[0] >= 0 && p[0] <= W && p[1] >= 0 && p[1] <= H) { ids.add(v.id); h = (Math.imul(h, 31) + i + 1) | 0; }
+        });
+        sig = ids.size + ':' + h;
+      }
+      if (sig === areaSig) return;
+      areaSig = sig;
+      areaChanged(ids);
+    }
+
     function changed(baseToo) {
-      if (baseToo) baseDirty = true;
+      if (baseToo) { baseDirty = true; clearTimeout(areaTimer); areaTimer = setTimeout(updateArea, 160); }
       posDirty = true; overDirty = true;
       if (!rafId) rafId = requestAnimationFrame(frame);
     }
@@ -836,7 +1161,7 @@
       const anim = !reduceMotion && !document.hidden && (liveMarks > 0 || (S.layers.tours && D.tours.length) || S.route);
       if (baseDirty || overDirty || posDirty || (anim && time - lastDraw > 33)) {
         if (baseDirty || posDirty) setProj();
-        if (baseDirty) { drawBase(); baseDirty = false; }
+        if (baseDirty) { syncStreets(); drawBase(); baseDirty = false; }
         drawOver(time); overDirty = false; lastDraw = time;
       }
       if (anim) rafId = requestAnimationFrame(frame);
@@ -860,6 +1185,7 @@
       ctx.clearRect(0, 0, W, H);
       const path = d3.geoPath(proj, ctx);
       ctx.fillStyle = C.sea; ctx.fillRect(0, 0, W, H);
+      if (streets.t >= 1) return; // the street map covers it all
       if (S.view === 'globe') {
         const R = globeR();
         const g = ctx.createRadialGradient(W / 2, H / 2, R * 0.92, W / 2, H / 2, R * 1.14);
@@ -894,23 +1220,27 @@
       const heatBy = {};
       D.heat.forEach(h => { heatBy[h.city.id] = h.heat; });
       const pad = 160;
+      const onScreen = p => p && p[0] >= -pad && p[0] <= W + pad && p[1] >= -pad && p[1] <= H + pad;
       D.byCity.forEach((list, cid) => {
         const c = ds.cityById[cid];
-        if (!vis(c.lon, c.lat)) return;
-        const pc = proj([c.lon, c.lat]);
-        if (!pc || pc[0] < -pad || pc[0] > W + pad || pc[1] < -pad || pc[1] > H + pad) return;
+        const pc = vis(c.lon, c.lat) ? proj([c.lon, c.lat]) : null, cityIn = onScreen(pc);
+        // Zoomed out, a city is one spiral at its center. Zoomed in, each venue is checked on its own:
+        // at street level the city center is often far off-screen while its venues are in view.
+        if (!cityIn && !venueMode) return;
         const regular = list.filter(e => e.type !== 'festival');
         const liveN = list.filter(e => RM.isLive(e, t)).length;
         if (venueMode) {
           const byV = new Map();
           regular.forEach(e => { if (!byV.has(e.venueId)) byV.set(e.venueId, []); byV.get(e.venueId).push(e); });
           byV.forEach((evs, vid) => {
-            const v = ds.venueById[vid], pv = proj([v.lon, v.lat]); if (!pv) return;
+            const v = ds.venueById[vid];
+            if (!vis(v.lon, v.lat)) return;
+            const pv = proj([v.lon, v.lat]); if (!onScreen(pv)) return;
             const sp = r0 * spread;
             evs.forEach((e, i) => { const a = i * 2.39996, rr = sp * Math.sqrt(i), live = RM.isLive(e, t); if (live) liveMarks++; marks.push({ e: e, x: pv[0] + rr * Math.cos(a), y: pv[1] + rr * Math.sin(a), r: r0, live: live, so: RM.statusAt(e, t) === 'soldout', seed: e.seed }); });
             venueLabels.push({ v: v, x: pv[0], y: pv[1], n: evs.length, R: sp * Math.sqrt(Math.max(0, evs.length - 1)) + r0 });
           });
-          cityMarks.push({ c: c, x: pc[0], y: pc[1], R: 0, n: list.length, live: liveN, heat: heatBy[cid] || 0 });
+          if (cityIn) cityMarks.push({ c: c, x: pc[0], y: pc[1], R: 0, n: list.length, live: liveN, heat: heatBy[cid] || 0 });
         } else {
           const N = Math.min(regular.length, 110), sp = r0 * spread;
           for (let i = 0; i < N; i++) {
@@ -1024,7 +1354,8 @@
           cityMarks.slice().sort((a, b) => b.n - a.n).slice(0, limit).forEach(cm => put(cm.c.name, cm.x + cm.R + 4, cm.y, C.ink2));
         } else {
           cityMarks.forEach(cm => put(cm.c.name, cm.x, cm.y - 22, C.ink, '700 13px ' + FONT, 'center'));
-          venueLabels.sort((a, b) => b.n - a.n).forEach(vl => put(vl.v.name, vl.x + vl.R + 5, vl.y, C.ink2));
+          // Venues without a real position sit near the city center; at street level that would look exact.
+          venueLabels.sort((a, b) => b.n - a.n).forEach(vl => put(vl.v.approx ? vl.v.name + ' (location approximate)' : vl.v.name, vl.x + vl.R + 5, vl.y, vl.v.approx ? C.ink3 : C.ink2));
         }
         if (ppd >= 2.4) festMarks.forEach(f => put(f.e.series, f.x + f.r * 1.4 + 5, f.y, C.ink, '650 11px ' + FONT));
       }
@@ -1077,7 +1408,7 @@
     }
     function hideTip() { tip.hidden = true; }
 
-    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToEvent: flyToEvent, fitEvents: fitEvents, zoomBy: zoomBy, resize: resize };
+    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, zoomBy: zoomBy, resize: resize, setStreets: setStreets };
   })();
 
   /* ---------- live feed (events.json written by the pipeline) ---------- */
@@ -1085,6 +1416,17 @@
     if (!S.feed) return '';
     const m = Math.round((Date.now() - Date.parse(S.feed.generatedAt)) / 60000);
     return m < 60 ? 'updated ' + Math.max(1, m) + 'm ago' : m < 48 * 60 ? 'updated ' + Math.round(m / 60) + 'h ago' : 'updated ' + Math.round(m / 1440) + 'd ago';
+  }
+  // Some listings give 0,0 or whole-degree positions for venues with no real one (older feeds
+  // still have them): place those near the city center, one spot per venue, like the pipeline does.
+  function venuePos(x, c) {
+    const lat = x.venue.lat, lon = x.venue.lon;
+    const none = !isFinite(lat) || !isFinite(lon) || (Math.abs(lat) < 1e-6 && Math.abs(lon) < 1e-6) || (Number.isInteger(lat) && Number.isInteger(lon));
+    if (!none || !c || !isFinite(c.lat)) return { lat: lat, lon: lon, approx: !!x.venue.approx };
+    let h = 0;
+    for (const ch of c.id + ':' + norm(x.venue.name)) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    const a = ((h >>> 0) % 360) * Math.PI / 180, r = 0.012 + ((h >>> 8) % 100) / 100 * 0.02;
+    return { lat: c.lat + r * Math.sin(a), lon: c.lon + r * Math.cos(a) / Math.cos(c.lat * Math.PI / 180), approx: true };
   }
   function hashSeed(str) { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
   function fromFeed(feed) {
@@ -1102,8 +1444,9 @@
       if (!isFinite(start) || !isFinite(end)) return;
       let c = ds.cityById[x.cityId];
       if (!c) { c = { id: x.cityId, name: x.cityId, cc: '', lat: x.venue.lat, lon: x.venue.lon, tz: x.tz || 'UTC', region: 'eu', cur: 'USD', weight: 1, venues: [], residents: [] }; ds.cities.push(c); ds.cityById[c.id] = c; }
-      const vkey = 'v:' + x.cityId + ':' + norm(x.venue.name) + ':' + x.venue.lat.toFixed(3) + ':' + x.venue.lon.toFixed(3);
-      if (!ds.venueById[vkey]) { const v = { id: vkey, cityId: c.id, name: x.venue.name, type: 'club', cap: 0, lat: x.venue.lat, lon: x.venue.lon, approx: !!x.venue.approx }; ds.venues.push(v); ds.venueById[vkey] = v; c.venues.push(v); }
+      const pos = venuePos(x, c);
+      const vkey = 'v:' + x.cityId + ':' + norm(x.venue.name) + ':' + pos.lat.toFixed(3) + ':' + pos.lon.toFixed(3);
+      if (!ds.venueById[vkey]) { const v = { id: vkey, cityId: c.id, name: x.venue.name, type: 'club', cap: 0, lat: pos.lat, lon: pos.lon, approx: pos.approx }; ds.venues.push(v); ds.venueById[vkey] = v; c.venues.push(v); }
       const ids = (x.lineup || []).map(artistId);
       const genres = (x.genres || []).filter(g => RM.GENRE[g]);
       const lp = RM.localParts(x.tz || c.tz, start);
@@ -1150,7 +1493,12 @@
       '<p>' + plural(S.ds.events.length, 'event', 'events') + ' in ' + plural(nCities, 'city', 'cities') + ', ' + feedAge() + ' (' + esc(new Date(f.generatedAt).toLocaleString()) + '). ' + plural(f.merged || 0, 'duplicate was', 'duplicates were') + ' merged across platforms.</p>' +
       (f.sample ? '<p>This is the built-in sample feed: fictional events in each platform\'s format, for trying the pipeline without API keys.</p>' : '') +
       '<table class="srctable"><thead><tr><th>Source</th><th class="n">Events</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-      '<p>Every listing links back to its source page. Sell-out odds, livestreams and surges need history and stay off until the feed has some.</p>';
+      '<p>Every listing links back to its source page. Sell-out odds and surges need history and stay off until the feed has some.</p>' + streamsAbout();
+  }
+  function streamsAbout() {
+    const src = (S.streamFile && S.streamFile.sources) || [], yt = src.find(x => x.id === 'youtube');
+    if (!src.length && !S.ntsLive) return '';
+    return '<p>Livestreams come from NTS Radio\'s public schedule' + (yt && (yt.ok || yt.stale) ? ' and from YouTube, which lists live and scheduled streams on channels such as Boiler Room, Cercle and HÖR' : '') + '. The street map uses OpenStreetMap data, drawn from OpenFreeMap\'s tiles.</p>';
   }
   async function loadArchiveCount() {
     const el = $('#about-archive-count'); if (!el || el.dataset.done) return;
@@ -1184,6 +1532,7 @@
       if (a === 'route') { setRoute(act.dataset.artist); return; }
       if (a === 'route-clear') return setRoute(null);
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
+      if (a === 'area-all') { MapView.home(true); return; }
     }
     const opt = t.closest('#results [role="option"]');
     if (opt) return chooseResult(+opt.dataset.i);
@@ -1230,6 +1579,7 @@
     $('#layers-btn').addEventListener('click', () => toggleLayers($('#layers').hidden));
     const lyMap = { 'ly-belt': 'belt', 'ly-heat': 'heat', 'ly-fest': 'fest', 'ly-tours': 'tours', 'ly-labels': 'labels' };
     Object.keys(lyMap).forEach(id => $('#' + id).addEventListener('change', ev => { S.layers[lyMap[id]] = ev.target.checked; MapView.changed(true); }));
+    $('#ly-streets').addEventListener('change', ev => MapView.setStreets(ev.target.checked));
     $('#peak-pill').addEventListener('click', () => selectTab('peakcon', true));
     $('#demo-chip').addEventListener('click', openAbout);
     $('.demo-note').addEventListener('click', openAbout);
@@ -1252,6 +1602,7 @@
 
   /* ---------- start ---------- */
   async function boot() {
+    const streamsP = Promise.all([loadStreamFile(), loadNtsLive()]);
     const feed = await loadFeed();
     if (feed) { S.feed = feed; S.ds = fromFeed(feed); S.win = '7d'; }
     else S.ds = RM.generate(S.now);
@@ -1265,6 +1616,8 @@
     updateClock();
     setInterval(updateClock, 10000);
     setInterval(() => { S.now = Date.now(); derive(); renderAll(); MapView.changed(true); }, 30000);
+    streamsP.then(() => { S.streamsTried = true; mergeStreams(); renderStreams(); });
+    setInterval(() => refreshStreams(true), 15 * 60000);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => MapView.changed(false));
     if (window.claude && typeof window.claude.use === 'function') {
       window.claude.use('sample').then(fn => { if (fn) { sampleFn = fn; askMode(true); } }).catch(() => {});
