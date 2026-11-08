@@ -73,13 +73,21 @@ export const dice = {
   id: 'dice', label: 'DICE', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
-    // DICE browse pages per city and category (music/dj by default), limited to the window.
+    // DICE browse pages per city: each category (music/dj by default) within the window, then the
+    // same without dates, then the whole city as a fallback. The cap stops the run once it's full,
+    // so later pages only fill in when the earlier ones come back empty.
     const range = `from=${isoDay(ctx.from)}&until=${isoDay(ctx.to)}`;
-    return perCity(ctx, 'dice', async c => (await ctx.apify(s.actor, {
-      startUrls: (s.categories || ['music/dj']).map(cat => ({ url: `https://dice.fm/browse/${c.sources.dice}/${cat}?${range}` })),
-      maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 800,
-      proxyConfiguration: { useApifyProxy: !!s.useProxy }
-    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
+    return perCity(ctx, 'dice', async c => {
+      const base = `https://dice.fm/browse/${c.sources.dice}`;
+      const pages = (s.categories || ['music/dj']).flatMap(cat => [`${base}/${cat}?${range}`, `${base}/${cat}`]).concat(base);
+      const { items } = await ctx.apify(s.actor, {
+        startUrls: pages.map(url => ({ url })),
+        maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 800,
+        proxyConfiguration: { useApifyProxy: !!s.useProxy }
+      }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun });
+      const seen = new Set();
+      return items.filter(it => !it.id || (!seen.has(it.id) && seen.add(it.id)));
+    });
   },
   normalize(it, ctx) {
     const desc = it.description || pick(it, 'about.description');

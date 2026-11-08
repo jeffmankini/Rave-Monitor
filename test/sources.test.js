@@ -85,5 +85,9 @@ test('DICE asks for each city\'s DJ page within the window', async () => {
   const calls = [];
   const ctx = makeCtx({ actor: 'x~dice', cities: ['london'], maxItemsPerCity: 30, maxChargeUsdPerRun: 0.15 }, async (a, input) => { calls.push(input); return { items: [] }; });
   await dice.collect(ctx);
-  assert.equal(calls[0].startUrls[0].url, 'https://dice.fm/browse/london-54d8a23438fe5d27d500001c/music/dj?from=2026-11-08&until=2026-11-22');
+  assert.deepEqual(calls[0].startUrls.map(u => u.url), [
+    'https://dice.fm/browse/london-54d8a23438fe5d27d500001c/music/dj?from=2026-11-08&until=2026-11-22',
+    'https://dice.fm/browse/london-54d8a23438fe5d27d500001c/music/dj',
+    'https://dice.fm/browse/london-54d8a23438fe5d27d500001c'
+  ]);
 });
