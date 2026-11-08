@@ -10,7 +10,7 @@
       "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
     },
     "dice": {
-      "enabled": true, "actor": "chalkandcheese~dice-fm-events-scraper",
+      "enabled": false, "_off": "DICE answers Apify scrapers with 403 Forbidden as of Nov 2026, even through Apify Proxy.", "actor": "chalkandcheese~dice-fm-events-scraper",
       "cities": ["london", "berlin", "paris", "barcelona", "manchester", "bristol", "newyork", "losangeles", "chicago", "miami"],
       "categories": ["music/dj"], "useProxy": true,
       "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.15, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168

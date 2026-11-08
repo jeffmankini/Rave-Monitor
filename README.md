@@ -55,12 +55,14 @@ Ticketmaster and Skiddle are free. The Apify scrapers charge per result. These a
 | Source | Scraper | Per 1,000 results | Default cap per scrape | Most it can cost per scrape |
 |---|---|---|---|---|
 | Resident Advisor | `chalkandcheese~ra-events-scraper` | $3.30 | 15 cities × 40 | $1.98 |
-| DICE | `chalkandcheese~dice-fm-events-scraper` | $3.30 | 10 cities × 30 (DJ listings) | $0.99 |
+| DICE (off) | `chalkandcheese~dice-fm-events-scraper` | $3.30 | 10 cities × 30 (DJ listings) | $0.99 |
 | Posh | `trev0n~posh-vip-scraper` | $3.00 | 8 cities × 30 | $0.72 |
 | Partiful | `heliostech~partiful-event-scraper` | $3.00 | 7 cities × 25 | $0.53 |
 | Luma | `solidcode~luma-scraper` | $3.00 | 8 cities × 25 | $0.60 |
 
-That's at most about $4.80 per full scrape. Paid sources reuse their last scrape for a week (`maxAgeHours: 168`), so the default schedule costs at most about $21 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
+DICE is switched off: as of November 2026 it answers these scrapers with 403 Forbidden, even through Apify Proxy. Set `enabled: true` to try it again.
+
+With DICE off, that's at most about $3.85 per full scrape. Paid sources reuse their last scrape for a week (`maxAgeHours: 168`), so the default schedule costs at most about $17 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
 
 Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. That covers about one full scrape a month at the default caps.
 
