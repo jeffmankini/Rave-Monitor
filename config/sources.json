@@ -1,7 +1,8 @@
 {
-  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb is your Apify plan's memory limit for runs at once (16384 on the free plan); runs queue to stay under it. maxAgeHours reuses the last scrape until it is that old, so paid sources can refresh weekly while free ones refresh daily.",
+  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb and apifyMaxRuns are your Apify plan's limits for runs at once (16384 MB and 5 runs on the free plan); runs queue to stay under them. maxAgeHours reuses the last scrape until it is that old, so paid sources can refresh weekly while free ones refresh daily.",
   "windowDays": 14,
   "apifyMemoryMb": 16384,
+  "apifyMaxRuns": 5,
   "sources": {
     "ra": {
       "enabled": true, "actor": "chalkandcheese~ra-events-scraper",
@@ -9,9 +10,10 @@
       "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
     },
     "dice": {
-      "enabled": true, "actor": "hoholabs~dicefm-scraper",
-      "cities": ["london", "berlin", "paris", "amsterdam", "barcelona", "manchester", "bristol", "newyork", "losangeles", "chicago", "miami", "melbourne"],
-      "maxItemsPerCity": 60, "maxChargeUsdPerRun": 0.1, "pricePerResultUsd": 0.001, "concurrency": 3, "maxAgeHours": 168
+      "enabled": true, "actor": "chalkandcheese~dice-fm-events-scraper",
+      "cities": ["london", "berlin", "paris", "barcelona", "manchester", "bristol", "newyork", "losangeles", "chicago", "miami"],
+      "categories": ["music/dj"],
+      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.15, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
     },
     "posh": {
       "enabled": true, "actor": "trev0n~posh-vip-scraper",

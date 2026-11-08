@@ -4,21 +4,23 @@ import { fetchJson, sleep } from './util.js';
 const API = process.env.APIFY_API_BASE || 'https://api.apify.com/v2';
 
 /*
- * Apify caps the memory of all of an account's runs at once (16 GB on the free plan) and refuses
- * a run that would go over. Runs wait here for room instead, sized by each actor's default memory.
+ * Apify limits how many runs an account has going at once (5 on the free plan) and their total
+ * memory (16 GB), and refuses a run that would go over. Runs wait here for room instead, sized by
+ * each actor's default memory.
  */
-let budgetMb = 16384, inUseMb = 0;
+let budgetMb = 16384, maxRuns = 5, inUseMb = 0, running = 0;
 const waiting = [];
 export function setMemoryBudget(mb) { if (mb > 0) budgetMb = mb; }
+export function setMaxRuns(n) { if (n > 0) maxRuns = n; }
 export function acquireMemory(mb) {
   const need = Math.min(mb, budgetMb);
   return new Promise(resolve => {
-    const take = () => (inUseMb + need <= budgetMb ? (inUseMb += need, resolve(need), true) : false);
+    const take = () => (running < maxRuns && inUseMb + need <= budgetMb ? (inUseMb += need, running++, resolve(need), true) : false);
     if (!take()) waiting.push(take);
   });
 }
 export function releaseMemory(mb) {
-  inUseMb -= mb;
+  inUseMb -= mb; running--;
   for (let i = 0; i < waiting.length;) if (waiting[i]()) waiting.splice(i, 1); else i++;
 }
 const memoryOf = new Map();
@@ -52,9 +54,9 @@ async function runNow(actor, input, { token, maxItems, maxChargeUsd, timeoutSecs
       }, { label: `start ${actor}` });
       break;
     } catch (err) {
-      // Other runs on the account can still fill the memory limit; wait for them rather than fail.
-      if (err.status === 402 && /memory/i.test(err.message) && attempt < 12) {
-        if (!attempt) log(`  ${actor}: waiting for Apify memory to free up`);
+      // Other runs on the account can still use up the limits; wait for them rather than fail.
+      if (err.status === 402 && /memory|concurrent/i.test(err.message) && attempt < 12) {
+        if (!attempt) log(`  ${actor}: waiting for a free Apify run slot`);
         await sleep(memoryWaitMs);
         continue;
       }

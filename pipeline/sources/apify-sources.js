@@ -63,44 +63,65 @@ export const ra = {
 };
 
 /* ---------------- DICE ---------------- */
+// Reads both DICE scraper formats: the flat one (date, venue, genre_tags) and DICE's own event
+// objects (dates.event_start_date, venues[], tags_types), which the default scraper returns.
 const DICE_ELECTRONIC = /techno|house|electronic|dance|drum|dnb|jungle|garage|disco|trance|dubstep|bass|club|dj|rave|edm|amapiano|afro|breaks|electro|ambient|hardcore/;
+const DICE_GENRE_ELECTRONIC = /techno|house|electronic|drum|dnb|jungle|garage|disco|trance|dubstep|bass|edm|amapiano|afro|breaks|electro|ambient|hardcore|ukg|grime|minimal|acid|italo/;
+const DICE_OFF_GENRE = /hip ?hop|rnb|reggaeton|rock|indie|emo|punk|metal|country|folk|jazz|latin|karaoke|comedy|trivia/;
+const tagValues = (...lists) => lists.flatMap(l => l || []).map(t => String(typeof t === 'string' ? t : t.value || t.name || '').split(':').pop().toLowerCase()).filter(Boolean);
 export const dice = {
   id: 'dice', label: 'DICE', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
+    // DICE browse pages per city and category (music/dj by default), limited to the window.
+    const range = `from=${isoDay(ctx.from)}&until=${isoDay(ctx.to)}`;
     return perCity(ctx, 'dice', async c => (await ctx.apify(s.actor, {
-      queryType: 'browse', city: c.sources.dice, dateFrom: isoDay(ctx.from), dateTo: isoDay(ctx.to),
-      limit: s.maxItemsPerCity, sort: 'date', ...(s.genreTag ? { genreTag: s.genreTag } : {})
+      startUrls: (s.categories || ['music/dj']).map(cat => ({ url: `https://dice.fm/browse/${c.sources.dice}/${cat}?${range}` })),
+      maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 800,
+      proxyConfiguration: { useApifyProxy: !!s.useProxy }
     }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
   },
   normalize(it, ctx) {
-    const tagText = [...(it.genre_tags || []), ...(it.type_tags || [])].map(t => String(t).split(':').pop()).join(' ').toLowerCase();
-    const isElectronic = DICE_ELECTRONIC.test(tagText) || electronicScore(it.name, it.description) >= 1;
-    if (!isElectronic) return null;
+    const desc = it.description || pick(it, 'about.description');
+    const genreTags = tagValues(it.genre_tags, it.tags_genres), typeTags = tagValues(it.type_tags, it.tags_types);
+    const genreText = genreTags.join(' '), tagText = [...genreTags, ...typeTags].join(' ');
+    // A DJ night tagged only with other genres (hip-hop, R&B, rock...) isn't an electronic event.
+    const offGenre = genreTags.length > 0 && !DICE_GENRE_ELECTRONIC.test(genreText) && DICE_OFF_GENRE.test(genreText);
+    if (offGenre || !(DICE_ELECTRONIC.test(tagText) || electronicScore(it.name, desc) >= 1)) return null;
     const lineupEntries = Array.isArray(it.lineup) ? it.lineup : [];
-    const lineup = [...lineupEntries.map(l => typeof l === 'string' ? l : pick(l, 'details', 'name', 'artist')), ...(it.artists || []).map(a => typeof a === 'string' ? a : a.name)].filter(Boolean);
+    const lineup = [
+      ...lineupEntries.map(l => typeof l === 'string' ? l : pick(l, 'details', 'name', 'artist')),
+      ...(it.artists || []).map(a => typeof a === 'string' ? a : a.name),
+      ...(pick(it, 'summary_lineup.top_artists') || []).map(a => a.name)
+    ].filter((n, i, a) => n && a.indexOf(n) === i);
     const sets = lineupEntries
       .map(l => ({ name: pick(l, 'details', 'name', 'artist'), start: pick(l, 'time', 'start') }))
       .filter(x => x.name && x.start && !Number.isNaN(Date.parse(x.start)))
       .map(x => ({ name: x.name, start: new Date(Date.parse(x.start)).toISOString() }));
     let price = null;
-    const cur = it.currency;
-    if (num(it.price) !== undefined) price = { min: fromMinor(num(it.price), cur), max: fromMinor(num(it.price), cur), currency: cur };
+    const priceObj = it.price && typeof it.price === 'object' ? it.price : null;
+    const cur = it.currency || priceObj?.currency;
+    const base = num(priceObj ? (priceObj.amount ?? priceObj.amount_from) : it.price);
+    if (base !== undefined) price = { min: fromMinor(base, cur), max: fromMinor(base, cur), currency: cur };
     else if (Array.isArray(it.ticket_types) && it.ticket_types.length) {
       const vals = it.ticket_types.map(t => num(pick(t, 'price.total', 'price.face_value', 'total', 'face_value', 'price'))).filter(v => v !== undefined);
       if (vals.length) price = { min: fromMinor(Math.min(...vals), cur), max: fromMinor(Math.max(...vals), cur), currency: cur };
     }
-    const status = it.status === 'cancelled' ? 'cancelled' : it.sold_out ? 'soldout' : it.status === 'off-sale' ? 'offsale'
-      : it.status === 'on-sale' || it.status === 'active' ? 'onsale' : 'unknown';
-    const loc = it.location || {};
-    const tags = (it.genre_tags || []).map(diceTag);
+    const st = String(it.status || '').toLowerCase();
+    const status = st === 'cancelled' ? 'cancelled' : it.sold_out || st === 'sold-out' || st === 'sold_out' ? 'soldout'
+      : st === 'off-sale' ? 'offsale' : st === 'on-sale' || st === 'active' ? 'onsale' : 'unknown';
+    const loc = it.location || {}, v = (it.venues || [])[0] || {};
     return makeEvent(ctx, {
-      source: 'dice', sourceName: 'DICE', id: it.id, title: it.name, url: it.url,
-      startMs: Date.parse(it.date), endMs: it.date_end ? Date.parse(it.date_end) : undefined, tz: it.timezone,
-      venueName: it.venue || pick(it, 'venues.0.name'), address: [loc.street, loc.city].filter(Boolean).join(', '),
-      lat: num(pick(loc, 'lat', 'latitude')), lon: num(pick(loc, 'lng', 'long', 'longitude')),
-      cityName: loc.city || pick(it, 'cities.0.name'), country: loc.country, cityHint: it.__city,
-      lineup, sets, genres: genresFrom(tagText, it.name), tags, price, status, age: it.age_limit
+      source: 'dice', sourceName: 'DICE', id: it.id, title: it.name,
+      url: it.url || (it.perm_name ? `https://dice.fm/event/${it.perm_name}` : undefined),
+      startMs: Date.parse(it.date || pick(it, 'dates.event_start_date')),
+      endMs: Date.parse(it.date_end || pick(it, 'dates.event_end_date')) || undefined,
+      tz: it.timezone || pick(it, 'dates.timezone') || pick(v, 'city.location.place'),
+      venueName: (typeof it.venue === 'string' ? it.venue : undefined) || v.name,
+      address: [loc.street, loc.city].filter(Boolean).join(', ') || v.address,
+      lat: num(pick(loc, 'lat', 'latitude') ?? pick(v, 'location.lat')), lon: num(pick(loc, 'lng', 'long', 'longitude') ?? pick(v, 'location.lng')),
+      cityName: loc.city || pick(v, 'city.name') || pick(it, 'cities.0.name'), country: loc.country || pick(v, 'city.country_code'), cityHint: it.__city,
+      lineup, sets, genres: genresFrom(tagText, it.name), tags: genreTags.map(diceTag), price, status, age: it.age_limit
     });
   }
 };

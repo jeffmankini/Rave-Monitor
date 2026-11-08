@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runActor, setMemoryBudget } from './lib/apify.js';
+import { runActor, setMemoryBudget, setMaxRuns } from './lib/apify.js';
 import { loadOrCollect, scrapeKey, cityCache, splitSourceCache } from './lib/cache.js';
 import { dedupe } from './lib/dedupe.js';
 import { ra, dice, posh, partiful, luma } from './sources/apify-sources.js';
@@ -64,6 +64,7 @@ async function main() {
   const all = [], report = [];
   const windowDays = srcCfg.windowDays || 14;
   setMemoryBudget(srcCfg.apifyMemoryMb);
+  setMaxRuns(srcCfg.apifyMaxRuns);
   const tasks = SOURCES.filter(s => (!only || only.includes(s.id)) && srcCfg.sources[s.id] && srcCfg.sources[s.id].enabled !== false);
 
   await Promise.all(tasks.map(async src => {

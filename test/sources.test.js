@@ -28,7 +28,7 @@ test('RA runs once per city, each with its own cap, and tags items with their ci
 
 test('a city that fails is skipped, and a source whose every city fails reports the error', async () => {
   const settings = { actor: 'x~dice', cities: ['london', 'berlin'], maxItemsPerCity: 10 };
-  const some = makeCtx(settings, async (a, input) => { if (input.city === 'Berlin') throw new Error('HTTP 502'); return { items: [{ id: 1 }] }; });
+  const some = makeCtx(settings, async (a, input) => { if (input.startUrls[0].url.includes('/berlin-')) throw new Error('HTTP 502'); return { items: [{ id: 1 }] }; });
   assert.equal((await dice.collect(some)).length, 1);
   assert.match(some.warnings[0], /Berlin: HTTP 502/);
   const none = makeCtx(settings, async () => { throw new Error('HTTP 401 token is not valid'); });
@@ -58,4 +58,32 @@ test('fetchJson stops at once on a rejected key and keeps the key out of the mes
   assert.equal(err.status, 401);
   assert.match(err.message, /HTTP 401 Invalid ApiKey/);
   assert.ok(!err.message.includes('SECRET123'));
+});
+
+test('DICE events in its own format map to the shared shape, and off-genre DJ nights drop out', () => {
+  const ctx = makeCtx({});
+  const base = {
+    id: '694282a40dafe70001cafd21', name: 'Warehouse Session', perm_name: 'g5kb95-warehouse-session',
+    status: 'on-sale', price: { currency: 'GBP', amount: null, amount_from: 1500 },
+    dates: { timezone: 'Europe/London', event_start_date: '2026-11-14T22:00:00+00:00', event_end_date: '2026-11-15T05:00:00+00:00' },
+    venues: [{ name: 'Corsica Studios', address: '4-5 Elephant Rd, London', location: { lat: 51.494, lng: -0.0994 }, city: { name: 'London', country_code: 'GB', location: { place: 'Europe/London' } } }],
+    summary_lineup: { top_artists: [{ name: 'Objekt' }, { name: 'Call Super' }] },
+    tags_types: [{ name: 'dj', value: 'music:dj' }], tags_genres: [{ name: 'techno', value: 'dj:techno' }], __city: 'london'
+  };
+  const e = dice.normalize(base, ctx);
+  assert.equal(e.cityId, 'london');
+  assert.equal(e.start, '2026-11-14T22:00:00.000Z');
+  assert.deepEqual(e.lineup, ['Objekt', 'Call Super']);
+  assert.deepEqual(e.price, { min: 15, max: 15, currency: 'GBP' });
+  assert.equal(e.status, 'onsale');
+  assert.equal(e.sources[0].url, 'https://dice.fm/event/g5kb95-warehouse-session');
+  assert.ok(e.genres.includes('techno'));
+  assert.equal(dice.normalize({ ...base, name: 'Throwback RnB Night', tags_genres: [{ value: 'dj:rnb' }, { value: 'dj:hiphop' }] }, ctx), null);
+});
+
+test('DICE asks for each city\'s DJ page within the window', async () => {
+  const calls = [];
+  const ctx = makeCtx({ actor: 'x~dice', cities: ['london'], maxItemsPerCity: 30, maxChargeUsdPerRun: 0.15 }, async (a, input) => { calls.push(input); return { items: [] }; });
+  await dice.collect(ctx);
+  assert.equal(calls[0].startUrls[0].url, 'https://dice.fm/browse/london-54d8a23438fe5d27d500001c/music/dj?from=2026-11-08&until=2026-11-22');
 });

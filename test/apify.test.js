@@ -44,3 +44,17 @@ test('a run refused for memory waits and retries, then returns its results', asy
   assert.equal(starts, 2);
   assert.deepEqual(out.items, [{ id: 'e1' }, { id: 'e2' }]);
 });
+
+test('no more than the plan\'s number of runs go at once', async () => {
+  const { acquireMemory, releaseMemory, setMemoryBudget, setMaxRuns } = await import('../pipeline/lib/apify.js');
+  setMemoryBudget(1e6); setMaxRuns(2);
+  const a = await acquireMemory(512), b = await acquireMemory(512);
+  let third = false;
+  const c = acquireMemory(512).then(mb => { third = true; return mb; });
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(third, false);
+  releaseMemory(a);
+  releaseMemory(await c); releaseMemory(b);
+  assert.equal(third, true);
+  setMemoryBudget(16384); setMaxRuns(5);
+});

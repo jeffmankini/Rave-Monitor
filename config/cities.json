@@ -12,7 +12,7 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/de/berlin",
-        "dice": "Berlin",
+        "dice": "berlin-5e426dbb749e68e3e923d1e4",
         "luma": "berlin",
         "ticketmaster": true
       }
@@ -28,7 +28,7 @@
       "currency": "GBP",
       "sources": {
         "ra": "https://ra.co/events/uk/london",
-        "dice": "London",
+        "dice": "london-54d8a23438fe5d27d500001c",
         "partiful": "lon",
         "luma": "london",
         "ticketmaster": true,
@@ -46,7 +46,6 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/nl/amsterdam",
-        "dice": "Amsterdam",
         "luma": "amsterdam",
         "ticketmaster": true
       }
@@ -62,7 +61,7 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/fr/paris",
-        "dice": "Paris",
+        "dice": "paris-5b23e8a0e63cc224a4c36a2d",
         "luma": "paris"
       }
     },
@@ -77,7 +76,7 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/es/barcelona",
-        "dice": "Barcelona",
+        "dice": "barcelona-5d8cefe1e3e6e374e99e8cbe",
         "ticketmaster": true
       }
     },
@@ -92,7 +91,6 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/es/madrid",
-        "dice": "Madrid",
         "ticketmaster": true
       }
     },
@@ -106,8 +104,7 @@
       "region": "eu",
       "currency": "EUR",
       "sources": {
-        "ra": "https://ra.co/events/pt/lisbon",
-        "dice": "Lisbon"
+        "ra": "https://ra.co/events/pt/lisbon"
       }
     },
     {
@@ -148,7 +145,7 @@
       "currency": "GBP",
       "sources": {
         "ra": "https://ra.co/events/uk/manchester",
-        "dice": "Manchester",
+        "dice": "man-54d8a22538fe5d27d5000019",
         "ticketmaster": true,
         "skiddle": true
       }
@@ -164,7 +161,7 @@
       "currency": "GBP",
       "sources": {
         "ra": "https://ra.co/events/uk/bristol",
-        "dice": "Bristol",
+        "dice": "bristol-54d8a21638fe5d27d5000016",
         "ticketmaster": true,
         "skiddle": true
       }
@@ -180,7 +177,6 @@
       "currency": "GBP",
       "sources": {
         "ra": "https://ra.co/events/uk/glasgow",
-        "dice": "Glasgow",
         "ticketmaster": true,
         "skiddle": true
       }
@@ -196,7 +192,6 @@
       "currency": "GBP",
       "sources": {
         "ra": "https://ra.co/events/uk/leeds",
-        "dice": "Leeds",
         "ticketmaster": true,
         "skiddle": true
       }
@@ -212,7 +207,6 @@
       "currency": "EUR",
       "sources": {
         "ra": "https://ra.co/events/ie/dublin",
-        "dice": "Dublin",
         "ticketmaster": true
       }
     },
@@ -362,8 +356,7 @@
       "region": "eu",
       "currency": "EUR",
       "sources": {
-        "ra": "https://ra.co/events/it/milan",
-        "dice": "Milan"
+        "ra": "https://ra.co/events/it/milan"
       }
     },
     {
@@ -437,7 +430,7 @@
       "currency": "USD",
       "sources": {
         "ra": ["https://ra.co/events/us/newyorkcity", "https://ra.co/events/us/newyork"],
-        "dice": "New York",
+        "dice": "new_york-5bbf4db0f06331478e9b2c59",
         "posh": "New York, NY, USA",
         "partiful": "nyc",
         "luma": "nyc",
@@ -455,7 +448,7 @@
       "currency": "USD",
       "sources": {
         "ra": "https://ra.co/events/us/chicago",
-        "dice": "Chicago",
+        "dice": "chicago-5b238ca66e4bcd93783835b0",
         "posh": "Chicago, IL, USA",
         "partiful": "chi",
         "ticketmaster": true
@@ -501,7 +494,7 @@
       "currency": "USD",
       "sources": {
         "ra": "https://ra.co/events/us/losangeles",
-        "dice": "Los Angeles",
+        "dice": "losangeles-5982e13c613de866017c3e3a",
         "posh": "Los Angeles, CA, USA",
         "partiful": "la",
         "luma": "la",
@@ -519,7 +512,6 @@
       "currency": "USD",
       "sources": {
         "ra": "https://ra.co/events/us/sanfrancisco",
-        "dice": "San Francisco",
         "posh": "San Francisco, CA, USA",
         "partiful": "sf",
         "luma": "sf",
@@ -551,7 +543,7 @@
       "currency": "USD",
       "sources": {
         "ra": "https://ra.co/events/us/miami",
-        "dice": "Miami",
+        "dice": "miami-5e3bf1b0fe75488ec46cdf9f",
         "posh": "Miami, FL, USA",
         "partiful": "mia",
         "ticketmaster": true
@@ -568,7 +560,6 @@
       "currency": "USD",
       "sources": {
         "ra": "https://ra.co/events/us/denver",
-        "dice": "Denver",
         "posh": "Denver, CO, USA",
         "ticketmaster": true
       }
@@ -583,7 +574,6 @@
       "region": "na",
       "currency": "USD",
       "sources": {
-        "dice": "Austin",
         "posh": "Austin, TX, USA",
         "partiful": "atx",
         "ticketmaster": true
@@ -614,7 +604,6 @@
       "currency": "CAD",
       "sources": {
         "ra": "https://ra.co/events/ca/toronto",
-        "dice": "Toronto",
         "posh": "Toronto, Canada",
         "luma": "toronto",
         "ticketmaster": true
@@ -631,7 +620,6 @@
       "currency": "CAD",
       "sources": {
         "ra": "https://ra.co/events/ca/montreal",
-        "dice": "Montreal",
         "ticketmaster": true
       }
     },
@@ -646,7 +634,6 @@
       "currency": "MXN",
       "sources": {
         "ra": "https://ra.co/events/mx/mexicocity",
-        "dice": "Mexico City",
         "ticketmaster": true
       }
     },
@@ -901,7 +888,6 @@
       "currency": "AUD",
       "sources": {
         "ra": "https://ra.co/events/au/sydney",
-        "dice": "Sydney",
         "luma": "sydney",
         "ticketmaster": true
       }
@@ -917,7 +903,6 @@
       "currency": "AUD",
       "sources": {
         "ra": "https://ra.co/events/au/melbourne",
-        "dice": "Melbourne",
         "ticketmaster": true
       }
     },
