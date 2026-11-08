@@ -361,19 +361,21 @@
   }
   function streamState(x, t) {
     if (x.kind === 'radio') return t >= x.t1 ? 'past' : x.t0 <= t ? 'live' : 'soon';
-    // YouTube: live when last checked (a few hours at most), or due to have started in the last two hours.
+    // YouTube: live when last checked (a few hours ago at most). A scheduled stream past its start
+    // time is 'due': it may well be live by now, but the last check didn't see it start.
     if (x.status === 'live') return t - S.streamsAt < 4 * HOUR ? 'live' : 'past';
     if (x.t0 > t) return 'soon';
-    return t - x.t0 < 2 * HOUR ? 'live' : 'past';
+    return t - x.t0 < 12 * HOUR ? 'due' : 'past';
   }
   function streamRow(x, st) {
     const radio = x.kind === 'radio', G = x.genres && x.genres.length ? RM.GENRE[x.genres[0]] : null;
     const bits = [];
     if (x.tags && x.tags.length) bits.push(x.tags.slice(0, 3).join(', '));
     if (x.rerun) bits.push('Repeat');
-    if (st === 'live') bits.push(radio ? 'until ' + tTime(x.t1) : x.viewers ? fmtN(x.viewers) + ' watching' : x.status === 'live' ? 'since ' + tTime(x.t0) : 'due ' + tTime(x.t0));
+    if (st === 'live') bits.push(radio ? 'until ' + tTime(x.t1) : x.viewers ? fmtN(x.viewers) + ' watching' : 'since ' + tTime(x.t0));
+    else if (st === 'due') bits.push('scheduled for ' + tTime(x.t0));
     else bits.push('in ' + dur(x.t0 - S.now));
-    const chip = st === 'live' ? '<span class="st st-live"><i></i>' + (radio ? 'On air' : 'Live') + '</span>' : '';
+    const chip = st === 'live' ? '<span class="st st-live"><i></i>' + (radio ? 'On air' : 'Live') + '</span>' : st === 'due' ? '<span class="st st-warn"><i></i>Due</span>' : '';
     return '<li><a class="erow strow" href="' + esc(x.url) + '" target="_blank" rel="noopener">' +
       '<div class="when"><b>' + tTime(x.t0) + '</b><span>' + tDay(x.t0) + '</span></div>' +
       '<div class="what"><span class="title">' + esc(x.title) + '</span><div class="sub"><span>' + esc([x.channel, x.location || x.city].filter(Boolean).join(', ')) + '</span></div>' +
@@ -392,19 +394,19 @@
     list.forEach(x => {
       const st = streamState(x, t);
       if (!gOK(x)) return;
-      if (st === 'live') live.push(x);
+      if (st === 'live' || st === 'due') live.push(Object.assign({ st: st }, x));
       // Coming up: club shows on NTS (repeats and unknowns left out) and every scheduled YouTube stream.
       else if (st === 'soon' && (x.kind !== 'radio' || (!x.rerun && x.club === true))) soon.push(x);
     });
-    live.sort((a, b) => (b.kind === 'video') - (a.kind === 'video') || (b.viewers || 0) - (a.viewers || 0) || (b.club === true) - (a.club === true) || a.channel.localeCompare(b.channel));
+    live.sort((a, b) => (a.st === 'due') - (b.st === 'due') || (b.kind === 'video') - (a.kind === 'video') || (b.viewers || 0) - (a.viewers || 0) || (b.club === true) - (a.club === true) || a.channel.localeCompare(b.channel));
     const yt = S.streamFile && (S.streamFile.sources || []).find(x => x.id === 'youtube');
     body('streams').innerHTML = '<h3 class="subhead first">Live now</h3>' +
-      (live.length ? '<ol class="rows">' + live.map(x => streamRow(x, 'live')).join('') + '</ol>' : '<p class="fine">Nothing streaming live for this filter.</p>') +
+      (live.length ? '<ol class="rows">' + live.map(x => streamRow(x, x.st)).join('') + '</ol>' : '<p class="fine">Nothing streaming live for this filter.</p>') +
       '<h3 class="subhead">Coming up</h3>' +
       (soon.length ? '<ol class="rows">' + soon.slice(0, 30).map(x => streamRow(x, 'soon')).join('') + '</ol>' : '<p class="fine">No club shows or streams scheduled for this filter yet.</p>') +
       '<p class="fine">NTS shows follow the station\'s schedule; repeats are marked. ' +
       (yt && (yt.ok || yt.stale) ? 'YouTube streams from Boiler Room, Cercle, HÖR and others are checked every few hours. ' : '') + 'Times are in your time zone.</p>';
-    meta('streams', live.length + ' live');
+    meta('streams', live.filter(x => x.st === 'live').length + ' live');
   }
   function viewers(e) { return Math.round((e.headTier === 1 ? 1800 : 300) + e.seed * (e.headTier === 1 ? 22000 : 4000)); }
   function renderDemoStreams() {

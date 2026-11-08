@@ -90,6 +90,8 @@ test('YouTube videos become streams only when live or coming up soon', () => {
   assert.deepEqual(soon.genres, ['house']);
   assert.equal(soon.url, 'https://www.youtube.com/watch?v=b');
   const stale = { id: 'c', snippet: { title: 'Never started', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(-30) } };
+  const late = { id: 'g', snippet: { title: 'Festival stream running late', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(-3) } };
+  assert.ok(ytStream(late, ch, NOW), 'a stream a few hours late is still listed');
   assert.equal(ytStream(stale, ch, NOW), null);
   const far = { id: 'd', snippet: { title: 'Next month', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(24 * 30) } };
   assert.equal(ytStream(far, ch, NOW), null);
@@ -119,6 +121,8 @@ test('builds streams.json from NTS and YouTube, saving NTS genres between runs',
     assert.deepEqual(yt.find(s => s.id === 'yt:v3').genres, ['house']);
     assert.equal(yt.find(s => s.id === 'yt:v3').city, 'Paris');
     assert.deepEqual(out.sources.map(s => [s.id, s.ok, s.n]), [['nts', true, 6], ['youtube', true, 2]]);
+    assert.deepEqual(out.sources[1].seen, { live: 1, upcoming: 2 });
+    assert.ok(warnings.some(w => w.includes('Placeholder stream') && w.includes('long past')), 'left-out streams are explained');
     assert.equal(out.sources[1].channels, 2);
     assert.ok(warnings.some(w => w.includes('Gone')), 'a missing channel warns');
     assert.ok(!JSON.stringify(out).includes('SECRETKEY') && !warnings.join(' ').includes('SECRETKEY'));

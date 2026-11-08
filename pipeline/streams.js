@@ -107,17 +107,23 @@ export async function collectNts(cfg = {}, { cacheFile, now = Date.now(), warn =
   return { items, looked };
 }
 
-/** A YouTube video record to a stream, or null if it isn't live or coming up soon. */
-export function ytStream(v, ch = {}, now = Date.now(), cfg = {}) {
+/**
+ * A YouTube video record to a stream, or null if it isn't live or coming up soon.
+ * why(reason) hears why a live or scheduled video was left out.
+ */
+export function ytStream(v, ch = {}, now = Date.now(), cfg = {}, why = () => {}) {
   const sn = v.snippet || {}, live = v.liveStreamingDetails || {};
   const status = sn.liveBroadcastContent;
-  if ((status !== 'live' && status !== 'upcoming') || live.actualEndTime) return null;
+  if (status !== 'live' && status !== 'upcoming') return null;
+  if (live.actualEndTime) { why('ended'); return null; }
   const t = Date.parse(status === 'live' ? live.actualStartTime || live.scheduledStartTime : live.scheduledStartTime);
-  if (!Number.isFinite(t)) return null;
-  // An 'upcoming' stream whose time is well past never started; one weeks out is too far ahead.
-  if (status === 'upcoming' && (t < now - 2 * HOUR || t > now + (cfg.upcomingDays || 7) * DAY)) return null;
+  if (!Number.isFinite(t)) { why('no start time'); return null; }
+  // A scheduled stream half a day past its time never started (or was left behind as a placeholder);
+  // one weeks out is too far ahead.
+  if (status === 'upcoming' && t < now - 12 * HOUR) { why('scheduled time long past'); return null; }
+  if (status === 'upcoming' && t > now + (cfg.upcomingDays || 7) * DAY) { why('more than a week ahead'); return null; }
   const title = decode(sn.title).trim();
-  if (!title || electronicScore(title) < 0) return null; // panels, workshops, webinars
+  if (!title || electronicScore(title) < 0) { why('not a music stream'); return null; } // panels, workshops, webinars
   const fromTitle = genresFrom(title);
   return {
     id: `yt:${v.id}`, platform: 'YouTube', kind: 'video', channel: ch.name || decode(sn.channelTitle) || 'YouTube',
@@ -148,12 +154,18 @@ export async function collectYouTube(cfg = {}, key, { now = Date.now(), warn = (
     }
   });
   if (channels.length && failed === channels.length) throw new Error('YouTube: no channel could be read');
-  const ids = [...byVideo.keys()], items = [];
+  const ids = [...byVideo.keys()], items = [], seen = { live: 0, upcoming: 0 }, left = [];
   for (let i = 0; i < ids.length; i += 50) {
     const data = await fetchJson(`${YT_API()}/videos?part=snippet,liveStreamingDetails&id=${ids.slice(i, i + 50).join(',')}&key=${k}`, {}, { label: 'YouTube videos' });
-    for (const v of (data && data.items) || []) { const s = ytStream(v, byVideo.get(v.id), now, cfg); if (s) items.push(s); }
+    for (const v of (data && data.items) || []) {
+      const st = v.snippet && v.snippet.liveBroadcastContent;
+      if (st in seen) seen[st]++;
+      const s = ytStream(v, byVideo.get(v.id), now, cfg, reason => left.push(`${(byVideo.get(v.id) || {}).name}: "${decode(v.snippet && v.snippet.title).slice(0, 70)}" (${reason})`));
+      if (s) items.push(s);
+    }
   }
-  return { items, channels: channels.length - failed, checked: ids.length };
+  for (const l of left) warn(`left out ${l}`);
+  return { items, channels: channels.length - failed, checked: ids.length, seen };
 }
 
 /** The whole streams.json document. Saved files in cacheDir keep NTS genres and the last YouTube list. */
@@ -175,7 +187,7 @@ export async function buildStreams({ cfg, key, cacheDir, now = Date.now(), warn 
       const r = await collectYouTube(cfg.youtube, key, { now, warn: m => warn(scrub(m)) });
       if (ytFile) writeJson(ytFile, { at: now, items: r.items });
       out.streams.push(...r.items);
-      out.sources.push({ id: 'youtube', label: 'YouTube', ok: true, n: r.items.length, channels: r.channels });
+      out.sources.push({ id: 'youtube', label: 'YouTube', ok: true, n: r.items.length, channels: r.channels, checked: r.checked, seen: r.seen });
     } catch (err) {
       // Fall back to the last list: scheduled streams still ahead, and live ones checked recently.
       const saved = ytFile && readJson(ytFile);
@@ -197,7 +209,11 @@ async function main() {
   const out = await buildStreams({ cfg, key: (process.env.YOUTUBE_KEY || '').trim(), cacheDir, warn: m => console.warn(`  warning: ${m}`) });
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'streams.json'), JSON.stringify(out));
-  for (const s of out.sources) console.log(`${s.label}: ${s.n} streams${s.skipped ? ` (skipped: ${s.skipped})` : s.error ? ` (${s.stale ? 'saved list; ' : ''}${s.error})` : ''}`);
+  for (const s of out.sources) {
+    const detail = s.skipped ? ` (skipped: ${s.skipped})` : s.error ? ` (${s.stale ? 'saved list; ' : ''}${s.error})`
+      : s.seen ? ` (checked ${s.checked} recent videos on ${s.channels} channels: ${s.seen.live} live, ${s.seen.upcoming} scheduled)` : '';
+    console.log(`${s.label}: ${s.n} streams${detail}`);
+  }
   console.log(`${path.relative(ROOT, path.join(outDir, 'streams.json'))}: ${out.streams.length} streams`);
 }
 
