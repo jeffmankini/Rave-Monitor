@@ -1,0 +1,303 @@
+{
+ "amsterdam": {
+  "name": "Amsterdam",
+  "country": "NL",
+  "lat": 52.37,
+  "lon": 4.895,
+  "tz": "Europe/Amsterdam"
+ },
+ "austin": {
+  "name": "Austin",
+  "country": "US",
+  "lat": 30.267,
+  "lon": -97.743,
+  "tz": "America/Chicago"
+ },
+ "barcelona": {
+  "name": "Barcelona",
+  "country": "ES",
+  "lat": 41.387,
+  "lon": 2.17,
+  "tz": "Europe/Madrid"
+ },
+ "berlin": {
+  "name": "Berlin",
+  "country": "DE",
+  "lat": 52.52,
+  "lon": 13.405,
+  "tz": "Europe/Berlin"
+ },
+ "bristol": {
+  "name": "Bristol",
+  "country": "GB",
+  "lat": 51.455,
+  "lon": -2.588,
+  "tz": "Europe/London"
+ },
+ "brussels": {
+  "name": "Brussels",
+  "country": "BE",
+  "lat": 50.85,
+  "lon": 4.352,
+  "tz": "Europe/Brussels"
+ },
+ "chicago": {
+  "name": "Chicago",
+  "country": "US",
+  "lat": 41.878,
+  "lon": -87.63,
+  "tz": "America/Chicago"
+ },
+ "cologne": {
+  "name": "Cologne",
+  "country": "DE",
+  "lat": 50.938,
+  "lon": 6.96,
+  "tz": "Europe/Berlin"
+ },
+ "copenhagen": {
+  "name": "Copenhagen",
+  "country": "DK",
+  "lat": 55.676,
+  "lon": 12.568,
+  "tz": "Europe/Copenhagen"
+ },
+ "denver": {
+  "name": "Denver",
+  "country": "US",
+  "lat": 39.739,
+  "lon": -104.99,
+  "tz": "America/Denver"
+ },
+ "detroit": {
+  "name": "Detroit",
+  "country": "US",
+  "lat": 42.331,
+  "lon": -83.046,
+  "tz": "America/Detroit"
+ },
+ "dubai": {
+  "name": "Dubai",
+  "country": "AE",
+  "lat": 25.205,
+  "lon": 55.27,
+  "tz": "Asia/Dubai"
+ },
+ "dublin": {
+  "name": "Dublin",
+  "country": "IE",
+  "lat": 53.35,
+  "lon": -6.26,
+  "tz": "Europe/Dublin"
+ },
+ "glasgow": {
+  "name": "Glasgow",
+  "country": "GB",
+  "lat": 55.864,
+  "lon": -4.252,
+  "tz": "Europe/London"
+ },
+ "hamburg": {
+  "name": "Hamburg",
+  "country": "DE",
+  "lat": 53.551,
+  "lon": 9.993,
+  "tz": "Europe/Berlin"
+ },
+ "istanbul": {
+  "name": "Istanbul",
+  "country": "TR",
+  "lat": 41.008,
+  "lon": 28.978,
+  "tz": "Europe/Istanbul"
+ },
+ "lasvegas": {
+  "name": "Las Vegas",
+  "country": "US",
+  "lat": 36.17,
+  "lon": -115.14,
+  "tz": "America/Los_Angeles"
+ },
+ "leeds": {
+  "name": "Leeds",
+  "country": "GB",
+  "lat": 53.801,
+  "lon": -1.549,
+  "tz": "Europe/London"
+ },
+ "lisbon": {
+  "name": "Lisbon",
+  "country": "PT",
+  "lat": 38.722,
+  "lon": -9.139,
+  "tz": "Europe/Lisbon"
+ },
+ "london": {
+  "name": "London",
+  "country": "GB",
+  "lat": 51.507,
+  "lon": -0.128,
+  "tz": "Europe/London"
+ },
+ "losangeles": {
+  "name": "Los Angeles",
+  "country": "US",
+  "lat": 34.052,
+  "lon": -118.244,
+  "tz": "America/Los_Angeles"
+ },
+ "madrid": {
+  "name": "Madrid",
+  "country": "ES",
+  "lat": 40.417,
+  "lon": -3.704,
+  "tz": "Europe/Madrid"
+ },
+ "manchester": {
+  "name": "Manchester",
+  "country": "GB",
+  "lat": 53.481,
+  "lon": -2.242,
+  "tz": "Europe/London"
+ },
+ "melbourne": {
+  "name": "Melbourne",
+  "country": "AU",
+  "lat": -37.814,
+  "lon": 144.963,
+  "tz": "Australia/Melbourne"
+ },
+ "mexicocity": {
+  "name": "Mexico City",
+  "country": "MX",
+  "lat": 19.433,
+  "lon": -99.133,
+  "tz": "America/Mexico_City"
+ },
+ "miami": {
+  "name": "Miami",
+  "country": "US",
+  "lat": 25.762,
+  "lon": -80.192,
+  "tz": "America/New_York"
+ },
+ "milwaukee": {
+  "name": "Milwaukee",
+  "country": "US",
+  "lat": 43.039,
+  "lon": -87.906,
+  "tz": "America/Chicago"
+ },
+ "montreal": {
+  "name": "Montréal",
+  "country": "CA",
+  "lat": 45.502,
+  "lon": -73.567,
+  "tz": "America/Toronto"
+ },
+ "mumbai": {
+  "name": "Mumbai",
+  "country": "IN",
+  "lat": 19.076,
+  "lon": 72.878,
+  "tz": "Asia/Kolkata"
+ },
+ "munich": {
+  "name": "Munich",
+  "country": "DE",
+  "lat": 48.137,
+  "lon": 11.575,
+  "tz": "Europe/Berlin"
+ },
+ "newyork": {
+  "name": "New York",
+  "country": "US",
+  "lat": 40.713,
+  "lon": -74.006,
+  "tz": "America/New_York"
+ },
+ "paris": {
+  "name": "Paris",
+  "country": "FR",
+  "lat": 48.857,
+  "lon": 2.352,
+  "tz": "Europe/Paris"
+ },
+ "prague": {
+  "name": "Prague",
+  "country": "CZ",
+  "lat": 50.075,
+  "lon": 14.438,
+  "tz": "Europe/Prague"
+ },
+ "sanfrancisco": {
+  "name": "San Francisco",
+  "country": "US",
+  "lat": 37.775,
+  "lon": -122.419,
+  "tz": "America/Los_Angeles"
+ },
+ "seattle": {
+  "name": "Seattle",
+  "country": "US",
+  "lat": 47.606,
+  "lon": -122.332,
+  "tz": "America/Los_Angeles"
+ },
+ "stockholm": {
+  "name": "Stockholm",
+  "country": "SE",
+  "lat": 59.329,
+  "lon": 18.069,
+  "tz": "Europe/Stockholm"
+ },
+ "sydney": {
+  "name": "Sydney",
+  "country": "AU",
+  "lat": -33.869,
+  "lon": 151.209,
+  "tz": "Australia/Sydney"
+ },
+ "tbilisi": {
+  "name": "Tbilisi",
+  "country": "GE",
+  "lat": 41.716,
+  "lon": 44.783,
+  "tz": "Asia/Tbilisi"
+ },
+ "tokyo": {
+  "name": "Tokyo",
+  "country": "JP",
+  "lat": 35.676,
+  "lon": 139.65,
+  "tz": "Asia/Tokyo"
+ },
+ "toronto": {
+  "name": "Toronto",
+  "country": "CA",
+  "lat": 43.653,
+  "lon": -79.383,
+  "tz": "America/Toronto"
+ },
+ "vienna": {
+  "name": "Vienna",
+  "country": "AT",
+  "lat": 48.208,
+  "lon": 16.373,
+  "tz": "Europe/Vienna"
+ },
+ "warsaw": {
+  "name": "Warsaw",
+  "country": "PL",
+  "lat": 52.23,
+  "lon": 21.012,
+  "tz": "Europe/Warsaw"
+ },
+ "zurich": {
+  "name": "Zurich",
+  "country": "CH",
+  "lat": 47.377,
+  "lon": 8.54,
+  "tz": "Europe/Zurich"
+ }
+}
