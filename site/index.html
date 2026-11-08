@@ -24,7 +24,7 @@
 <meta name="twitter:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.">
 <meta name="twitter:image" content="__SITE_URL__/og-image.jpg">
 <meta name="twitter:image:alt" content="Rave Monitor, by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor, by Geff Bohm", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm"]}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor, by Geff Bohm", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm", "https://buymeacoffee.com/geffbohm"]}}</script>
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -109,6 +109,12 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .meter { display: inline-flex; gap: 2px; }
 .meter i { width: 5px; height: 12px; border-radius: 1px; background: var(--line); }
 .meter i.on { background: var(--now); }
+.support {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--deck); color: var(--ink); font-size: var(--s-13); text-decoration: none; white-space: nowrap;
+}
+.support:hover, .support:focus-visible { border-color: var(--now); color: var(--now); }
+.support .cup { width: 17px; height: 17px; color: var(--now); flex: none; }
 .demo-chip {
   height: 32px; padding: 0 10px; border-radius: 8px; border: 1px dashed #4a4f7c; background: transparent;
   color: var(--ink-2); font-size: var(--s-12);
@@ -435,6 +441,8 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .search kbd { display: none; }
   .clock span { display: none; }
   .demo-chip { display: none; }
+  .support span { display: none; }
+  .support { padding: 0 8px; }
   .filters { padding: 8px 12px; gap: 8px; display: grid; grid-template-columns: minmax(0, 1fr); }
   .filters .seg { justify-self: start; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .gchips { overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -468,6 +476,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <div class="clock" aria-live="off"><b id="clock-local">--:--</b><span id="clock-utc">UTC --:--</span></div>
     <button class="peak-pill" id="peak-pill" type="button" aria-label="Peakcon level"><span>Peakcon</span><b id="peak-num">-</b><span class="meter" id="peak-meter" aria-hidden="true"></span></button>
     <button class="demo-chip" id="demo-chip" type="button">Demo data</button>
+    <a class="support" href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" aria-label="Buy me a coffee on Buy Me a Coffee"><svg class="cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h12v4.5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9.5z"/><path d="M16 11.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1 .8 1.5.8 2.6M12 3.5c0 1 .8 1.5.8 2.6"/></svg><span>Buy me a coffee</span></a>
   </div>
 </header>
 
@@ -533,6 +542,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <h2 id="about-title">About Rave Monitor</h2>
     <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next. It's an open-source proof of concept by <a href="https://geffbohm.com" target="_blank" rel="noopener" style="color:inherit">Geff Bohm</a>.</p>
     <div id="about-data"></div>
+    <p>It's free to use. If it's useful to you, you can support it by <a href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" style="color:inherit">buying Geff a coffee</a>.</p>
     <h3>The archive</h3>
     <p>Every listing is kept after the night is over, merged across platforms, so this grows into a living archive of the scene. <span id="about-archive-count"></span>Download it as a <a href="archive/archive.sqlite" style="color:inherit">SQLite database</a> or a <a href="archive/events.csv" style="color:inherit">spreadsheet (CSV)</a>, or browse the <a href="__REPO_URL__/tree/archive" target="_blank" rel="noopener" style="color:inherit">monthly files on GitHub</a>.</p>
     <h3>Where listings come from</h3>

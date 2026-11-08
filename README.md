@@ -1,6 +1,6 @@
 # Rave Monitor, by Geff Bohm
 
-Live at [ravemonitor.com](https://ravemonitor.com). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
+Live at [ravemonitor.com](https://ravemonitor.com). Like it? [Buy me a coffee](https://buymeacoffee.com/geffbohm). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
 
 A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps the electronic ones, merges nights listed on more than one platform, and writes one `events.json`. The site is a single HTML page that reads that file. Without a feed, it falls back to a built-in demo with fictional events.
 
