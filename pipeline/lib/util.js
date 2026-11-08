@@ -124,3 +124,21 @@ export function localHour(utcMs, tz) {
 }
 
 export const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+
+/** Local calendar days from fromMs to toMs in a time zone: [{ date: 'YYYY-MM-DD', weekday: 'Fri' }]. */
+export function localDays(fromMs, toMs, tz) {
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const out = [], seen = new Set();
+  // Half-day steps so a daylight-saving change can't skip a date.
+  for (let t = fromMs; t <= toMs; t += 43200e3) {
+    const p = Object.fromEntries(f.formatToParts(new Date(t)).map(x => [x.type, x.value]));
+    const date = `${p.year}-${p.month}-${p.day}`;
+    if (!seen.has(date)) { seen.add(date); out.push({ date, weekday: p.weekday }); }
+  }
+  return out;
+}
+
+/** Split a total cap across n slices as evenly as possible: shareCap(40, 9) -> [5,5,5,5,4,4,4,4,4]. */
+export function shareCap(total, n) {
+  return Array.from({ length: n }, (_, i) => Math.floor(total / n) + (i < total % n ? 1 : 0));
+}

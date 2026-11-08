@@ -1,6 +1,6 @@
 // Sources scraped through third-party Apify actors. Each one: collect() runs the actor(s),
 // normalize() maps one raw item to the shared event shape (or null to drop it).
-import { pick, num, isoDay, localToUtc, pool } from '../lib/util.js';
+import { pick, num, isoDay, localToUtc, pool, localDays, shareCap } from '../lib/util.js';
 import { makeEvent, genresFrom, electronicScore, parsePrice, fromMinor } from '../lib/normalize.js';
 
 const citiesFor = (ctx, key) => {
@@ -21,6 +21,15 @@ async function perCity(ctx, key, scrape) {
   if (cities.length && errors.length === cities.length) throw errors[0];
   return results.flat();
 }
+/** Run several pulls for one city, two at a time. A pull that fails is reported; if all fail, the city fails. */
+async function pullEach(jobs, ctx) {
+  const errors = [];
+  const results = await pool(jobs, 2, async j => {
+    try { return await j.run(); } catch (err) { errors.push(err); ctx.warn(`${j.label}: ${err.message}`); return []; }
+  });
+  if (jobs.length && errors.length === jobs.length) throw errors[0];
+  return results.flat();
+}
 const titleCase = s => String(s).replace(/(^|[\s-])\w/g, m => m.toUpperCase());
 const DICE_TAGS = { ukgarage: 'UK Garage', drumandbass: 'Drum & Bass', dnb: 'Drum & Bass', deephouse: 'Deep House', techhouse: 'Tech House', hardtechno: 'Hard Techno', afrohouse: 'Afro House', edm: 'EDM', rnb: 'R&B', hiphop: 'Hip-Hop' };
 const diceTag = raw => { const k = String(raw).split(':').pop().toLowerCase(); return DICE_TAGS[k] || titleCase(k); };
@@ -29,15 +38,25 @@ const diceTag = raw => { const k = String(raw).split(':').pop().toLowerCase(); r
 export const ra = {
   id: 'ra', label: 'Resident Advisor', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
-    const s = ctx.settings;
+    const s = ctx.settings, spread = new Set(s.spreadCities || []);
     return perCity(ctx, 'ra', async c => {
       // A city can list more than one area page (when unsure which one RA uses); a wrong one just returns nothing.
-      const { items } = await ctx.apify(s.actor, {
+      const pull = async (from, to, cap) => (await ctx.apify(s.actor, {
         startUrls: [].concat(c.sources.ra).map(url => ({ url })),
-        dateRangeFrom: isoDay(ctx.from), dateRangeTo: isoDay(ctx.to),
-        maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 1200,
+        dateRangeFrom: from, dateRangeTo: to,
+        maxItems: cap, enforceMaxItems: true, downloadDelay: 1200,
         proxyConfiguration: { useApifyProxy: !!s.useProxy }
-      }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun });
+      }, { maxItems: cap, maxChargeUsd: s.maxChargeUsdPerRun })).items;
+      let items;
+      if (spread.has(c.id)) {
+        // RA lists events date by date, so in a busy city one pull's cap fills up with the first few
+        // nights. Share the cap across every chosen night (Fridays and Saturdays) in the window instead.
+        const nights = localDays(ctx.from, ctx.to, c.tz).filter(d => (s.spreadNights || ['Fri', 'Sat']).includes(d.weekday));
+        const caps = shareCap(s.maxItemsPerCity, nights.length);
+        items = await pullEach(nights.map((d, i) => ({ label: `${c.name} ${d.weekday} ${d.date}`, run: () => pull(d.date, d.date, caps[i]) })).filter((_, i) => caps[i] > 0), ctx);
+      } else {
+        items = await pull(isoDay(ctx.from), isoDay(ctx.to), s.maxItemsPerCity);
+      }
       const seen = new Set();
       return items.filter(it => !it.id || (!seen.has(it.id) && seen.add(it.id)));
     });

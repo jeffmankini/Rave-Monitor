@@ -1,5 +1,5 @@
 {
-  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb and apifyMaxRuns are your Apify plan's limits for runs at once (16384 MB and 5 runs on the free plan); runs queue to stay under them. maxAgeHours reuses the last scrape until it is that old: paid sources refresh monthly (720) to stay inside Apify's free plan, free ones daily. scrapeDays is how far ahead a source scrapes; the page shows the next windowDays.",
+  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb and apifyMaxRuns are your Apify plan's limits for runs at once (16384 MB and 5 runs on the free plan); runs queue to stay under them. maxAgeHours reuses the last scrape until it is that old: paid sources refresh monthly (720) to stay inside Apify's free plan, free ones daily. scrapeDays is how far ahead a source scrapes; the page shows the next windowDays. RA's spreadCities share their cap across every spreadNights night in that range instead of filling it with the first few nights.",
   "windowDays": 14,
   "apifyMemoryMb": 16384,
   "apifyMaxRuns": 5,
@@ -7,6 +7,7 @@
     "ra": {
       "enabled": true, "actor": "chalkandcheese~ra-events-scraper",
       "cities": ["berlin", "london", "amsterdam", "paris", "barcelona", "lisbon", "tbilisi", "newyork", "chicago", "detroit", "losangeles", "miami", "mexicocity", "tokyo", "melbourne"],
+      "spreadCities": ["berlin", "london", "amsterdam", "paris", "barcelona", "newyork", "chicago", "losangeles", "tokyo", "melbourne"], "spreadNights": ["Fri", "Sat"],
       "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720
     },
     "dice": {

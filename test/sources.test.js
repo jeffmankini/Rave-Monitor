@@ -99,3 +99,25 @@ test('RA asks for its own scrape window, not the feed window', async () => {
   await ra.collect(ctx);
   assert.equal(calls[0].dateRangeTo, '2026-12-09');
 });
+
+test('busy RA cities share their cap across every Friday and Saturday; others pull once', async () => {
+  const { localDays, shareCap } = await import('../pipeline/lib/util.js');
+  assert.deepEqual(shareCap(40, 9), [5, 5, 5, 5, 4, 4, 4, 4, 4]);
+  const days = localDays(Date.parse('2026-12-09T10:00:00Z'), Date.parse('2027-01-09T10:00:00Z'), 'Europe/Berlin');
+  assert.equal(days[0].date, '2026-12-09');
+  assert.equal(days.filter(d => d.weekday === 'Fri').length, 5);
+  const calls = [];
+  const ctx = makeCtx({ actor: 'x~ra', cities: ['berlin', 'tbilisi'], spreadCities: ['berlin'], maxItemsPerCity: 40, maxChargeUsdPerRun: 0.2 },
+    async (a, input) => { calls.push(input); return { items: [{ id: `${input.startUrls[0].url}|${input.dateRangeFrom}` }] }; });
+  ctx.from = Date.parse('2026-12-09T10:00:00Z'); ctx.to = Date.parse('2027-01-09T10:00:00Z');
+  const items = await ra.collect(ctx);
+  const berlin = calls.filter(c => c.startUrls[0].url.includes('/berlin'));
+  const nights = berlin.map(c => c.dateRangeFrom);
+  assert.ok(berlin.every(c => c.dateRangeFrom === c.dateRangeTo));
+  assert.ok(nights.every(d => [5, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay())), nights.join());
+  assert.equal(berlin.reduce((n, c) => n + c.maxItems, 0), 40);
+  assert.equal(berlin.length, 10); // Dec 11, 12, 18, 19, 25, 26, Jan 1, 2, 8, 9
+  const tbilisi = calls.filter(c => c.startUrls[0].url.includes('/tbilisi'));
+  assert.deepEqual(tbilisi.map(c => [c.dateRangeFrom, c.dateRangeTo, c.maxItems]), [['2026-12-09', '2027-01-09', 40]]);
+  assert.equal(items.filter(i => i.__city === 'berlin').length, 10);
+});

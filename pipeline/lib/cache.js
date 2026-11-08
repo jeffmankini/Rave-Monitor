@@ -11,7 +11,7 @@ export const STALE_LIMIT_DAYS = 30;
  * Settings that change how a scrape runs, is paid for or how far ahead the next one reaches, not what
  * it asks for now; changing them waits for the next scheduled pull instead of forcing one.
  */
-const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled', 'scrapeDays'];
+const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled', 'scrapeDays', 'spreadCities', 'spreadNights'];
 
 /** Fingerprint of everything that changes what a source asks for, so editing it triggers a new pull. */
 export function scrapeKey(srcId, settings = {}, windowDays = 14, cities = []) {

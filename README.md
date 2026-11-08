@@ -70,7 +70,7 @@ Scrapes are saved per city. If a city's scrape fails or comes back empty (an exp
 
 Apify also limits how many runs you can have going at once and how much memory they use (5 runs and 16 GB on the free plan). The job queues runs to stay under `apifyMaxRuns` and `apifyMemoryMb` in `config/sources.json`; raise them if your plan allows more.
 
-Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in the busiest cities (Berlin, London, New York) the cap fills up with the first few nights after each scrape; quieter cities get listings across the month. Raise `maxItemsPerCity` for fuller coverage.
+Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in a busy city one pull's cap would fill up with the first few nights. For RA's busiest cities (`spreadCities`), each monthly scrape shares the city's cap across every Friday and Saturday in the next 31 days (`spreadNights`), so every weekend gets a few listings. That's one small run per night, about 100 RA runs a month, at the same cost. Raise `maxItemsPerCity` for fuller coverage.
 
 To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switch a source off.
 
