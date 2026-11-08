@@ -17,7 +17,7 @@ on:
         default: ''
 
 permissions:
-  contents: read
+  contents: write   # to push the archive branch
   pages: write
   id-token: write
 
@@ -49,6 +49,23 @@ jobs:
         run: |
           mkdir -p cache && touch cache/.keep
           node pipeline/run.js ${{ inputs.fresh && '--fresh' || '' }} ${PULL:+--pull "$PULL"}
+      - name: Update the archive
+        # Every listing is kept in the archive branch, merged across platforms. A problem here
+        # shouldn't stop the site from deploying.
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin archive > /dev/null; then
+            git fetch -q --depth=1 origin archive
+            git worktree add -q -B archive archive-data FETCH_HEAD
+          else
+            git worktree add -q --orphan -b archive archive-data
+          fi
+          node pipeline/archive.js archive-data public/events.json
+          cd archive-data
+          git add -A
+          if git diff --cached --quiet; then echo "Archive unchanged."; else git commit -q -m "Archive $(date -u +%F)" && git push -q origin archive; fi
       - name: Save scrapes for the next run
         if: always()
         uses: actions/cache/save@v4
@@ -56,7 +73,9 @@ jobs:
           path: cache
           key: scrapes-${{ github.run_id }}
       - name: Build the site
-        run: node scripts/build-site.js
+        run: |
+          node scripts/build-site.js
+          if [ -d archive-data/events ]; then node --no-warnings pipeline/archive-export.js archive-data dist/archive; fi
       - name: Deploy to Netlify (optional)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

@@ -1152,6 +1152,16 @@
       '<table class="srctable"><thead><tr><th>Source</th><th class="n">Events</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<p>Every listing links back to its source page. Sell-out odds, livestreams and surges need history and stay off until the feed has some.</p>';
   }
+  async function loadArchiveCount() {
+    const el = $('#about-archive-count'); if (!el || el.dataset.done) return;
+    el.dataset.done = '1';
+    try {
+      const res = await fetch('archive/summary.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const s = await res.json();
+      if (s.events) el.textContent = plural(s.events, 'listing', 'listings') + ' so far, from ' + new Date(s.firstEvent).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ' on. ';
+    } catch (err) { /* no archive yet */ }
+  }
   async function loadFeed() {
     try {
       const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 4000);
@@ -1238,7 +1248,7 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { S.now = Date.now(); refresh(); MapView.changed(true); } });
   }
   function toggleLayers(open) { $('#layers').hidden = !open; $('#layers-btn').setAttribute('aria-expanded', String(open)); }
-  function openAbout() { renderAboutData(); const d = $('#about'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
+  function openAbout() { renderAboutData(); loadArchiveCount(); const d = $('#about'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
 
   /* ---------- start ---------- */
   async function boot() {

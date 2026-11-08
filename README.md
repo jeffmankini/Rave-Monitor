@@ -74,6 +74,16 @@ Each city gets its own scraper run and cap, so a busy city can't use up the othe
 
 To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switch a source off.
 
+## The archive
+
+Every listing the site shows is also kept in the `archive` branch, merged across platforms and kept after the night is over, so the repo grows into a living archive of the scene. The daily job adds new listings and updates known ones: new platforms, lineup changes, and status changes such as sold out or cancelled, with the day each was seen.
+
+- `events/YYYY-MM.ndjson`: one listing per line, filed by its local month; `cities.json` and `summary.json` alongside.
+- The site offers the whole archive as a SQLite database (`/archive/archive.sqlite`, with `events`, `event_artists`, `event_sources`, `event_status` and `cities` tables) and a CSV file (`/archive/events.csv`), rebuilt on every deploy.
+- It's only as complete as the scrapes: paid sources are capped per city, so busy cities hold a sample of their nights.
+
+To build it locally: `node pipeline/archive.js <dir> public/events.json`, then `node pipeline/archive-export.js <dir> <out-dir>`.
+
 ## Configuration
 
 - `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE browse page (the part after dice.fm/browse/), the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a city comes back empty, copy the right URL from ra.co. A city can list more than one RA page, and a wrong one simply returns nothing.
@@ -87,7 +97,7 @@ This is a non-commercial demo built on third-party scrapers. It tries to be a go
 - **Event details only.** It keeps titles, times, venues, lineups, prices, status and links. It never stores descriptions, attendee or guest lists, or organizer contact details, even where a scraper offers them.
 - **Opt-outs are respected.** Posh events whose organizers turned off third-party display are skipped, and only public Partiful events are used.
 - **Light load.** Sources are scraped on a schedule and cached, never on page views, and every listing links back to its source.
-- **Data stays out of the repo.** The code is public. Scraped data lives only in the job's cache and the deployed `events.json`.
+- **Event facts only, in the archive too.** Raw scrapes live only in the job's cache. The archive branch and the deployed files keep the same event facts as the site (title, time, venue, lineup, genres, price, status, links), never descriptions, attendee lists or organizer contacts.
 - **Removal on request.** If a platform or promoter asks to be left out, switch the source off or filter them in `normalize()`.
 
 Each scraper is run by its own author under the platform's terms. Check those terms before running this at any scale.
