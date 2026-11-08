@@ -557,7 +557,8 @@
       if (!live && e.start > t && st !== 'soldout' && !e.door && !e.free) facts.push(['Sell-out odds', Math.round(odds * 100) + '%']);
     } else if (Number.isFinite(e.popularity)) facts.push(['Interested or going', fmtN(e.popularity)]);
     if (e.age) facts.push(['Entry', e.age]);
-    const srcs = e.sources && e.sources.length ? e.sources : (e.src ? [{ name: e.src }] : []);
+    // One link per platform, even when a platform listed the same night twice.
+    const srcs = (e.sources && e.sources.length ? e.sources : (e.src ? [{ name: e.src }] : [])).filter((x, i, a) => a.findIndex(y => y.name === x.name) === i);
     if (srcs.length) facts.push(['Listed on', srcs.map(x => x.url && !demo ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:inherit">' + esc(x.name) + '</a>' : esc(x.name)).join(', ') + (demo ? ', demo' : '')]);
     const note = demo ? 'Demo event: the ticket link appears with live listings.'
       : v.approx ? 'This listing gives an address but no map position, so it is placed near the city center.'

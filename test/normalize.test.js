@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { genresFrom, electronicScore, parsePrice, fromMinor } from '../pipeline/lib/normalize.js';
+import { genresFrom, electronicScore, parsePrice, fromMinor, eventType } from '../pipeline/lib/normalize.js';
 import { localToUtc } from '../pipeline/lib/util.js';
 
 test('genre rules pick the specific family first', () => {
@@ -34,4 +34,12 @@ test('local wall-clock times convert with the venue time zone', () => {
   assert.equal(new Date(localToUtc('2026-11-14T23:59:00.000', 'Europe/Berlin')).toISOString(), '2026-11-14T22:59:00.000Z');
   assert.equal(new Date(localToUtc('2026-11-14T22:00:00.000', 'America/Chicago')).toISOString(), '2026-11-15T04:00:00.000Z');
   assert.equal(new Date(localToUtc('2026-11-14T22:00:00+00:00', 'Europe/London')).toISOString(), '2026-11-14T22:00:00.000Z');
+});
+
+test('ticket-site shows that start late count as club nights', () => {
+  const at = local => ({ title: 'Eli Brown', tz: 'Europe/London', startMs: localToUtc(local, 'Europe/London'), isConcert: true });
+  assert.equal(eventType(at('2026-11-21T20:00:00')), 'concert');
+  assert.equal(eventType(at('2026-11-21T22:30:00')), 'club');
+  assert.equal(eventType(at('2026-11-22T01:00:00')), 'club');
+  assert.equal(eventType(at('2026-11-21T15:00:00')), 'day');
 });

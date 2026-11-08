@@ -73,7 +73,9 @@ export function eventType({ title, startMs, tz, isFestival, isConcert }) {
   const h = localHour(startMs, tz);
   if (h >= 4 && h < 10) return 'after';
   if (h >= 10 && h < 18) return 'day';
-  if (isConcert || /\blive\b|\btour\b|\bconcert\b/.test(t)) return 'concert';
+  // Ticket sites file everything as a concert; a show that starts at 10pm or later is a club night.
+  const late = h >= 22 || h < 4;
+  if (!late && (isConcert || /\blive\b|\btour\b|\bconcert\b/.test(t))) return 'concert';
   return 'club';
 }
 
