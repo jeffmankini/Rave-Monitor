@@ -5,6 +5,7 @@
 //   node pipeline/run.js            real run (needs APIFY_TOKEN and/or API keys)
 //   node pipeline/run.js --sample   offline run on the sample data in pipeline/sample
 //   node pipeline/run.js --only ra,dice --fresh
+//   node pipeline/run.js --pull ra:berlin,ra:london   pull just these again now (all others as scheduled)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +48,13 @@ function shiftDates(value, deltaMs) {
 
 async function main() {
   const sample = flag('sample'), fresh = flag('fresh');
+  // --pull ra:berlin,ra:london,partiful -> { ra: Set(berlin, london), partiful: 'all' }
+  const pulls = {};
+  for (const part of (opt('pull') || '').split(',').map(x => x.trim()).filter(Boolean)) {
+    const [srcId, city] = part.split(':');
+    if (!city) pulls[srcId] = 'all';
+    else if (pulls[srcId] !== 'all') (pulls[srcId] ||= new Set()).add(city);
+  }
   const only = opt('only') ? opt('only').split(',') : null;
   const outDir = path.resolve(ROOT, opt('out') || 'public');
   const cacheDir = path.join(ROOT, 'cache');
@@ -97,7 +105,7 @@ async function main() {
           const moved = splitSourceCache({ dir: cacheDir, srcId: src.id, settings, windowDays, cities: cityCfg.cities });
           if (moved) console.log(`[${src.id}] split the saved scrape into ${moved} city files`);
           const stats = {};
-          ctx.cachedCity = cityCache({ dir: cacheDir, srcId: src.id, settings, windowDays, fresh, now, warn: ctx.warn, stats });
+          ctx.cachedCity = cityCache({ dir: cacheDir, srcId: src.id, settings, windowDays, fresh, force: pulls[src.id], now, warn: ctx.warn, stats });
           raw = await src.collect(ctx);
           entry.cityRuns = { scraped: stats.scraped || 0, saved: stats.saved || 0, stale: stats.stale || 0 };
           entry.cached = !stats.scraped && (stats.saved || stats.stale) > 0;
@@ -107,7 +115,7 @@ async function main() {
           console.log(`[${src.id}] cities: ${entry.cityRuns.scraped} scraped, ${entry.cityRuns.saved} saved, ${entry.cityRuns.stale} kept from an earlier scrape`);
         } else {
           const got = await loadOrCollect({
-            file: cacheFile, fresh, now, warn: ctx.warn,
+            file: cacheFile, fresh: fresh || !!pulls[src.id], now, warn: ctx.warn,
             key: scrapeKey(src.id, settings, windowDays, cityCfg.cities),
             maxAgeHours: settings.maxAgeHours || 24,
             collect: () => src.collect(ctx)

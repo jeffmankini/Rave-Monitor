@@ -11,6 +11,10 @@ on:
         description: Ignore saved scrapes and pull every source again
         type: boolean
         default: false
+      pull:
+        description: "Pull just these again now, e.g. ra:berlin,ra:london (empty: usual schedule)"
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -41,9 +45,10 @@ jobs:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           TICKETMASTER_KEY: ${{ secrets.TICKETMASTER_KEY }}
           SKIDDLE_KEY: ${{ secrets.SKIDDLE_KEY }}
+          PULL: ${{ inputs.pull }}
         run: |
           mkdir -p cache && touch cache/.keep
-          node pipeline/run.js ${{ inputs.fresh && '--fresh' || '' }}
+          node pipeline/run.js ${{ inputs.fresh && '--fresh' || '' }} ${PULL:+--pull "$PULL"}
       - name: Save scrapes for the next run
         if: always()
         uses: actions/cache/save@v4

@@ -55,18 +55,31 @@ export async function loadOrCollect({ file, key, maxAgeHours = 24, fresh = false
 /**
  * Saved scrapes per city, for sources that run one scrape per city. Fixing one city's page or adding
  * a city only pulls that city again, and a city whose pull fails keeps its own last good scrape.
+ * force lists cities to pull again now regardless (or 'all'); their new results are added to what was
+ * saved, so events the new pull doesn't reach stay until they pass.
  * Tallies what happened in stats: scraped, saved, stale, scrapedItems, oldestAt.
  */
-export function cityCache({ dir, srcId, settings = {}, windowDays = 14, fresh = false, now = Date.now(), warn = () => {}, stats = {} }) {
+export function cityCache({ dir, srcId, settings = {}, windowDays = 14, fresh = false, force = null, now = Date.now(), warn = () => {}, stats = {} }) {
   const { cities, ...asks } = settings;
   return async (city, collect) => {
+    const file = path.join(dir, srcId, `${city.id}.json`);
+    const forced = force === 'all' || !!force?.has?.(city.id);
+    const before = forced ? readSaved(file) : null;
+    let pulled = 0;
+    const pull = async () => {
+      const items = await collect();
+      pulled = items.length;
+      if (!before || !items.length) return items;
+      const ids = new Set(items.map(i => i.id).filter(Boolean));
+      return items.concat(before.items.filter(i => !i.id || !ids.has(i.id)));
+    };
     const got = await loadOrCollect({
-      file: path.join(dir, srcId, `${city.id}.json`), key: scrapeKey(srcId, asks, windowDays, [city]),
-      maxAgeHours: settings.maxAgeHours || 24, fresh, now, collect, warn: m => warn(`${city.name}: ${m}`)
+      file, key: scrapeKey(srcId, asks, windowDays, [city]), maxAgeHours: settings.maxAgeHours || 24,
+      fresh: fresh || forced, now, collect: pull, warn: m => warn(`${city.name}: ${m}`)
     });
     const kind = got.stale ? 'stale' : got.cached ? 'saved' : 'scraped';
     stats[kind] = (stats[kind] || 0) + 1;
-    if (kind === 'scraped') stats.scrapedItems = (stats.scrapedItems || 0) + got.items.length;
+    if (kind === 'scraped') stats.scrapedItems = (stats.scrapedItems || 0) + pulled;
     stats.oldestAt = Math.min(stats.oldestAt ?? got.at, got.at);
     return got.items;
   };

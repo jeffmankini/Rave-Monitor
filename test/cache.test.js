@@ -114,3 +114,20 @@ test('a monthly source keeps its last good scrape well past a month when a pull 
 test('changing how far ahead a source scrapes waits for its next scheduled pull', () => {
   assert.equal(scrapeKey('ra', { maxItemsPerCity: 40 }), scrapeKey('ra', { maxItemsPerCity: 40, scrapeDays: 31 }));
 });
+
+test('forcing a city pulls it now and adds the new listings to what was saved; others wait', async () => {
+  const { cityCache } = await import('../pipeline/lib/cache.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rm-force-'));
+  const settings = { cities: ['berlin', 'tokyo'], maxItemsPerCity: 40, maxAgeHours: 720 };
+  const berlin = { id: 'berlin', name: 'Berlin', sources: { ra: 'b' } }, tokyo = { id: 'tokyo', name: 'Tokyo', sources: { ra: 't' } };
+  const first = cityCache({ dir, srcId: 'ra', settings, now: now - DAY });
+  await first(berlin, async () => [{ id: 'tonight' }, { id: 'sat' }]);
+  await first(tokyo, async () => [{ id: 't1' }]);
+  const stats = {};
+  const again = cityCache({ dir, srcId: 'ra', settings, now, force: new Set(['berlin']), stats });
+  const b = await again(berlin, async () => [{ id: 'sat', v: 2 }, { id: 'next-fri' }]);
+  assert.deepEqual(b, [{ id: 'sat', v: 2 }, { id: 'next-fri' }, { id: 'tonight' }]);
+  assert.deepEqual(await again(tokyo, async () => { throw new Error('should not pull'); }), [{ id: 't1' }]);
+  assert.equal(stats.scraped, 1); assert.equal(stats.saved, 1);
+  assert.equal(stats.scrapedItems, 2); // only the new pull counts toward cost
+});

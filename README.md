@@ -42,7 +42,7 @@ npm test
 3. In **Settings → Pages**, set the source to **GitHub Actions**.
 4. In **Actions → Refresh listings**, choose **Run workflow**.
 
-The job then runs daily. Sources without a key are skipped and reported on the page (open "Live listings" in the header). To pull every source again right away, run it with "Ignore saved scrapes" ticked.
+The job then runs daily. Sources without a key are skipped and reported on the page (open "Live listings" in the header). To pull every source again right away, run it with "Ignore saved scrapes" ticked. To pull only some again, fill in "Pull just these again now" with sources or source:city pairs, such as `ra:berlin,ra:london`; their new listings are added to what was saved.
 
 To deploy to Netlify as well, add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` secrets.
 
