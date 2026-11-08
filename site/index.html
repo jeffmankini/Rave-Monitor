@@ -3,11 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rave Monitor</title>
+<title>Rave Monitor, by Geff Bohm · Live electronic music map</title>
+<meta name="description" content="See what's on tonight: a live world map of raves, club nights and DJ sets, with listings from Resident Advisor, Ticketmaster, Skiddle, Posh and more.">
+<meta name="author" content="Geff Bohm">
+<link rel="canonical" href="__SITE_URL__/">
+<!-- Link previews (iMessage, WhatsApp, Slack, Facebook, LinkedIn, X) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rave Monitor">
+<meta property="og:title" content="Rave Monitor, by Geff Bohm">
+<meta property="og:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.">
+<meta property="og:url" content="__SITE_URL__/">
+<meta property="og:image" content="__SITE_URL__/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Rave Monitor, by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rave Monitor, by Geff Bohm">
+<meta name="twitter:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.">
+<meta name="twitter:image" content="__SITE_URL__/og-image.jpg">
+<meta name="twitter:image:alt" content="Rave Monitor, by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor, by Geff Bohm", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm"]}}</script>
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#0b0b0b">
+<meta name="theme-color" content="#070814">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
@@ -55,6 +76,8 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
 .brand-mark { width: 22px; height: 22px; color: var(--now); }
 .brand-word { font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.byline { margin-left: -6px; color: var(--ink-3); font-size: var(--s-12); text-decoration: none; white-space: nowrap; flex: none; }
+.byline:hover, .byline:focus-visible { color: var(--now); }
 .search { position: relative; flex: 1; max-width: 420px; }
 .search input {
   width: 100%; height: 34px; padding: 0 38px 0 12px; border-radius: 8px;
@@ -434,6 +457,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg>
     <span class="brand-word">Rave Monitor</span>
   </a>
+  <a class="byline" href="https://geffbohm.com" target="_blank" rel="noopener">by Geff Bohm</a>
   <div class="search" role="search">
     <label class="sr-only" for="q">Search events, DJs, venues and cities</label>
     <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search events, DJs, venues, cities" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
@@ -506,12 +530,12 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 <dialog id="about" aria-labelledby="about-title">
   <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>
   <div class="dlg">
-    <h2 id="about-title">About this prototype</h2>
-    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next. It's an open-source proof of concept.</p>
+    <h2 id="about-title">About Rave Monitor</h2>
+    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next. It's an open-source proof of concept by <a href="https://geffbohm.com" target="_blank" rel="noopener" style="color:inherit">Geff Bohm</a>.</p>
     <div id="about-data"></div>
     <h3>Where listings come from</h3>
     <ul>
-      <li><b>Scrapers on a schedule.</b> Ready-made Apify scrapers pull public listings from Resident Advisor, DICE, Posh, Partiful and Luma every few hours.</li>
+      <li><b>Scrapers on a schedule.</b> Ready-made Apify scrapers pull public listings from Resident Advisor, Posh, Partiful and Luma once a month.</li>
       <li><b>Free APIs.</b> Ticketmaster Discovery (free key, 5,000 calls a day) and Skiddle (free key, strong on UK club nights).</li>
       <li><b>One feed.</b> Every source is converted to one event format, duplicates across platforms are merged, and each listing links back to its source page.</li>
       <li><b>Event details only.</b> Title, time, venue, lineup, price and link. No attendee lists or organizer contact details.</li>
