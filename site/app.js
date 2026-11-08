@@ -1334,7 +1334,7 @@
         return true;
       };
       boxes.push([0, 0, 260, 50], [W - 220, 0, W, 50]);
-      if (S.layers.belt) {
+      if (S.layers.belt && streets.t < 1) { // the band itself is under the street map
         const band = RM.clubBand(S.now);
         const edge = (lon, text, align) => {
           let p = null;
