@@ -1,0 +1,17 @@
+<script>
+// Google Analytics 4 with Consent Mode, added at build time when config/site.json has a Measurement ID.
+// These are the defaults until the consent tool answers: no ad features anywhere, and analytics
+// cookies off in the EEA, the UK and Switzerland. The consent tool updates them with the visitor's choice.
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500, region: ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE','IS','LI','NO','GB','CH'] });
+gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted', wait_for_update: 500 });
+gtag('set', 'ads_data_redaction', true);
+</script>
+<!-- CONSENT TOOL -->
+<script>
+gtag('js', new Date());
+gtag('config', '__GA_ID__');
+window.RM_GA = '__GA_ID__';
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=__GA_ID__"></script>

@@ -8,6 +8,12 @@
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FONT = '"Archivo", "Helvetica Neue", Arial, sans-serif';
+  // Google Analytics events, only when the build added the tag (config/site.json). Consent is the
+  // consent tool's job; the tag holds events back until it allows them.
+  function track(name, params) {
+    try { if (window.RM_GA && typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (err) { /* analytics must never break the page */ }
+  }
+  const cut = (str, n) => String(str == null ? '' : str).slice(0, n || 100);
 
   /* ---------- state ---------- */
   const S = {
@@ -376,7 +382,7 @@
     else if (st === 'due') bits.push('scheduled for ' + tTime(x.t0));
     else bits.push('in ' + dur(x.t0 - S.now));
     const chip = st === 'live' ? '<span class="st st-live"><i></i>' + (radio ? 'On air' : 'Live') + '</span>' : st === 'due' ? '<span class="st st-warn"><i></i>Due</span>' : '';
-    return '<li><a class="erow strow" href="' + esc(x.url) + '" target="_blank" rel="noopener">' +
+    return '<li><a class="erow strow" href="' + esc(x.url) + '" target="_blank" rel="noopener" data-track="stream_click" data-p-platform="' + esc(x.platform) + '" data-p-channel="' + esc(cut(x.channel)) + '" data-p-stream_status="' + esc(st) + '">' +
       '<div class="when"><b>' + tTime(x.t0) + '</b><span>' + tDay(x.t0) + '</span></div>' +
       '<div class="what"><span class="title">' + esc(x.title) + '</span><div class="sub"><span>' + esc([x.channel, x.location || x.city].filter(Boolean).join(', ')) + '</span></div>' +
       '<div class="sub2">' + bits.map(b => '<span>' + esc(b) + '</span>').join('') + '</div></div>' +
@@ -678,6 +684,7 @@
     if (!S.sel) lastFocus = document.activeElement;
     S.sel = id;
     renderDrawer(e);
+    track('open_event', { event_title: cut(e.title), city: cut(city(e).name), listing_source: cut(e.src || '') });
     const dr = $('#drawer');
     dr.classList.add('open'); dr.setAttribute('aria-hidden', 'false');
     $('#scrim').hidden = S.mode !== 'narrow';
@@ -728,7 +735,7 @@
       (e.tags && e.tags.length ? '<section class="dr-sec"><h3>' + (demo ? 'Door and floor' : 'Tags') + '</h3><div class="tags">' + e.tags.map(x => '<span>' + esc(x) + '</span>').join('') + '</div></section>' : '') +
       '<div class="dr-actions">' + (tourer ? '<button class="btn primary" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
       '<button class="btn" type="button" data-act="copy">Copy details</button>' +
-      (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener">' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
+      (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click" data-p-event_title="' + esc(cut(e.title)) + '" data-p-city="' + esc(cut(c.name)) + '" data-p-listing_source="' + esc(cut(e.src || '')) + '">' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
       '<p class="dr-note" id="dr-note">' + note + '</p>';
   }
   function ticketLabel(e) { return !e.src ? 'Get tickets' : e.src === 'Promoter submission' ? 'Promoter link' : 'Tickets on ' + e.src; }
@@ -791,6 +798,7 @@
   function chooseResult(i) {
     const r = results[i]; if (!r) return;
     hideResults(); $('#q').blur();
+    track('select_search_result', { result_type: r.kind, result: cut(r.label) });
     const ds = S.ds;
     if (r.kind === 'city') MapView.flyToCity(ds.cityById[r.id]);
     else if (r.kind === 'genre') setGenre(r.id, true);
@@ -979,12 +987,13 @@
     // zoom the map out); with the street map on, that can go down to neighbourhood level.
     function flyToCity(c) {
       S.areaOn = true;
+      track('select_city', { city: cut(c.name) });
       if (S.view !== 'map' || !streetsOn()) return flyTo(c.lon, c.lat, 260);
       const vs = (D.byCity.get(c.id) || []).map(venue).filter(v => v && !v.approx);
       const lons = vs.map(v => v.lon).sort((a, b) => a - b), lats = vs.map(v => v.lat).sort((a, b) => a - b);
       const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round((arr.length - 1) * f)))];
-      const cut = vs.length >= 10 ? 0.05 : 0;
-      const box = vs.length ? [[q(lons, cut), q(lats, cut)], [q(lons, 1 - cut), q(lats, 1 - cut)]] : [[c.lon, c.lat], [c.lon, c.lat]];
+      const trim = vs.length >= 10 ? 0.05 : 0;
+      const box = vs.length ? [[q(lons, trim), q(lats, trim)], [q(lons, 1 - trim), q(lats, 1 - trim)]] : [[c.lon, c.lat], [c.lon, c.lat]];
       fitBox(box, 260, 1500);
     }
     function flyToVenue(v) { S.areaOn = true; flyTo(v.lon, v.lat, streetsOn() ? 2900 : 360); }
@@ -1539,7 +1548,7 @@
     const opt = t.closest('#results [role="option"]');
     if (opt) return chooseResult(+opt.dataset.i);
     const tab = t.closest('[data-tab]');
-    if (tab) return selectTab(tab.dataset.tab);
+    if (tab) { track('open_tab', { tab: tab.dataset.tab }); return selectTab(tab.dataset.tab); }
     const evRow = t.closest('[data-ev]');
     if (evRow) return openEvent(evRow.dataset.ev);
     const sg = t.closest('[data-sgenre]');
@@ -1571,9 +1580,17 @@
       const ids = tabIdsFor(S.mode), cur = ids.indexOf(S.mode === 'wide' ? S.tab.right : S.tab.single);
       selectTab(ids[(cur + (ev.key === 'ArrowRight' ? 1 : ids.length - 1)) % ids.length], true);
     });
-    $('#win').addEventListener('click', ev => { const b = ev.target.closest('button[data-win]'); if (b) setWindow(b.dataset.win); });
-    $('#gchips').addEventListener('click', ev => { const b = ev.target.closest('button[data-genre]'); if (b) setGenre(b.dataset.genre, false); });
-    $('#viewtoggle').addEventListener('click', ev => { const b = ev.target.closest('button[data-view]'); if (b) MapView.setView(b.dataset.view); });
+    $('#win').addEventListener('click', ev => { const b = ev.target.closest('button[data-win]'); if (b) { track('set_filter', { filter: 'time', value: b.dataset.win }); setWindow(b.dataset.win); } });
+    $('#gchips').addEventListener('click', ev => { const b = ev.target.closest('button[data-genre]'); if (b) { track('set_filter', { filter: 'genre', value: b.dataset.genre }); setGenre(b.dataset.genre, false); } });
+    $('#viewtoggle').addEventListener('click', ev => { const b = ev.target.closest('button[data-view]'); if (b) { track('set_view', { view: b.dataset.view }); MapView.setView(b.dataset.view); } });
+    // Outbound links that say what to report (tickets, streams): data-track names the event, data-p-* are its details.
+    document.addEventListener('click', ev => {
+      const a = ev.target.closest && ev.target.closest('a[data-track]');
+      if (!a) return;
+      const params = {};
+      Object.keys(a.dataset).forEach(k => { if (/^p[A-Z]/.test(k)) params[k.slice(1).replace(/^[A-Z]/, ch => ch.toLowerCase())] = a.dataset[k]; });
+      track(a.dataset.track, params);
+    }, true);
     $('#zoom-in').addEventListener('click', () => MapView.zoomBy(2));
     $('#zoom-out').addEventListener('click', () => MapView.zoomBy(0.5));
     $('#zoom-home').addEventListener('click', () => MapView.home(true));
@@ -1600,7 +1617,7 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { S.now = Date.now(); refresh(); MapView.changed(true); } });
   }
   function toggleLayers(open) { $('#layers').hidden = !open; $('#layers-btn').setAttribute('aria-expanded', String(open)); }
-  function openAbout() { renderAboutData(); loadArchiveCount(); const d = $('#about'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
+  function openAbout() { renderAboutData(); loadArchiveCount(); $('#about-analytics').hidden = !window.RM_GA; const d = $('#about'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
 
   /* ---------- start ---------- */
   async function boot() {

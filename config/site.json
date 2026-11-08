@@ -1,0 +1,4 @@
+{
+  "_comment": "Site-wide settings. gaMeasurementId: your Google Analytics 4 Measurement ID (G-...), or empty for no analytics. A GA_MEASUREMENT_ID environment variable overrides it at build time.",
+  "gaMeasurementId": "G-0N5FDZ88K0"
+}

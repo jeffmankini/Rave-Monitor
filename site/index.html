@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+__HEAD_START__
 <title>Rave Monitor, by Geff Bohm · Live electronic music map</title>
 <meta name="description" content="See what's on tonight: a live world map of raves, club nights and DJ sets, with listings from Resident Advisor, Ticketmaster, Skiddle, Posh and more.">
 <meta name="author" content="Geff Bohm">
@@ -569,6 +570,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <p>It's free to use. If it's useful to you, you can support it by <a href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" style="color:inherit">buying Geff a coffee</a>.</p>
     <h3>The archive</h3>
     <p>Every listing is kept after the night is over, merged across platforms, so this grows into a living archive of the scene. <span id="about-archive-count"></span>Download it as a <a href="archive/archive.sqlite" style="color:inherit">SQLite database</a> or a <a href="archive/events.csv" style="color:inherit">spreadsheet (CSV)</a>, or browse the <a href="__REPO_URL__/tree/archive" target="_blank" rel="noopener" style="color:inherit">monthly files on GitHub</a>.</p>
+    <p id="about-analytics" hidden>Visits are counted with Google Analytics, with no ad features.</p>
     <h3>Where listings come from</h3>
     <ul>
       <li><b>Scrapers on a schedule.</b> Ready-made Apify scrapers pull public listings from Resident Advisor, Posh, Partiful and Luma once a month.</li>

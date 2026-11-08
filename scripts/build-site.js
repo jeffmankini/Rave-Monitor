@@ -14,6 +14,16 @@ const SITE_URL = (process.env.SITE_URL || 'https://ravemonitor.com').replace(/\/
 html = html.split('__SITE_URL__').join(SITE_URL);
 const REPO_URL = `https://github.com/${process.env.GITHUB_REPOSITORY || 'jeffmankini/Rave-Monitor'}`;
 html = html.split('__REPO_URL__').join(REPO_URL);
+// Google Analytics only when a Measurement ID is set (config/site.json or GA_MEASUREMENT_ID).
+const site = JSON.parse(read('config/site.json'));
+const GA_ID = String(process.env.GA_MEASUREMENT_ID || site.gaMeasurementId || '').trim();
+if (GA_ID && !/^G-[A-Z0-9]{4,16}$/.test(GA_ID)) throw new Error(`gaMeasurementId should look like G-XXXXXXXXXX, not "${GA_ID}"`);
+// The consent tool's embed (site/consent.html) goes first in the head, between the Consent Mode
+// defaults and the Analytics tag, so the visitor's choice applies before anything is counted.
+const consentFile = path.join(ROOT, 'site', 'consent.html');
+const consent = fs.existsSync(consentFile) ? fs.readFileSync(consentFile, 'utf8').replace(/<!--[\s\S]*?-->/g, '').trim() : '';
+const head = GA_ID ? read('site/analytics.html').split('__GA_ID__').join(GA_ID).replace('<!-- CONSENT TOOL -->', () => consent).trim() : consent;
+html = html.replace('__HEAD_START__', () => head);
 for (const [k, v] of Object.entries(parts)) {
   if (v.includes('</script')) throw new Error(`${k} contains a closing script tag`);
   html = html.replace(k, () => v);
@@ -39,4 +49,4 @@ else if (fs.existsSync(path.join(dist, 'events.json'))) fs.rmSync(path.join(dist
 const streams = path.join(ROOT, 'public', 'streams.json');
 if (fs.existsSync(streams)) fs.copyFileSync(streams, path.join(dist, 'streams.json'));
 else if (fs.existsSync(path.join(dist, 'streams.json'))) fs.rmSync(path.join(dist, 'streams.json'));
-console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB${fs.existsSync(feed) ? ', dist/events.json copied' : ', no feed (the page will show demo data)'}`);
+console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB${fs.existsSync(feed) ? ', dist/events.json copied' : ', no feed (the page will show demo data)'}${GA_ID ? `, Google Analytics ${GA_ID}` : ''}${consent ? ', consent tool' : ''}`);
