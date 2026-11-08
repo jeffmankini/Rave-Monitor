@@ -103,3 +103,14 @@ test('a whole-source save splits into city files once, without the city tags', a
   assert.deepEqual(await read(cities[0], async () => { pulled = true; return []; }), [{ id: 1 }, { id: 2 }]);
   assert.equal(pulled, false);
 });
+
+test('a monthly source keeps its last good scrape well past a month when a pull fails', async () => {
+  const file = tmp(); save(file, now - 45 * DAY, 'k1', [{ id: 1 }]);
+  const r = await loadOrCollect({ file, key: 'k1', maxAgeHours: 720, now, collect: pull(new Error('HTTP 402 usage limit')) });
+  assert.deepEqual(r.items, [{ id: 1 }]);
+  assert.equal(r.stale, true);
+});
+
+test('changing how far ahead a source scrapes waits for its next scheduled pull', () => {
+  assert.equal(scrapeKey('ra', { maxItemsPerCity: 40 }), scrapeKey('ra', { maxItemsPerCity: 40, scrapeDays: 31 }));
+});

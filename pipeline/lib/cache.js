@@ -4,11 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-/** How long a saved scrape can stand in for a failed one. Old events still drop out by date. */
+/** How long past its refresh age a saved scrape can stand in for a failed one. Old events still drop out by date. */
 export const STALE_LIMIT_DAYS = 30;
 
-/** Settings that change how a scrape runs or is paid for, not what it asks for. */
-const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled'];
+/**
+ * Settings that change how a scrape runs, is paid for or how far ahead the next one reaches, not what
+ * it asks for now; changing them waits for the next scheduled pull instead of forcing one.
+ */
+const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled', 'scrapeDays'];
 
 /** Fingerprint of everything that changes what a source asks for, so editing it triggers a new pull. */
 export function scrapeKey(srcId, settings = {}, windowDays = 14, cities = []) {
@@ -40,7 +43,7 @@ export async function loadOrCollect({ file, key, maxAgeHours = 24, fresh = false
     fs.writeFileSync(file, JSON.stringify({ at: now, key, items }));
     return { items, cached: false, stale: false, at: now };
   }
-  if (saved && now - saved.at < STALE_LIMIT_DAYS * 86400e3) {
+  if (saved && now - saved.at < maxAgeHours * 3600e3 + STALE_LIMIT_DAYS * 86400e3) {
     const why = failure ? failure.message : 'the new scrape came back empty';
     warn(`${why}; showing the scrape from ${new Date(saved.at).toISOString().slice(0, 10)} instead`);
     return { items: saved.items, cached: true, stale: true, at: saved.at };

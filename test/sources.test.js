@@ -91,3 +91,11 @@ test('DICE asks for each city\'s DJ page within the window', async () => {
     'https://dice.fm/browse/london-54d8a23438fe5d27d500001c'
   ]);
 });
+
+test('RA asks for its own scrape window, not the feed window', async () => {
+  const calls = [];
+  const ctx = makeCtx({ actor: 'x~ra', cities: ['berlin'], maxItemsPerCity: 40 }, async (a, input) => { calls.push(input); return { items: [] }; });
+  ctx.to = ctx.from + 31 * 86400e3;
+  await ra.collect(ctx);
+  assert.equal(calls[0].dateRangeTo, '2026-12-09');
+});

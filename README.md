@@ -62,15 +62,15 @@ Ticketmaster and Skiddle are free. The Apify scrapers charge per result. These a
 
 DICE is switched off: as of November 2026 it answers these scrapers with 403 Forbidden, even through Apify Proxy. Set `enabled: true` to try it again.
 
-With DICE off, that's at most about $3.85 per full scrape. Paid sources reuse their last scrape for a week (`maxAgeHours: 168`), so the default schedule costs at most about $17 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
+With DICE off, that's at most about $3.85 per full scrape. Paid sources scrape once a month (`maxAgeHours: 720`), reaching 31 days ahead (`scrapeDays`), so the default schedule costs at most about $3.85 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
 
-Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. That covers about one full scrape a month at the default caps.
+Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. The monthly default fits inside it. For weekly scrapes (`maxAgeHours: 168`, about $17 a month) you'd need a paid Apify plan.
 
-Scrapes are saved per city. If a city's scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing that city's last good scrape for up to 30 days. Editing a city's entry or adding a city pulls just that city again on the next run; editing a source's settings pulls all its cities again.
+Scrapes are saved per city. If a city's scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing that city's last good scrape, for up to 30 days past its usual refresh, and the next daily run tries that city again. Editing a city's entry or adding a city pulls just that city again on the next run; editing a source's settings pulls all its cities again.
 
 Apify also limits how many runs you can have going at once and how much memory they use (5 runs and 16 GB on the free plan). The job queues runs to stay under `apifyMaxRuns` and `apifyMemoryMb` in `config/sources.json`; raise them if your plan allows more.
 
-Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in the busiest cities (Berlin, London, New York) the cap fills up with the next few nights; raise `maxItemsPerCity` for fuller weeks.
+Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in the busiest cities (Berlin, London, New York) the cap fills up with the first few nights after each scrape; quieter cities get listings across the month. Raise `maxItemsPerCity` for fuller coverage.
 
 To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switch a source off.
 

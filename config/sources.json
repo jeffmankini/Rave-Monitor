@@ -1,5 +1,5 @@
 {
-  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb and apifyMaxRuns are your Apify plan's limits for runs at once (16384 MB and 5 runs on the free plan); runs queue to stay under them. maxAgeHours reuses the last scrape until it is that old, so paid sources can refresh weekly while free ones refresh daily.",
+  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). apifyMemoryMb and apifyMaxRuns are your Apify plan's limits for runs at once (16384 MB and 5 runs on the free plan); runs queue to stay under them. maxAgeHours reuses the last scrape until it is that old: paid sources refresh monthly (720) to stay inside Apify's free plan, free ones daily. scrapeDays is how far ahead a source scrapes; the page shows the next windowDays.",
   "windowDays": 14,
   "apifyMemoryMb": 16384,
   "apifyMaxRuns": 5,
@@ -7,29 +7,29 @@
     "ra": {
       "enabled": true, "actor": "chalkandcheese~ra-events-scraper",
       "cities": ["berlin", "london", "amsterdam", "paris", "barcelona", "lisbon", "tbilisi", "newyork", "chicago", "detroit", "losangeles", "miami", "mexicocity", "tokyo", "melbourne"],
-      "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
+      "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720
     },
     "dice": {
       "enabled": false, "_off": "DICE answers Apify scrapers with 403 Forbidden as of Nov 2026, even through Apify Proxy.", "actor": "chalkandcheese~dice-fm-events-scraper",
       "cities": ["london", "berlin", "paris", "barcelona", "manchester", "bristol", "newyork", "losangeles", "chicago", "miami"],
       "categories": ["music/dj"], "useProxy": true,
-      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.15, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
+      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.15, "pricePerResultUsd": 0.0033, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720
     },
     "posh": {
       "enabled": true, "actor": "trev0n~posh-vip-scraper",
       "cities": ["newyork", "chicago", "losangeles", "miami", "austin", "denver", "sanfrancisco", "milwaukee"],
-      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.12, "pricePerResultUsd": 0.003, "concurrency": 3, "maxAgeHours": 168
+      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.12, "pricePerResultUsd": 0.003, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720
     },
     "partiful": {
       "enabled": true, "actor": "heliostech~partiful-event-scraper",
       "cities": "all",
-      "maxItemsPerCity": 25, "maxChargeUsdPerRun": 0.6, "pricePerResultUsd": 0.003, "maxAgeHours": 168
+      "maxItemsPerCity": 25, "maxChargeUsdPerRun": 0.6, "pricePerResultUsd": 0.003, "scrapeDays": 31, "maxAgeHours": 720
     },
     "luma": {
       "enabled": true, "actor": "solidcode~luma-scraper",
       "cities": ["newyork", "losangeles", "sanfrancisco", "london", "berlin", "amsterdam", "paris", "tokyo"],
       "queries": ["techno", "house music", "rave", "dj set", "dance party"],
-      "maxItemsPerCity": 25, "maxChargeUsdPerRun": 0.1, "pricePerResultUsd": 0.003, "concurrency": 3, "maxAgeHours": 168
+      "maxItemsPerCity": 25, "maxChargeUsdPerRun": 0.1, "pricePerResultUsd": 0.003, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720
     },
     "ticketmaster": { "enabled": true, "cities": "all", "radiusKm": 40, "maxPagesPerCity": 2, "maxAgeHours": 20 },
     "skiddle": { "enabled": true, "cities": "all", "radiusMiles": 15, "maxItemsPerCity": 200, "maxAgeHours": 20 }

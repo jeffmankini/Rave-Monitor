@@ -73,7 +73,8 @@ async function main() {
     const entry = { id: src.id, label: src.label, ok: false, raw: 0, kept: 0, cached: false, estCostUsd: 0, ms: 0, error: null, warnings };
     report.push(entry);
     const ctx = {
-      cities, cityById, settings, env, from, to,
+      // A source can scrape further ahead (scrapeDays) than the feed shows, so a monthly pull covers the month.
+      cities, cityById, settings, env, from, to: now + (settings.scrapeDays || windowDays) * 86400e3,
       log: (...m) => console.log(`[${src.id}]`, ...m),
       warn: m => { warnings.push(m); console.warn(`[${src.id}] ${m}`); },
       apify: async (actor, input, o = {}) => {
