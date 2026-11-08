@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Assembles dist/: one self-contained index.html (map data, demo engine and app inlined)
-// plus events.json from the pipeline, if it exists.
+// plus the files in site/static and events.json from the pipeline, if it exists.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,10 @@ for (const [k, v] of Object.entries(parts)) {
 const dist = path.join(ROOT, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'index.html'), html);
+// Static files (favicons) are copied as they are.
+const statics = path.join(ROOT, 'site', 'static');
+const copied = fs.existsSync(statics) ? fs.readdirSync(statics).filter(f => !f.startsWith('.')) : [];
+for (const f of copied) fs.copyFileSync(path.join(statics, f), path.join(dist, f));
 const feed = path.join(ROOT, 'public', 'events.json');
 if (fs.existsSync(feed)) fs.copyFileSync(feed, path.join(dist, 'events.json'));
 else if (fs.existsSync(path.join(dist, 'events.json'))) fs.rmSync(path.join(dist, 'events.json'));
