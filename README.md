@@ -40,9 +40,9 @@ npm test
    - `TICKETMASTER_KEY`: free at developer.ticketmaster.com.
    - `SKIDDLE_KEY`: free at skiddle.com/api/join.php (UK listings).
 3. In **Settings → Pages**, set the source to **GitHub Actions**.
-4. In **Actions → Refresh listings**, choose **Run workflow** and tick "fresh" the first time.
+4. In **Actions → Refresh listings**, choose **Run workflow**.
 
-The job then runs daily. Sources without a key are skipped and reported on the page (open "Live listings" in the header).
+The job then runs daily. Sources without a key are skipped and reported on the page (open "Live listings" in the header). To pull every source again right away, run it with "Ignore saved scrapes" ticked.
 
 To deploy to Netlify as well, add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` secrets.
 
@@ -61,6 +61,12 @@ Ticketmaster and Skiddle are free. The Apify scrapers charge per result. These a
 | Luma | `solidcode~luma-scraper` | $3.00 | 8 cities × 25 | $0.60 |
 
 That's at most about $4.55 per full scrape. Paid sources reuse their last scrape for a week (`maxAgeHours: 168`), so the default schedule costs at most about $20 a month, while the free APIs refresh daily. Every Apify run also carries a hard spending cap (`maxChargeUsdPerRun`).
+
+Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. That covers about one full scrape a month at the default caps.
+
+If a scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing the last good scrape for that source, for up to 30 days. Editing a source's settings or its city entries makes the next run pull it again.
+
+Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in the busiest cities (Berlin, London, New York) the cap fills up with the next few nights; raise `maxItemsPerCity` for fuller weeks.
 
 To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switch a source off.
 

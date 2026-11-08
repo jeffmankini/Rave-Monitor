@@ -34,24 +34,35 @@ export function num(v) {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** fetch JSON with retries on 429 and 5xx. */
-export async function fetchJson(url, opts = {}, { retries = 3, label = url } = {}) {
+/** A short, readable reason from an error response (JSON APIs usually carry a message). */
+export function errorReason(text) {
+  try {
+    const j = JSON.parse(text);
+    const m = j?.error?.message ?? j?.fault?.faultstring ?? j?.errormessage ?? j?.message ?? j?.error;
+    if (typeof m === 'string' && m) return m.slice(0, 160);
+  } catch {}
+  return String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+}
+
+/**
+ * fetch JSON, retrying network errors, 408, 429 and 5xx. Other 4xx answers fail at once, with err.status set.
+ * Messages use the label, never the URL, because URLs carry API keys.
+ */
+export async function fetchJson(url, opts = {}, { retries = 3, label = String(url).split('?')[0] } = {}) {
   let last;
   for (let i = 0; i <= retries; i++) {
-    try {
-      const res = await fetch(url, opts);
-      if (res.status === 429 || res.status >= 500) {
-        last = new Error(`${label}: HTTP ${res.status}`);
-        await sleep(1000 * 2 ** i);
-        continue;
-      }
-      const text = await res.text();
-      if (!res.ok) throw new Error(`${label}: HTTP ${res.status} ${text.slice(0, 200)}`);
-      return text ? JSON.parse(text) : null;
-    } catch (err) {
-      last = err;
+    let res;
+    try { res = await fetch(url, opts); } catch (err) {
+      last = new Error(`${label}: ${err.cause?.code || err.message}`);
       if (i < retries) await sleep(800 * 2 ** i);
+      continue;
     }
+    const text = await res.text().catch(() => '');
+    if (res.ok) return text ? JSON.parse(text) : null;
+    const err = Object.assign(new Error(`${label}: HTTP ${res.status} ${errorReason(text)}`.trim()), { status: res.status });
+    if (res.status !== 408 && res.status !== 429 && res.status < 500) throw err;
+    last = err;
+    if (i < retries) await sleep(1000 * 2 ** i);
   }
   throw last;
 }

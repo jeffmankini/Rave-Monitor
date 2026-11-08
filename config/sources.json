@@ -1,11 +1,11 @@
 {
-  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run. maxAgeHours reuses the last scrape until it is that old, so paid sources can refresh weekly while free ones refresh daily.",
+  "_note": "Turn sources on or off, pick cities, cap results and spending. Apify actors are third-party scrapers: prices below are the current per-result prices on the free plan, used only to estimate cost. maxChargeUsdPerRun is a hard cap Apify enforces on each run (one run per city, except Partiful, which takes all its cities in one run). maxAgeHours reuses the last scrape until it is that old, so paid sources can refresh weekly while free ones refresh daily.",
   "windowDays": 14,
   "sources": {
     "ra": {
       "enabled": true, "actor": "chalkandcheese~ra-events-scraper",
       "cities": ["berlin", "london", "amsterdam", "paris", "barcelona", "lisbon", "tbilisi", "newyork", "chicago", "detroit", "losangeles", "miami", "mexicocity", "tokyo", "melbourne"],
-      "maxItemsPerCity": 40, "maxChargeUsdPerRun": 2.5, "pricePerResultUsd": 0.0033, "maxAgeHours": 168
+      "maxItemsPerCity": 40, "maxChargeUsdPerRun": 0.2, "pricePerResultUsd": 0.0033, "concurrency": 3, "maxAgeHours": 168
     },
     "dice": {
       "enabled": true, "actor": "hoholabs~dicefm-scraper",
@@ -15,7 +15,7 @@
     "posh": {
       "enabled": true, "actor": "trev0n~posh-vip-scraper",
       "cities": ["newyork", "chicago", "losangeles", "miami", "austin", "denver", "sanfrancisco", "milwaukee"],
-      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 1.0, "pricePerResultUsd": 0.003, "maxAgeHours": 168
+      "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.12, "pricePerResultUsd": 0.003, "concurrency": 3, "maxAgeHours": 168
     },
     "partiful": {
       "enabled": true, "actor": "heliostech~partiful-event-scraper",

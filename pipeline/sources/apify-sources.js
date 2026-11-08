@@ -7,6 +7,19 @@ const citiesFor = (ctx, key) => {
   const want = ctx.settings.cities;
   return ctx.cities.filter(c => c.sources && c.sources[key] && (!Array.isArray(want) || want.includes(c.id)));
 };
+/**
+ * One scrape per city, a few at a time, so every city gets its own cap and a busy city can't use up
+ * the others' share. A city that fails is reported and skipped; if every city fails, the source fails.
+ */
+async function perCity(ctx, key, scrape) {
+  const cities = citiesFor(ctx, key), errors = [];
+  const results = await pool(cities, ctx.settings.concurrency || 3, async c => {
+    try { return (await scrape(c)).map(x => ({ ...x, __city: c.id })); }
+    catch (err) { errors.push(err); ctx.warn(`${c.name}: ${err.message}`); return []; }
+  });
+  if (cities.length && errors.length === cities.length) throw errors[0];
+  return results.flat();
+}
 const titleCase = s => String(s).replace(/(^|[\s-])\w/g, m => m.toUpperCase());
 const DICE_TAGS = { ukgarage: 'UK Garage', drumandbass: 'Drum & Bass', dnb: 'Drum & Bass', deephouse: 'Deep House', techhouse: 'Tech House', hardtechno: 'Hard Techno', afrohouse: 'Afro House', edm: 'EDM', rnb: 'R&B', hiphop: 'Hip-Hop' };
 const diceTag = raw => { const k = String(raw).split(':').pop().toLowerCase(); return DICE_TAGS[k] || titleCase(k); };
@@ -15,19 +28,17 @@ const diceTag = raw => { const k = String(raw).split(':').pop().toLowerCase(); r
 export const ra = {
   id: 'ra', label: 'Resident Advisor', needs: ['APIFY_TOKEN'],
   async collect(ctx) {
-    const cities = citiesFor(ctx, 'ra');
-    if (!cities.length) return [];
     const s = ctx.settings;
-    const { items } = await ctx.apify(s.actor, {
-      startUrls: cities.map(c => ({ url: c.sources.ra })),
+    return perCity(ctx, 'ra', async c => (await ctx.apify(s.actor, {
+      startUrls: [{ url: c.sources.ra }],
       dateRangeFrom: isoDay(ctx.from), dateRangeTo: isoDay(ctx.to),
-      maxItems: s.maxItemsPerCity * cities.length, enforceMaxItems: true, downloadDelay: 1200,
+      maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 1200,
       proxyConfiguration: { useApifyProxy: !!s.useProxy }
-    }, { maxItems: s.maxItemsPerCity * cities.length, maxChargeUsd: s.maxChargeUsdPerRun });
-    return items;
+    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
   },
   normalize(it, ctx) {
-    const tz = pick(it, 'area.ianaTimeZone', 'venue.area.ianaTimeZone');
+    // RA gives local wall-clock times; fall back to the scraped city's zone if the item has none.
+    const tz = pick(it, 'area.ianaTimeZone', 'venue.area.ianaTimeZone') || ctx.cityById?.[it.__city]?.tz;
     const lineup = (it.artists || []).map(a => a.name);
     if (!lineup.length && it.lineup) lineup.push(...String(it.lineup).replace(/<[^>]+>/g, '').split(/\n|,/).map(x => x.trim()));
     const genreNames = (it.genres || []).map(g => g.name);
@@ -37,7 +48,7 @@ export const ra = {
       startMs: localToUtc(it.startTime || it.date, tz), endMs: localToUtc(it.endTime, tz), tz,
       venueName: it.hasSecretVenue ? 'Secret location' : pick(it, 'venue.name'), address: pick(it, 'venue.address'),
       lat: num(pick(it, 'venue.location.latitude')), lon: num(pick(it, 'venue.location.longitude')),
-      cityName: pick(it, 'venue.area.name'), country: pick(it, 'venue.area.country.urlCode'),
+      cityName: pick(it, 'venue.area.name'), country: pick(it, 'venue.area.country.urlCode'), cityHint: it.__city,
       lineup, genres: genresFrom(genreNames, it.title), tags: genreNames,
       price: parsePrice(it.cost), status: 'unknown', popularity: num(it.interestedCount),
       age: it.minimumAge ? it.minimumAge + '+' : undefined, isFestival: !!it.isFestival
@@ -51,16 +62,10 @@ export const dice = {
   id: 'dice', label: 'DICE', needs: ['APIFY_TOKEN'],
   async collect(ctx) {
     const s = ctx.settings;
-    const runs = await pool(citiesFor(ctx, 'dice'), s.concurrency || 3, async c => {
-      try {
-        const { items } = await ctx.apify(s.actor, {
-          queryType: 'browse', city: c.sources.dice, dateFrom: isoDay(ctx.from), dateTo: isoDay(ctx.to),
-          limit: s.maxItemsPerCity, sort: 'date', ...(s.genreTag ? { genreTag: s.genreTag } : {})
-        }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun });
-        return items.map(x => ({ ...x, __city: c.id }));
-      } catch (err) { ctx.warn(`DICE ${c.name}: ${err.message}`); return []; }
-    });
-    return runs.flat();
+    return perCity(ctx, 'dice', async c => (await ctx.apify(s.actor, {
+      queryType: 'browse', city: c.sources.dice, dateFrom: isoDay(ctx.from), dateTo: isoDay(ctx.to),
+      limit: s.maxItemsPerCity, sort: 'date', ...(s.genreTag ? { genreTag: s.genreTag } : {})
+    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
   },
   normalize(it, ctx) {
     const tagText = [...(it.genre_tags || []), ...(it.type_tags || [])].map(t => String(t).split(':').pop()).join(' ').toLowerCase();
@@ -79,7 +84,8 @@ export const dice = {
       const vals = it.ticket_types.map(t => num(pick(t, 'price.total', 'price.face_value', 'total', 'face_value', 'price'))).filter(v => v !== undefined);
       if (vals.length) price = { min: fromMinor(Math.min(...vals), cur), max: fromMinor(Math.max(...vals), cur), currency: cur };
     }
-    const status = it.status === 'cancelled' ? 'cancelled' : it.sold_out ? 'soldout' : it.status === 'off-sale' ? 'offsale' : it.status === 'on-sale' ? 'onsale' : 'unknown';
+    const status = it.status === 'cancelled' ? 'cancelled' : it.sold_out ? 'soldout' : it.status === 'off-sale' ? 'offsale'
+      : it.status === 'on-sale' || it.status === 'active' ? 'onsale' : 'unknown';
     const loc = it.location || {};
     const tags = (it.genre_tags || []).map(diceTag);
     return makeEvent(ctx, {
@@ -97,14 +103,14 @@ export const dice = {
 export const posh = {
   id: 'posh', label: 'Posh', needs: ['APIFY_TOKEN'],
   async collect(ctx) {
-    const s = ctx.settings, cities = citiesFor(ctx, 'posh');
-    if (!cities.length) return [];
-    const { items } = await ctx.apify(s.actor, {
-      startUrls: cities.map(c => ({ url: `https://posh.vip/explore?location=${encodeURIComponent(c.sources.posh)}&lat=${c.lat}&lng=${c.lon}&when=This+Month` })),
-      maxEvents: s.maxItemsPerCity * cities.length, scrapeEventDetails: true, eventTimeFilter: 'upcoming', sortBy: 'startDateAsc',
+    const s = ctx.settings;
+    // Posh's explore filter takes named time frames; widen to the year when the window runs into next month.
+    const when = isoDay(ctx.from).slice(0, 7) === isoDay(ctx.to).slice(0, 7) ? 'This+Month' : 'This+Year';
+    return perCity(ctx, 'posh', async c => (await ctx.apify(s.actor, {
+      startUrls: [{ url: `https://posh.vip/explore?location=${encodeURIComponent(c.sources.posh)}&lat=${c.lat}&lng=${c.lon}&when=${when}` }],
+      maxEvents: s.maxItemsPerCity, scrapeEventDetails: true, eventTimeFilter: 'upcoming', sortBy: 'startDateAsc',
       startsAfter: isoDay(ctx.from), startsBefore: isoDay(ctx.to), proxyConfiguration: { useApifyProxy: true }
-    }, { maxItems: s.maxItemsPerCity * cities.length, maxChargeUsd: s.maxChargeUsdPerRun });
-    return items;
+    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
   },
   normalize(it, ctx) {
     // Respect organizers who opted out of third-party listings, and skip drafts and locked events.
@@ -117,7 +123,7 @@ export const posh = {
       source: 'posh', sourceName: 'Posh', id: it.eventId || it.url, title: it.name, url: it.url,
       startMs: Date.parse(it.startUtc || it.start), endMs: Date.parse(it.endUtc || it.end), tz: it.timezone,
       venueName: it.venueName, address: it.venueAddress, lat: num(it.latitude), lon: num(it.longitude),
-      cityName: it.city, country: it.country,
+      cityName: it.city, country: it.country, cityHint: it.__city,
       lineup: (it.lineup || []).map(l => l.name), lineupText,
       genres: genresFrom(it.name, it.description, lineupText),
       price: it.isFree ? { min: 0, max: 0, currency: it.currency, free: true } : (num(it.lowestPrice) !== undefined ? { min: num(it.lowestPrice), max: num(it.highestPrice) ?? num(it.lowestPrice), currency: it.currency } : null),
@@ -157,18 +163,12 @@ export const luma = {
   id: 'luma', label: 'Luma', needs: ['APIFY_TOKEN'],
   async collect(ctx) {
     const s = ctx.settings;
-    const runs = await pool(citiesFor(ctx, 'luma'), s.concurrency || 3, async c => {
-      try {
-        const { items } = await ctx.apify(s.actor, {
-          discoverCity: c.sources.luma, searchQueries: s.queries, category: 'all',
-          dateFrom: isoDay(ctx.from), dateTo: isoDay(ctx.to), eventType: 'in_person',
-          scrapeEventDetails: true, includeFeaturedGuests: false,
-          maxEventsPerUrl: s.maxItemsPerCity, maxResults: s.maxItemsPerCity
-        }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun });
-        return items.map(x => ({ ...x, __city: c.id }));
-      } catch (err) { ctx.warn(`Luma ${c.name}: ${err.message}`); return []; }
-    });
-    return runs.flat();
+    return perCity(ctx, 'luma', async c => (await ctx.apify(s.actor, {
+      discoverCity: c.sources.luma, searchQueries: s.queries, category: 'all',
+      dateFrom: isoDay(ctx.from), dateTo: isoDay(ctx.to), eventType: 'in_person',
+      scrapeEventDetails: true, includeFeaturedGuests: false,
+      maxEventsPerUrl: s.maxItemsPerCity, maxResults: s.maxItemsPerCity
+    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
   },
   normalize(it, ctx) {
     const loc = it.location || {};

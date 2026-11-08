@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runActor } from './lib/apify.js';
+import { loadOrCollect, scrapeKey } from './lib/cache.js';
 import { dedupe } from './lib/dedupe.js';
 import { ra, dice, posh, partiful, luma } from './sources/apify-sources.js';
 import { ticketmaster, skiddle } from './sources/api-sources.js';
@@ -87,22 +88,27 @@ async function main() {
       } else {
         const missing = src.needs.filter(k => !env[k]);
         if (missing.length) { entry.error = `skipped: set ${missing.join(' and ')}`; console.log(`[${src.id}] ${entry.error}`); return; }
-        const cached = !fresh && fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : null;
-        if (cached && now - cached.at < (settings.maxAgeHours || 24) * 3600e3) {
-          raw = cached.items; entry.cached = true;
-          console.log(`[${src.id}] reusing scrape from ${new Date(cached.at).toISOString()} (${raw.length} items)`);
-        } else {
-          raw = await src.collect(ctx);
-          fs.mkdirSync(cacheDir, { recursive: true });
-          fs.writeFileSync(cacheFile, JSON.stringify({ at: now, items: raw }));
-          entry.estCostUsd = +(raw.length * (settings.pricePerResultUsd || 0)).toFixed(3);
-        }
+        const got = await loadOrCollect({
+          file: cacheFile, fresh, now, warn: ctx.warn,
+          key: scrapeKey(src.id, settings, srcCfg.windowDays || 14, cityCfg.cities),
+          maxAgeHours: settings.maxAgeHours || 24,
+          collect: () => src.collect(ctx)
+        });
+        raw = got.items;
+        entry.cached = got.cached; entry.scrapedAt = new Date(got.at).toISOString();
+        if (got.stale) entry.stale = true;
+        if (got.cached) console.log(`[${src.id}] using the ${got.stale ? 'last good' : 'saved'} scrape from ${entry.scrapedAt} (${raw.length} items)`);
+        else entry.estCostUsd = +(raw.length * (settings.pricePerResultUsd || 0)).toFixed(3);
       }
       entry.raw = raw.length;
+      // Counts only, so a run can be tuned from the public feed without publishing what was dropped.
+      entry.filtered = 0; entry.outsideWindow = 0;
       for (const item of raw) {
         try {
           const e = src.normalize(item, ctx);
-          if (e && Date.parse(e.end) > from && Date.parse(e.start) < to) { all.push(e); entry.kept++; }
+          if (!e) entry.filtered++;
+          else if (Date.parse(e.end) > from && Date.parse(e.start) < to) { all.push(e); entry.kept++; }
+          else entry.outsideWindow++;
         } catch (err) { warnings.push(`item skipped: ${err.message}`); }
       }
       entry.ok = true;
@@ -120,6 +126,10 @@ async function main() {
   const usedCities = [...new Set(events.map(e => e.cityId))].map(id => cityById[id]).filter(Boolean)
     .map(({ id, name, country, lat, lon, tz, region, currency }) => ({ id, name, country, lat, lon, tz, region, currency }));
   report.sort((a, b) => SOURCES.findIndex(s => s.id === a.id) - SOURCES.findIndex(s => s.id === b.id));
+  // The feed is public: make sure no key ever rides along in an error message.
+  const secrets = ['APIFY_TOKEN', 'TICKETMASTER_KEY', 'SKIDDLE_KEY', 'NETLIFY_AUTH_TOKEN'].map(k => env[k]).filter(v => v && v.length >= 6);
+  const scrub = s => secrets.reduce((t, v) => t.split(v).join('***'), String(s));
+  for (const r of report) { if (r.error) r.error = scrub(r.error); r.warnings = r.warnings.map(scrub); }
 
   const feed = {
     version: 1, generatedAt: new Date(now).toISOString(), sample: sample || undefined,
@@ -130,7 +140,7 @@ async function main() {
   fs.writeFileSync(path.join(outDir, 'events.json'), JSON.stringify(feed));
   const cost = report.reduce((s, r) => s + (r.estCostUsd || 0), 0);
   console.log('\nSource          raw   kept  note');
-  for (const r of report) console.log(`${r.label.padEnd(15)} ${String(r.raw).padStart(4)}  ${String(r.kept).padStart(5)}  ${r.error || (r.cached ? 'cached' : r.ok ? 'ok' : '')}${r.estCostUsd ? `  ~$${r.estCostUsd}` : ''}`);
+  for (const r of report) console.log(`${r.label.padEnd(15)} ${String(r.raw).padStart(4)}  ${String(r.kept).padStart(5)}  ${r.error || (r.stale ? 'last good scrape' : r.cached ? 'cached' : r.ok ? 'ok' : '')}${r.estCostUsd ? `  ~$${r.estCostUsd}` : ''}`);
   console.log(`\n${events.length} events in ${usedCities.length} cities after merging ${merged} duplicates. Estimated scraper cost this run: $${cost.toFixed(2)}.`);
   console.log(`Wrote ${path.relative(ROOT, path.join(outDir, 'events.json'))}`);
 }

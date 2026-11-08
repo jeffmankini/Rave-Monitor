@@ -34,7 +34,7 @@ export const ticketmaster = {
         });
         let j;
         try { j = await fetchJson(`https://app.ticketmaster.com/discovery/v2/events.json?${q}`, {}, { label: `Ticketmaster ${c.name}` }); }
-        catch (err) { ctx.warn(err.message); break; }
+        catch (err) { if (err.status === 401 || err.status === 403) throw err; ctx.warn(err.message); break; }
         await sleep(250); // stay under 5 requests a second
         for (const e of (j && j._embedded && j._embedded.events) || []) if (!seen.has(e.id)) { seen.add(e.id); out.push({ ...e, __city: c.id }); }
         if (!j || !j.page || page >= j.page.totalPages - 1) break;
@@ -76,7 +76,7 @@ export const skiddle = {
         });
         let j;
         try { j = await fetchJson(`https://www.skiddle.com/api/v1/events/search/?${q}`, {}, { label: `Skiddle ${c.name}` }); }
-        catch (err) { ctx.warn(err.message); break; }
+        catch (err) { if (err.status === 401 || err.status === 403) throw err; ctx.warn(err.message); break; }
         const res = (j && j.results) || [];
         for (const e of res) if (!seen.has(e.id)) { seen.add(e.id); out.push({ ...e, __city: c.id }); }
         if (res.length < 100) break;

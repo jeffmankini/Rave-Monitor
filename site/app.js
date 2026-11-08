@@ -1141,7 +1141,10 @@
       return;
     }
     const f = S.feed, nCities = new Set(S.ds.events.map(e => e.cityId)).size;
-    const rows = (f.sources || []).map(r => '<tr><td>' + esc(r.label) + '</td><td class="n">' + fmtN(r.kept || 0) + '</td><td>' + esc(r.error ? r.error : r.cached ? 'Reused last scrape' : r.ok ? 'OK' : '') + '</td></tr>').join('');
+    const from = r => r.scrapedAt ? ' from ' + new Date(r.scrapedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+    const status = r => r.error ? r.error : r.stale ? 'New scrape failed; showing the one' + from(r) : r.cached ? 'Saved scrape' + from(r)
+      : r.ok ? (!r.kept && r.warnings && r.warnings.length ? r.warnings[0] : 'OK') : '';
+    const rows = (f.sources || []).map(r => '<tr><td>' + esc(r.label) + '</td><td class="n">' + fmtN(r.kept || 0) + '</td><td>' + esc(status(r)) + '</td></tr>').join('');
     box.innerHTML = '<h3>' + (f.sample ? 'Sample feed' : 'Live listings') + '</h3>' +
       '<p>' + plural(S.ds.events.length, 'event', 'events') + ' in ' + plural(nCities, 'city', 'cities') + ', ' + feedAge() + ' (' + esc(new Date(f.generatedAt).toLocaleString()) + '). ' + plural(f.merged || 0, 'duplicate was', 'duplicates were') + ' merged across platforms.</p>' +
       (f.sample ? '<p>This is the built-in sample feed: fictional events in each platform\'s format, for trying the pipeline without API keys.</p>' : '') +
