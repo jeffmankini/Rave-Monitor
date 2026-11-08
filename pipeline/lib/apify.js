@@ -82,6 +82,24 @@ async function runNow(actor, input, { token, maxItems, maxChargeUsd, timeoutSecs
   }
   const usd = info.usageTotalUsd ?? info.stats?.computeUnits;
   log(`  ${actor}: ${status}, ${items.length} items${typeof usd === 'number' ? `, about $${usd.toFixed(3)}` : ''}`);
+  if (!items.length) await logTail(run.id, token, log);
   if (status !== 'SUCCEEDED' && !items.length) throw new Error(`${actor}: run ${run.id} ended ${status} with no results`);
   return { items, status, costUsd: typeof info.usageTotalUsd === 'number' ? info.usageTotalUsd : null };
+}
+
+/**
+ * When a run comes back empty, print the end of its log (warnings and errors first) so the cause shows
+ * in the job output. Job logs can be public, so anything that looks like a token or a proxy password
+ * is blanked out first.
+ */
+async function logTail(runId, token, log) {
+  try {
+    const res = await fetch(`${API}/actor-runs/${runId}/log?token=${encodeURIComponent(token)}`);
+    if (!res.ok) return;
+    const lines = (await res.text()).split('\n').filter(Boolean);
+    const flagged = lines.filter(l => /warn|error|exception|blocked|denied|forbidden|captcha|\b40[0-9]\b|\b5[0-9]{2}\b/i.test(l));
+    for (const l of (flagged.length ? flagged : lines).slice(-12)) {
+      log('    | ' + l.split(token).join('***').replace(/apify_api_\w+/g, '***').replace(/:\/\/[^\s/@]+@/g, '://***@').slice(0, 220));
+    }
+  } catch { /* the log is only a hint */ }
 }
