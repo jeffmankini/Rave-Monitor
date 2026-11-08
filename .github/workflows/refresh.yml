@@ -1,0 +1,75 @@
+name: Refresh listings
+
+# Daily: free APIs refresh every run; paid scrapers reuse their last pull until it is
+# older than maxAgeHours in config/sources.json (weekly by default) to keep costs down.
+on:
+  schedule:
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+    inputs:
+      fresh:
+        description: Ignore saved scrapes and pull every source again
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore saved scrapes
+        uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: scrapes-${{ github.run_id }}
+          restore-keys: scrapes-
+      - name: Build the feed
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          TICKETMASTER_KEY: ${{ secrets.TICKETMASTER_KEY }}
+          SKIDDLE_KEY: ${{ secrets.SKIDDLE_KEY }}
+        run: node pipeline/run.js ${{ inputs.fresh && '--fresh' || '' }}
+      - name: Save scrapes for the next run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: cache
+          key: scrapes-${{ github.run_id }}
+      - name: Build the site
+        run: node scripts/build-site.js
+      - name: Deploy to Netlify (optional)
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
+            npx --yes netlify-cli@17 deploy --prod --dir=dist --site "$NETLIFY_SITE_ID"
+          else
+            echo "Netlify secrets not set; deploying to GitHub Pages only."
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

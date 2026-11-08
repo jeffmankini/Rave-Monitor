@@ -1,0 +1,128 @@
+[
+ {
+  "id": "d-501",
+  "name": "BODY HEAT w/ Ash Ottley",
+  "date": "2026-11-14T22:00:00Z",
+  "timezone": "Europe/London",
+  "status": "on-sale",
+  "sold_out": false,
+  "venue": "Railway Arch 7",
+  "location": {
+   "street": "7 Arch Lane",
+   "city": "London",
+   "country": "GB",
+   "lat": 51.4971,
+   "lng": -0.0872
+  },
+  "lineup": [
+   {
+    "details": "Juno Price",
+    "time": "2026-11-14T22:00:00Z"
+   },
+   {
+    "details": "Ash Ottley",
+    "time": "2026-11-15T00:30:00Z"
+   }
+  ],
+  "genre_tags": [
+   "gig:ukgarage",
+   "gig:electronic"
+  ],
+  "type_tags": [
+   "music:gig"
+  ],
+  "price": 1500,
+  "currency": "GBP",
+  "age_limit": "18+",
+  "url": "https://dice.fm/event/sample-body-heat"
+ },
+ {
+  "id": "d-502",
+  "name": "Halle Ost: Acid Sunday",
+  "date": "2026-11-15T13:00:00Z",
+  "timezone": "Europe/Berlin",
+  "status": "on-sale",
+  "sold_out": false,
+  "venue": "Halle Ost",
+  "location": {
+   "street": "Sample Ufer 3",
+   "city": "Berlin",
+   "country": "DE",
+   "lat": 52.5051,
+   "lng": 13.4502
+  },
+  "lineup": [
+   {
+    "details": "Mika Arendt"
+   }
+  ],
+  "genre_tags": [
+   "gig:techno"
+  ],
+  "type_tags": [
+   "music:gig"
+  ],
+  "ticket_types": [
+   {
+    "name": "GA",
+    "price": {
+     "total": 1800
+    }
+   }
+  ],
+  "currency": "EUR",
+  "url": "https://dice.fm/event/sample-acid-sunday"
+ },
+ {
+  "id": "d-503",
+  "name": "Indie Rock Night",
+  "date": "2026-11-13T19:30:00Z",
+  "timezone": "Europe/London",
+  "status": "on-sale",
+  "sold_out": false,
+  "venue": "The Annex",
+  "location": {
+   "city": "London",
+   "country": "GB",
+   "lat": 51.53,
+   "lng": -0.1
+  },
+  "genre_tags": [
+   "gig:indie",
+   "gig:rock"
+  ],
+  "type_tags": [
+   "music:gig"
+  ],
+  "url": "https://dice.fm/event/sample-indie"
+ },
+ {
+  "id": "d-504",
+  "name": "Fever Pitch: Rye Calloway",
+  "date": "2026-11-13T22:00:00Z",
+  "timezone": "Europe/London",
+  "status": "on-sale",
+  "sold_out": true,
+  "venue": "Signal Hall",
+  "location": {
+   "city": "Manchester",
+   "country": "GB",
+   "lat": 53.4762,
+   "lng": -2.2391
+  },
+  "lineup": [
+   {
+    "details": "Rye Calloway"
+   }
+  ],
+  "genre_tags": [
+   "gig:drumandbass"
+  ],
+  "type_tags": [
+   "music:gig"
+  ],
+  "price": 2000,
+  "currency": "GBP",
+  "url": "https://dice.fm/event/sample-fever-pitch"
+ }
+]

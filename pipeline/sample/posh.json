@@ -1,0 +1,91 @@
+[
+ {
+  "eventId": "p-701",
+  "name": "Afterglow: Afro House Rooftop",
+  "url": "https://posh.vip/e/sample-afterglow",
+  "description": "Sunset afro house and amapiano on the roof.",
+  "startUtc": "2026-11-14T22:00:00.000Z",
+  "endUtc": "2026-11-15T03:00:00.000Z",
+  "timezone": "America/New_York",
+  "venueName": "Tidewater Rooftop",
+  "venueAddress": "1 Sample Dr, Miami, FL",
+  "city": "Miami",
+  "country": "USA",
+  "latitude": 25.7907,
+  "longitude": -80.13,
+  "tickets": [
+   {
+    "name": "GA",
+    "price": 25,
+    "quantityAvailable": 50,
+    "isHidden": false,
+    "closed": false
+   }
+  ],
+  "lowestPrice": 25,
+  "highestPrice": 45,
+  "isFree": false,
+  "currency": "USD",
+  "attendingCount": 312,
+  "displayOnThirdPartySites": true,
+  "lineup": [
+   {
+    "name": "Rico Vela",
+    "description": "DJ"
+   }
+  ],
+  "organizerName": "Sample Collective"
+ },
+ {
+  "eventId": "p-702",
+  "name": "Hip-Hop & R&B Brunch",
+  "url": "https://posh.vip/e/sample-brunch",
+  "description": "Bottomless brunch with a DJ.",
+  "startUtc": "2026-11-15T16:00:00.000Z",
+  "endUtc": "2026-11-15T20:00:00.000Z",
+  "timezone": "America/New_York",
+  "venueName": "Sample Lounge",
+  "city": "New York",
+  "latitude": 40.73,
+  "longitude": -73.99,
+  "displayOnThirdPartySites": true
+ },
+ {
+  "eventId": "p-703",
+  "name": "Warehouse Techno Takeover",
+  "url": "https://posh.vip/e/sample-optout",
+  "description": "Techno all night.",
+  "startUtc": "2026-11-15T04:00:00.000Z",
+  "timezone": "America/Chicago",
+  "venueName": "Sample Warehouse",
+  "city": "Chicago",
+  "latitude": 41.86,
+  "longitude": -87.66,
+  "displayOnThirdPartySites": false
+ },
+ {
+  "eventId": "p-704",
+  "name": "Second Floor: Marlo Danz",
+  "url": "https://posh.vip/e/sample-second-floor",
+  "description": "House music all night with Marlo Danz.",
+  "startUtc": "2026-11-15T04:00:00.000Z",
+  "endUtc": "2026-11-15T10:00:00.000Z",
+  "timezone": "America/Chicago",
+  "venueName": "Boilerhouse",
+  "venueAddress": "200 Sample Ave, Chicago, IL",
+  "city": "Chicago",
+  "latitude": 41.8891,
+  "longitude": -87.6472,
+  "lowestPrice": 20,
+  "highestPrice": 30,
+  "currency": "USD",
+  "attendingCount": 140,
+  "displayOnThirdPartySites": true,
+  "lineup": [
+   {
+    "name": "Marlo Danz",
+    "description": "DJ"
+   }
+  ]
+ }
+]

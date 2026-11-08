@@ -1,0 +1,17 @@
+{
+  "name": "rave-monitor",
+  "version": "0.1.0",
+  "description": "A live map of electronic music events, built from scraped and public listings. Open-source proof of concept.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "data": "node pipeline/run.js",
+    "data:sample": "node pipeline/run.js --sample",
+    "site": "node scripts/build-site.js",
+    "build": "npm run data && npm run site",
+    "build:sample": "npm run data:sample && npm run site",
+    "serve": "node scripts/serve.js",
+    "test": "node --test \"test/*.test.js\""
+  }
+}

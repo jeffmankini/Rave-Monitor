@@ -1,0 +1,44 @@
+[
+ {
+  "id": "pf-801",
+  "url": "https://partiful.com/e/sample-sale",
+  "title": "Sample Sale",
+  "description": "End-of-season sample sale.",
+  "city": "New York City",
+  "location": "108 Sample St, New York, NY",
+  "startDate": "2026-11-14T15:00:00.000Z",
+  "endDate": "2026-11-14T20:00:00.000Z",
+  "timezone": "America/New_York",
+  "isPublic": true,
+  "visibility": "public",
+  "goingCount": 900
+ },
+ {
+  "id": "pf-802",
+  "url": "https://partiful.com/e/sample-loft",
+  "title": "Loft Techno Party, Bushwick",
+  "description": "Techno and house in a loft. Bring friends.",
+  "city": "New York City",
+  "location": "Sample St, Brooklyn, NY",
+  "startDate": "2026-11-15T03:00:00.000Z",
+  "endDate": "2026-11-15T09:00:00.000Z",
+  "timezone": "America/New_York",
+  "isPublic": true,
+  "visibility": "public",
+  "goingCount": 96
+ },
+ {
+  "id": "pf-803",
+  "url": "https://partiful.com/e/sample-rooftop",
+  "title": "Rooftop Disco Sunday",
+  "description": "Disco and edits all afternoon.",
+  "city": "Los Angeles",
+  "location": "Sample Roof, Los Angeles, CA",
+  "startDate": "2026-11-15T22:00:00.000Z",
+  "endDate": "2026-11-16T04:00:00.000Z",
+  "timezone": "America/Los_Angeles",
+  "isPublic": true,
+  "visibility": "public",
+  "goingCount": 58
+ }
+]

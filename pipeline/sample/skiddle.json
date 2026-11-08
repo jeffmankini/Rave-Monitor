@@ -1,0 +1,70 @@
+[
+ {
+  "id": "sk-1",
+  "eventname": "Body Heat: Ash Ottley + Juno Price",
+  "startdate": "2026-11-14T22:00:00+00:00",
+  "enddate": "2026-11-15T04:00:00+00:00",
+  "entryprice": "£15.00",
+  "link": "https://www.skiddle.com/whats-on/London/sample-body-heat",
+  "venue": {
+   "name": "Railway Arch 7",
+   "latitude": 51.4972,
+   "longitude": -0.0871,
+   "town": "London",
+   "address": "7 Arch Lane"
+  },
+  "genres": [
+   {
+    "name": "UK Garage"
+   }
+  ],
+  "artists": [
+   {
+    "name": "Ash Ottley"
+   }
+  ],
+  "ticketsavailable": "1",
+  "cancelled": "0",
+  "minage": "18"
+ },
+ {
+  "id": "sk-2",
+  "eventname": "Glasgow Techno Social",
+  "startdate": "2026-11-13T23:00:00+00:00",
+  "entryprice": "£12",
+  "link": "https://www.skiddle.com/whats-on/Glasgow/sample-techno",
+  "venue": {
+   "name": "Basement Nine",
+   "latitude": 55.8612,
+   "longitude": -4.2561,
+   "town": "Glasgow"
+  },
+  "genres": [
+   {
+    "name": "Techno"
+   }
+  ],
+  "ticketsavailable": "1",
+  "cancelled": "0"
+ },
+ {
+  "id": "sk-3",
+  "eventname": "Indie Disco Classics",
+  "startdate": "2026-11-14T22:30:00+00:00",
+  "entryprice": "£6",
+  "link": "https://www.skiddle.com/whats-on/Leeds/sample-indie",
+  "venue": {
+   "name": "Sample Bar",
+   "latitude": 53.8,
+   "longitude": -1.55,
+   "town": "Leeds"
+  },
+  "genres": [
+   {
+    "name": "Indie"
+   }
+  ],
+  "ticketsavailable": "1",
+  "cancelled": "0"
+ }
+]

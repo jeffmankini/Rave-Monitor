@@ -1,0 +1,1002 @@
+{
+  "_note": "Cities the pipeline covers. Per-source handles: ra = Resident Advisor area page, dice = DICE city name, posh = Posh explore location, partiful = Partiful city slug, luma = Luma city handle, ticketmaster / skiddle = search around the city. Add or remove freely.",
+  "cities": [
+    {
+      "id": "berlin",
+      "name": "Berlin",
+      "country": "DE",
+      "lat": 52.52,
+      "lon": 13.405,
+      "tz": "Europe/Berlin",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/de/berlin",
+        "dice": "Berlin",
+        "luma": "berlin",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "london",
+      "name": "London",
+      "country": "GB",
+      "lat": 51.507,
+      "lon": -0.128,
+      "tz": "Europe/London",
+      "region": "eu",
+      "currency": "GBP",
+      "sources": {
+        "ra": "https://ra.co/events/uk/london",
+        "dice": "London",
+        "partiful": "lon",
+        "luma": "london",
+        "ticketmaster": true,
+        "skiddle": true
+      }
+    },
+    {
+      "id": "amsterdam",
+      "name": "Amsterdam",
+      "country": "NL",
+      "lat": 52.37,
+      "lon": 4.895,
+      "tz": "Europe/Amsterdam",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/nl/amsterdam",
+        "dice": "Amsterdam",
+        "luma": "amsterdam",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "paris",
+      "name": "Paris",
+      "country": "FR",
+      "lat": 48.857,
+      "lon": 2.352,
+      "tz": "Europe/Paris",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/fr/paris",
+        "dice": "Paris",
+        "luma": "paris"
+      }
+    },
+    {
+      "id": "barcelona",
+      "name": "Barcelona",
+      "country": "ES",
+      "lat": 41.387,
+      "lon": 2.17,
+      "tz": "Europe/Madrid",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/es/barcelona",
+        "dice": "Barcelona",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "madrid",
+      "name": "Madrid",
+      "country": "ES",
+      "lat": 40.417,
+      "lon": -3.704,
+      "tz": "Europe/Madrid",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/es/madrid",
+        "dice": "Madrid",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "lisbon",
+      "name": "Lisbon",
+      "country": "PT",
+      "lat": 38.722,
+      "lon": -9.139,
+      "tz": "Europe/Lisbon",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/pt/lisbon",
+        "dice": "Lisbon"
+      }
+    },
+    {
+      "id": "ibiza",
+      "name": "Ibiza",
+      "country": "ES",
+      "lat": 38.906,
+      "lon": 1.421,
+      "tz": "Europe/Madrid",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "brussels",
+      "name": "Brussels",
+      "country": "BE",
+      "lat": 50.85,
+      "lon": 4.352,
+      "tz": "Europe/Brussels",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/be/brussels",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "manchester",
+      "name": "Manchester",
+      "country": "GB",
+      "lat": 53.481,
+      "lon": -2.242,
+      "tz": "Europe/London",
+      "region": "eu",
+      "currency": "GBP",
+      "sources": {
+        "ra": "https://ra.co/events/uk/manchester",
+        "dice": "Manchester",
+        "ticketmaster": true,
+        "skiddle": true
+      }
+    },
+    {
+      "id": "bristol",
+      "name": "Bristol",
+      "country": "GB",
+      "lat": 51.455,
+      "lon": -2.588,
+      "tz": "Europe/London",
+      "region": "eu",
+      "currency": "GBP",
+      "sources": {
+        "ra": "https://ra.co/events/uk/bristol",
+        "dice": "Bristol",
+        "ticketmaster": true,
+        "skiddle": true
+      }
+    },
+    {
+      "id": "glasgow",
+      "name": "Glasgow",
+      "country": "GB",
+      "lat": 55.864,
+      "lon": -4.252,
+      "tz": "Europe/London",
+      "region": "eu",
+      "currency": "GBP",
+      "sources": {
+        "ra": "https://ra.co/events/uk/glasgow",
+        "dice": "Glasgow",
+        "ticketmaster": true,
+        "skiddle": true
+      }
+    },
+    {
+      "id": "leeds",
+      "name": "Leeds",
+      "country": "GB",
+      "lat": 53.801,
+      "lon": -1.549,
+      "tz": "Europe/London",
+      "region": "eu",
+      "currency": "GBP",
+      "sources": {
+        "ra": "https://ra.co/events/uk/leeds",
+        "dice": "Leeds",
+        "ticketmaster": true,
+        "skiddle": true
+      }
+    },
+    {
+      "id": "dublin",
+      "name": "Dublin",
+      "country": "IE",
+      "lat": 53.35,
+      "lon": -6.26,
+      "tz": "Europe/Dublin",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/ie/dublin",
+        "dice": "Dublin",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "hamburg",
+      "name": "Hamburg",
+      "country": "DE",
+      "lat": 53.551,
+      "lon": 9.993,
+      "tz": "Europe/Berlin",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/de/hamburg",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "cologne",
+      "name": "Cologne",
+      "country": "DE",
+      "lat": 50.938,
+      "lon": 6.96,
+      "tz": "Europe/Berlin",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/de/cologne",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "munich",
+      "name": "Munich",
+      "country": "DE",
+      "lat": 48.137,
+      "lon": 11.575,
+      "tz": "Europe/Berlin",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/de/munich",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "copenhagen",
+      "name": "Copenhagen",
+      "country": "DK",
+      "lat": 55.676,
+      "lon": 12.568,
+      "tz": "Europe/Copenhagen",
+      "region": "eu",
+      "currency": "DKK",
+      "sources": {
+        "ra": "https://ra.co/events/dk/copenhagen",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "stockholm",
+      "name": "Stockholm",
+      "country": "SE",
+      "lat": 59.329,
+      "lon": 18.069,
+      "tz": "Europe/Stockholm",
+      "region": "eu",
+      "currency": "SEK",
+      "sources": {
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "warsaw",
+      "name": "Warsaw",
+      "country": "PL",
+      "lat": 52.23,
+      "lon": 21.012,
+      "tz": "Europe/Warsaw",
+      "region": "eu",
+      "currency": "PLN",
+      "sources": {
+        "ra": "https://ra.co/events/pl/warsaw",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "prague",
+      "name": "Prague",
+      "country": "CZ",
+      "lat": 50.075,
+      "lon": 14.438,
+      "tz": "Europe/Prague",
+      "region": "eu",
+      "currency": "CZK",
+      "sources": {
+        "ra": "https://ra.co/events/cz/prague",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "vienna",
+      "name": "Vienna",
+      "country": "AT",
+      "lat": 48.208,
+      "lon": 16.373,
+      "tz": "Europe/Vienna",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/at/vienna",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "budapest",
+      "name": "Budapest",
+      "country": "HU",
+      "lat": 47.498,
+      "lon": 19.04,
+      "tz": "Europe/Budapest",
+      "region": "eu",
+      "currency": "HUF",
+      "sources": {}
+    },
+    {
+      "id": "zurich",
+      "name": "Zurich",
+      "country": "CH",
+      "lat": 47.377,
+      "lon": 8.54,
+      "tz": "Europe/Zurich",
+      "region": "eu",
+      "currency": "CHF",
+      "sources": {
+        "ra": "https://ra.co/events/ch/zurich",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "milan",
+      "name": "Milan",
+      "country": "IT",
+      "lat": 45.464,
+      "lon": 9.19,
+      "tz": "Europe/Rome",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {
+        "ra": "https://ra.co/events/it/milan",
+        "dice": "Milan"
+      }
+    },
+    {
+      "id": "tbilisi",
+      "name": "Tbilisi",
+      "country": "GE",
+      "lat": 41.716,
+      "lon": 44.783,
+      "tz": "Asia/Tbilisi",
+      "region": "eu",
+      "currency": "GEL",
+      "sources": {
+        "ra": "https://ra.co/events/ge/tbilisi"
+      }
+    },
+    {
+      "id": "belgrade",
+      "name": "Belgrade",
+      "country": "RS",
+      "lat": 44.787,
+      "lon": 20.457,
+      "tz": "Europe/Belgrade",
+      "region": "eu",
+      "currency": "RSD",
+      "sources": {}
+    },
+    {
+      "id": "bucharest",
+      "name": "Bucharest",
+      "country": "RO",
+      "lat": 44.426,
+      "lon": 26.103,
+      "tz": "Europe/Bucharest",
+      "region": "eu",
+      "currency": "RON",
+      "sources": {}
+    },
+    {
+      "id": "athens",
+      "name": "Athens",
+      "country": "GR",
+      "lat": 37.984,
+      "lon": 23.728,
+      "tz": "Europe/Athens",
+      "region": "eu",
+      "currency": "EUR",
+      "sources": {}
+    },
+    {
+      "id": "istanbul",
+      "name": "Istanbul",
+      "country": "TR",
+      "lat": 41.008,
+      "lon": 28.978,
+      "tz": "Europe/Istanbul",
+      "region": "eu",
+      "currency": "TRY",
+      "sources": {
+        "ra": "https://ra.co/events/tr/istanbul",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "newyork",
+      "name": "New York",
+      "country": "US",
+      "lat": 40.713,
+      "lon": -74.006,
+      "tz": "America/New_York",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/newyork",
+        "dice": "New York",
+        "posh": "New York, NY, USA",
+        "partiful": "nyc",
+        "luma": "nyc",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "chicago",
+      "name": "Chicago",
+      "country": "US",
+      "lat": 41.878,
+      "lon": -87.63,
+      "tz": "America/Chicago",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/chicago",
+        "dice": "Chicago",
+        "posh": "Chicago, IL, USA",
+        "partiful": "chi",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "detroit",
+      "name": "Detroit",
+      "country": "US",
+      "lat": 42.331,
+      "lon": -83.046,
+      "tz": "America/Detroit",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/detroit",
+        "posh": "Detroit, MI, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "milwaukee",
+      "name": "Milwaukee",
+      "country": "US",
+      "lat": 43.039,
+      "lon": -87.906,
+      "tz": "America/Chicago",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "posh": "Milwaukee, WI, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "losangeles",
+      "name": "Los Angeles",
+      "country": "US",
+      "lat": 34.052,
+      "lon": -118.244,
+      "tz": "America/Los_Angeles",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/losangeles",
+        "dice": "Los Angeles",
+        "posh": "Los Angeles, CA, USA",
+        "partiful": "la",
+        "luma": "la",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "sanfrancisco",
+      "name": "San Francisco",
+      "country": "US",
+      "lat": 37.775,
+      "lon": -122.419,
+      "tz": "America/Los_Angeles",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/sanfrancisco",
+        "dice": "San Francisco",
+        "posh": "San Francisco, CA, USA",
+        "partiful": "sf",
+        "luma": "sf",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "lasvegas",
+      "name": "Las Vegas",
+      "country": "US",
+      "lat": 36.17,
+      "lon": -115.14,
+      "tz": "America/Los_Angeles",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "posh": "Las Vegas, NV, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "miami",
+      "name": "Miami",
+      "country": "US",
+      "lat": 25.762,
+      "lon": -80.192,
+      "tz": "America/New_York",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/miami",
+        "dice": "Miami",
+        "posh": "Miami, FL, USA",
+        "partiful": "mia",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "denver",
+      "name": "Denver",
+      "country": "US",
+      "lat": 39.739,
+      "lon": -104.99,
+      "tz": "America/Denver",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "ra": "https://ra.co/events/us/denver",
+        "dice": "Denver",
+        "posh": "Denver, CO, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "austin",
+      "name": "Austin",
+      "country": "US",
+      "lat": 30.267,
+      "lon": -97.743,
+      "tz": "America/Chicago",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "dice": "Austin",
+        "posh": "Austin, TX, USA",
+        "partiful": "atx",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "seattle",
+      "name": "Seattle",
+      "country": "US",
+      "lat": 47.606,
+      "lon": -122.332,
+      "tz": "America/Los_Angeles",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "posh": "Seattle, WA, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "toronto",
+      "name": "Toronto",
+      "country": "CA",
+      "lat": 43.653,
+      "lon": -79.383,
+      "tz": "America/Toronto",
+      "region": "na",
+      "currency": "CAD",
+      "sources": {
+        "ra": "https://ra.co/events/ca/toronto",
+        "dice": "Toronto",
+        "posh": "Toronto, Canada",
+        "luma": "toronto",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "montreal",
+      "name": "Montréal",
+      "country": "CA",
+      "lat": 45.502,
+      "lon": -73.567,
+      "tz": "America/Toronto",
+      "region": "na",
+      "currency": "CAD",
+      "sources": {
+        "ra": "https://ra.co/events/ca/montreal",
+        "dice": "Montreal",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "mexicocity",
+      "name": "Mexico City",
+      "country": "MX",
+      "lat": 19.433,
+      "lon": -99.133,
+      "tz": "America/Mexico_City",
+      "region": "la",
+      "currency": "MXN",
+      "sources": {
+        "ra": "https://ra.co/events/mx/mexicocity",
+        "dice": "Mexico City",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "tulum",
+      "name": "Tulum",
+      "country": "MX",
+      "lat": 20.211,
+      "lon": -87.465,
+      "tz": "America/Cancun",
+      "region": "la",
+      "currency": "MXN",
+      "sources": {
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "bogota",
+      "name": "Bogotá",
+      "country": "CO",
+      "lat": 4.711,
+      "lon": -74.072,
+      "tz": "America/Bogota",
+      "region": "la",
+      "currency": "COP",
+      "sources": {}
+    },
+    {
+      "id": "medellin",
+      "name": "Medellín",
+      "country": "CO",
+      "lat": 6.244,
+      "lon": -75.581,
+      "tz": "America/Bogota",
+      "region": "la",
+      "currency": "COP",
+      "sources": {}
+    },
+    {
+      "id": "saopaulo",
+      "name": "São Paulo",
+      "country": "BR",
+      "lat": -23.55,
+      "lon": -46.633,
+      "tz": "America/Sao_Paulo",
+      "region": "la",
+      "currency": "BRL",
+      "sources": {
+        "ra": "https://ra.co/events/br/saopaulo"
+      }
+    },
+    {
+      "id": "rio",
+      "name": "Rio de Janeiro",
+      "country": "BR",
+      "lat": -22.907,
+      "lon": -43.173,
+      "tz": "America/Sao_Paulo",
+      "region": "la",
+      "currency": "BRL",
+      "sources": {}
+    },
+    {
+      "id": "buenosaires",
+      "name": "Buenos Aires",
+      "country": "AR",
+      "lat": -34.604,
+      "lon": -58.382,
+      "tz": "America/Argentina/Buenos_Aires",
+      "region": "la",
+      "currency": "ARS",
+      "sources": {
+        "ra": "https://ra.co/events/ar/buenosaires"
+      }
+    },
+    {
+      "id": "santiago",
+      "name": "Santiago",
+      "country": "CL",
+      "lat": -33.449,
+      "lon": -70.669,
+      "tz": "America/Santiago",
+      "region": "la",
+      "currency": "CLP",
+      "sources": {}
+    },
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "country": "JP",
+      "lat": 35.676,
+      "lon": 139.65,
+      "tz": "Asia/Tokyo",
+      "region": "ap",
+      "currency": "JPY",
+      "sources": {
+        "ra": "https://ra.co/events/jp/tokyo",
+        "luma": "tokyo"
+      }
+    },
+    {
+      "id": "osaka",
+      "name": "Osaka",
+      "country": "JP",
+      "lat": 34.694,
+      "lon": 135.502,
+      "tz": "Asia/Tokyo",
+      "region": "ap",
+      "currency": "JPY",
+      "sources": {}
+    },
+    {
+      "id": "seoul",
+      "name": "Seoul",
+      "country": "KR",
+      "lat": 37.567,
+      "lon": 126.978,
+      "tz": "Asia/Seoul",
+      "region": "ap",
+      "currency": "KRW",
+      "sources": {
+        "ra": "https://ra.co/events/kr/seoul",
+        "luma": "seoul"
+      }
+    },
+    {
+      "id": "shanghai",
+      "name": "Shanghai",
+      "country": "CN",
+      "lat": 31.23,
+      "lon": 121.474,
+      "tz": "Asia/Shanghai",
+      "region": "ap",
+      "currency": "CNY",
+      "sources": {}
+    },
+    {
+      "id": "hongkong",
+      "name": "Hong Kong",
+      "country": "HK",
+      "lat": 22.32,
+      "lon": 114.17,
+      "tz": "Asia/Hong_Kong",
+      "region": "ap",
+      "currency": "HKD",
+      "sources": {}
+    },
+    {
+      "id": "taipei",
+      "name": "Taipei",
+      "country": "TW",
+      "lat": 25.033,
+      "lon": 121.565,
+      "tz": "Asia/Taipei",
+      "region": "ap",
+      "currency": "TWD",
+      "sources": {}
+    },
+    {
+      "id": "bangkok",
+      "name": "Bangkok",
+      "country": "TH",
+      "lat": 13.756,
+      "lon": 100.502,
+      "tz": "Asia/Bangkok",
+      "region": "ap",
+      "currency": "THB",
+      "sources": {
+        "ra": "https://ra.co/events/th/bangkok"
+      }
+    },
+    {
+      "id": "bali",
+      "name": "Bali",
+      "country": "ID",
+      "lat": -8.65,
+      "lon": 115.137,
+      "tz": "Asia/Makassar",
+      "region": "ap",
+      "currency": "IDR",
+      "sources": {
+        "ra": "https://ra.co/events/id/bali"
+      }
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "country": "SG",
+      "lat": 1.352,
+      "lon": 103.82,
+      "tz": "Asia/Singapore",
+      "region": "ap",
+      "currency": "SGD",
+      "sources": {
+        "luma": "singapore"
+      }
+    },
+    {
+      "id": "manila",
+      "name": "Manila",
+      "country": "PH",
+      "lat": 14.6,
+      "lon": 120.984,
+      "tz": "Asia/Manila",
+      "region": "ap",
+      "currency": "PHP",
+      "sources": {}
+    },
+    {
+      "id": "mumbai",
+      "name": "Mumbai",
+      "country": "IN",
+      "lat": 19.076,
+      "lon": 72.878,
+      "tz": "Asia/Kolkata",
+      "region": "ap",
+      "currency": "INR",
+      "sources": {
+        "luma": "mumbai"
+      }
+    },
+    {
+      "id": "bengaluru",
+      "name": "Bengaluru",
+      "country": "IN",
+      "lat": 12.972,
+      "lon": 77.594,
+      "tz": "Asia/Kolkata",
+      "region": "ap",
+      "currency": "INR",
+      "sources": {}
+    },
+    {
+      "id": "goa",
+      "name": "Goa",
+      "country": "IN",
+      "lat": 15.58,
+      "lon": 73.74,
+      "tz": "Asia/Kolkata",
+      "region": "ap",
+      "currency": "INR",
+      "sources": {}
+    },
+    {
+      "id": "sydney",
+      "name": "Sydney",
+      "country": "AU",
+      "lat": -33.869,
+      "lon": 151.209,
+      "tz": "Australia/Sydney",
+      "region": "ap",
+      "currency": "AUD",
+      "sources": {
+        "ra": "https://ra.co/events/au/sydney",
+        "dice": "Sydney",
+        "luma": "sydney",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "melbourne",
+      "name": "Melbourne",
+      "country": "AU",
+      "lat": -37.814,
+      "lon": 144.963,
+      "tz": "Australia/Melbourne",
+      "region": "ap",
+      "currency": "AUD",
+      "sources": {
+        "ra": "https://ra.co/events/au/melbourne",
+        "dice": "Melbourne",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "auckland",
+      "name": "Auckland",
+      "country": "NZ",
+      "lat": -36.848,
+      "lon": 174.763,
+      "tz": "Pacific/Auckland",
+      "region": "ap",
+      "currency": "NZD",
+      "sources": {
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "dubai",
+      "name": "Dubai",
+      "country": "AE",
+      "lat": 25.205,
+      "lon": 55.27,
+      "tz": "Asia/Dubai",
+      "region": "af",
+      "currency": "AED",
+      "sources": {
+        "luma": "dubai",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "johannesburg",
+      "name": "Johannesburg",
+      "country": "ZA",
+      "lat": -26.204,
+      "lon": 28.047,
+      "tz": "Africa/Johannesburg",
+      "region": "af",
+      "currency": "ZAR",
+      "sources": {
+        "ra": "https://ra.co/events/za/johannesburg",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "capetown",
+      "name": "Cape Town",
+      "country": "ZA",
+      "lat": -33.925,
+      "lon": 18.424,
+      "tz": "Africa/Johannesburg",
+      "region": "af",
+      "currency": "ZAR",
+      "sources": {
+        "ra": "https://ra.co/events/za/capetown",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "lagos",
+      "name": "Lagos",
+      "country": "NG",
+      "lat": 6.524,
+      "lon": 3.379,
+      "tz": "Africa/Lagos",
+      "region": "af",
+      "currency": "NGN",
+      "sources": {}
+    },
+    {
+      "id": "nairobi",
+      "name": "Nairobi",
+      "country": "KE",
+      "lat": -1.286,
+      "lon": 36.817,
+      "tz": "Africa/Nairobi",
+      "region": "af",
+      "currency": "KES",
+      "sources": {}
+    }
+  ]
+}

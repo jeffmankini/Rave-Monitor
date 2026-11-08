@@ -1,0 +1,84 @@
+[
+ {
+  "eventId": "evt-luma-901",
+  "eventUrl": "https://luma.com/sample-ai",
+  "name": "AI Founders Dinner",
+  "description": "Dinner for founders.",
+  "startAt": "2026-11-13T02:00:00.000Z",
+  "endAt": "2026-11-13T05:00:00.000Z",
+  "timezone": "America/Los_Angeles",
+  "eventType": "in_person",
+  "categoryNames": [
+   "AI"
+  ],
+  "location": {
+   "name": "Sample Commons",
+   "city": "San Francisco",
+   "latitude": 37.78,
+   "longitude": -122.4,
+   "isVirtual": false
+  },
+  "ticketing": {
+   "isFree": true
+  }
+ },
+ {
+  "eventId": "evt-luma-902",
+  "eventUrl": "https://luma.com/sample-signal",
+  "name": "Signal: Ambient and Techno Rave",
+  "description": "Techno rave with live modular sets.",
+  "startAt": "2026-11-13T21:00:00.000Z",
+  "endAt": "2026-11-14T04:00:00.000Z",
+  "timezone": "Europe/Berlin",
+  "eventType": "in_person",
+  "categoryNames": [
+   "Arts"
+  ],
+  "location": {
+   "name": "Klangdepot",
+   "address": "Sample Weg 9, Berlin",
+   "city": "Berlin",
+   "country": "Germany",
+   "latitude": 52.4981,
+   "longitude": 13.4182,
+   "isVirtual": false
+  },
+  "ticketing": {
+   "isFree": false,
+   "isSoldOut": false,
+   "minPrice": 12,
+   "maxPrice": 15,
+   "currency": "EUR"
+  },
+  "guestCount": 180
+ },
+ {
+  "eventId": "evt-luma-903",
+  "eventUrl": "https://luma.com/sample-velvet",
+  "name": "Velvet Ledger (all night long) at Pier 4",
+  "description": "Disco all night long.",
+  "startAt": "2026-11-14T04:00:00.000Z",
+  "endAt": "2026-11-14T11:00:00.000Z",
+  "timezone": "America/New_York",
+  "eventType": "in_person",
+  "categoryNames": [
+   "Arts"
+  ],
+  "location": {
+   "name": "Pier 4",
+   "city": "New York",
+   "country": "United States",
+   "latitude": 40.7091,
+   "longitude": -73.9321,
+   "isVirtual": false
+  },
+  "ticketing": {
+   "isFree": false,
+   "isSoldOut": true,
+   "minPrice": 30,
+   "maxPrice": 30,
+   "currency": "USD"
+  },
+  "guestCount": 410
+ }
+]

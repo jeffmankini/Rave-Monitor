@@ -1,0 +1,224 @@
+[
+ {
+  "id": "9100001",
+  "title": "Cold Room with Halvard",
+  "content": "Sample listing.",
+  "minimumAge": 18,
+  "cost": "€22",
+  "contentUrl": "/events/9100001",
+  "date": "2026-11-14T00:00:00.000",
+  "startTime": "2026-11-14T23:59:00.000",
+  "endTime": "2026-11-15T10:00:00.000",
+  "interestedCount": 640,
+  "isTicketed": true,
+  "isFestival": false,
+  "hasSecretVenue": false,
+  "venue": {
+   "id": "v1",
+   "name": "Kaltwerk",
+   "address": "Sample Str. 1; Berlin",
+   "area": {
+    "id": "34",
+    "name": "Berlin",
+    "country": {
+     "urlCode": "DE"
+    }
+   },
+   "location": {
+    "latitude": 52.5112,
+    "longitude": 13.4431
+   }
+  },
+  "artists": [
+   {
+    "id": "a1",
+    "name": "Halvard"
+   },
+   {
+    "id": "a2",
+    "name": "Mira Kessel"
+   }
+  ],
+  "genres": [
+   {
+    "name": "Techno"
+   },
+   {
+    "name": "Hard Groove"
+   }
+  ],
+  "area": {
+   "ianaTimeZone": "Europe/Berlin"
+  }
+ },
+ {
+  "id": "9100002",
+  "title": "Low Frequency: Deltaform",
+  "minimumAge": 18,
+  "cost": "£18",
+  "contentUrl": "/events/9100002",
+  "startTime": "2026-11-13T22:00:00.000",
+  "endTime": "2026-11-14T05:00:00.000",
+  "interestedCount": 410,
+  "isFestival": false,
+  "venue": {
+   "name": "Undercroft",
+   "address": "1 Sample Rd; London",
+   "area": {
+    "name": "London",
+    "country": {
+     "urlCode": "GB"
+    }
+   },
+   "location": {
+    "latitude": 51.5221,
+    "longitude": -0.0723
+   }
+  },
+  "artists": [
+   {
+    "name": "Deltaform"
+   },
+   {
+    "name": "Wren Halloway"
+   }
+  ],
+  "genres": [
+   {
+    "name": "Drum & Bass"
+   },
+   {
+    "name": "Jungle"
+   }
+  ],
+  "area": {
+   "ianaTimeZone": "Europe/London"
+  }
+ },
+ {
+  "id": "9100003",
+  "title": "Second Floor presents Marlo Danz",
+  "minimumAge": 21,
+  "cost": "$25",
+  "contentUrl": "/events/9100003",
+  "startTime": "2026-11-14T22:00:00.000",
+  "endTime": "2026-11-15T04:00:00.000",
+  "interestedCount": 230,
+  "isFestival": false,
+  "venue": {
+   "name": "Boilerhouse",
+   "address": "200 Sample Ave; Chicago",
+   "area": {
+    "name": "Chicago",
+    "country": {
+     "urlCode": "US"
+    }
+   },
+   "location": {
+    "latitude": 41.889,
+    "longitude": -87.6471
+   }
+  },
+  "artists": [
+   {
+    "name": "Marlo Danz"
+   },
+   {
+    "name": "Moe Lattimore"
+   }
+  ],
+  "genres": [
+   {
+    "name": "House"
+   },
+   {
+    "name": "Deep House"
+   }
+  ],
+  "area": {
+   "ianaTimeZone": "America/Chicago"
+  }
+ },
+ {
+  "id": "9100004",
+  "title": "Night Shift: Velvet Ledger all night long",
+  "minimumAge": 21,
+  "cost": "$30",
+  "contentUrl": "/events/9100004",
+  "startTime": "2026-11-13T23:00:00.000",
+  "endTime": "2026-11-14T06:00:00.000",
+  "interestedCount": 520,
+  "isFestival": false,
+  "venue": {
+   "name": "Pier 4",
+   "address": "4 Sample Pier; Brooklyn",
+   "area": {
+    "name": "New York",
+    "country": {
+     "urlCode": "US"
+    }
+   },
+   "location": {
+    "latitude": 40.709,
+    "longitude": -73.932
+   }
+  },
+  "artists": [
+   {
+    "name": "Velvet Ledger"
+   }
+  ],
+  "genres": [
+   {
+    "name": "Disco"
+   }
+  ],
+  "area": {
+   "ianaTimeZone": "America/New_York"
+  }
+ },
+ {
+  "id": "9100005",
+  "title": "Body Heat: Ash Ottley",
+  "minimumAge": 18,
+  "cost": "£15",
+  "contentUrl": "/events/9100005",
+  "startTime": "2026-11-14T22:00:00.000",
+  "endTime": "2026-11-15T04:00:00.000",
+  "interestedCount": 300,
+  "isFestival": false,
+  "venue": {
+   "name": "Railway Arch 7",
+   "address": "7 Arch Lane; London",
+   "area": {
+    "name": "London",
+    "country": {
+     "urlCode": "GB"
+    }
+   },
+   "location": {
+    "latitude": 51.497,
+    "longitude": -0.087
+   }
+  },
+  "artists": [
+   {
+    "name": "Ash Ottley"
+   },
+   {
+    "name": "Juno Price"
+   }
+  ],
+  "genres": [
+   {
+    "name": "UK Garage"
+   },
+   {
+    "name": "Breaks"
+   }
+  ],
+  "area": {
+   "ianaTimeZone": "Europe/London"
+  }
+ }
+]
