@@ -1,23 +1,23 @@
 {
  "updatedAt": "2026-11-08",
- "events": 1308,
+ "events": 1306,
  "firstEvent": "2026-11-05T00:30:00.000Z",
  "lastEvent": "2026-11-22T21:00:00.000Z",
  "months": {
-  "2026-11": 1308
+  "2026-11": 1306
  },
  "cities": {
-  "london": 195,
-  "losangeles": 94,
-  "newyork": 82,
+  "london": 196,
+  "losangeles": 95,
+  "newyork": 81,
   "manchester": 75,
   "berlin": 65,
   "chicago": 61,
-  "amsterdam": 50,
+  "amsterdam": 49,
   "miami": 49,
   "glasgow": 47,
   "detroit": 45,
-  "mexicocity": 44,
+  "mexicocity": 43,
   "melbourne": 41,
   "bristol": 41,
   "paris": 40,
@@ -45,7 +45,6 @@
   "madrid": 2,
   "vienna": 2,
   "munich": 2,
-  "mumbai": 1,
   "hamburg": 1,
   "brussels": 1,
   "cologne": 1,
