@@ -7,9 +7,12 @@ import crypto from 'node:crypto';
 /** How long a saved scrape can stand in for a failed one. Old events still drop out by date. */
 export const STALE_LIMIT_DAYS = 30;
 
+/** Settings that change how a scrape runs or is paid for, not what it asks for. */
+const NOT_ASKS = ['maxAgeHours', 'pricePerResultUsd', 'maxChargeUsdPerRun', 'concurrency', 'enabled'];
+
 /** Fingerprint of everything that changes what a source asks for, so editing it triggers a new pull. */
 export function scrapeKey(srcId, settings = {}, windowDays = 14, cities = []) {
-  const { maxAgeHours, pricePerResultUsd, ...asks } = settings;
+  const asks = Object.fromEntries(Object.entries(settings).filter(([k]) => !NOT_ASKS.includes(k)));
   const perCity = cities.map(c => [c.id, c.sources?.[srcId] ?? null]);
   return crypto.createHash('sha1').update(JSON.stringify({ asks, windowDays, perCity })).digest('hex').slice(0, 12);
 }
@@ -44,4 +47,42 @@ export async function loadOrCollect({ file, key, maxAgeHours = 24, fresh = false
   }
   if (failure) throw failure;
   return { items: items || [], cached: false, stale: false, at: now };
+}
+
+/**
+ * Saved scrapes per city, for sources that run one scrape per city. Fixing one city's page or adding
+ * a city only pulls that city again, and a city whose pull fails keeps its own last good scrape.
+ * Tallies what happened in stats: scraped, saved, stale, scrapedItems, oldestAt.
+ */
+export function cityCache({ dir, srcId, settings = {}, windowDays = 14, fresh = false, now = Date.now(), warn = () => {}, stats = {} }) {
+  const { cities, ...asks } = settings;
+  return async (city, collect) => {
+    const got = await loadOrCollect({
+      file: path.join(dir, srcId, `${city.id}.json`), key: scrapeKey(srcId, asks, windowDays, [city]),
+      maxAgeHours: settings.maxAgeHours || 24, fresh, now, collect, warn: m => warn(`${city.name}: ${m}`)
+    });
+    const kind = got.stale ? 'stale' : got.cached ? 'saved' : 'scraped';
+    stats[kind] = (stats[kind] || 0) + 1;
+    if (kind === 'scraped') stats.scrapedItems = (stats.scrapedItems || 0) + got.items.length;
+    stats.oldestAt = Math.min(stats.oldestAt ?? got.at, got.at);
+    return got.items;
+  };
+}
+
+/** One-time move from a whole-source saved scrape (items tagged __city) to per-city files. */
+export function splitSourceCache({ dir, srcId, settings = {}, windowDays = 14, cities = [] }) {
+  const file = path.join(dir, `${srcId}.json`), saved = readSaved(file);
+  if (!saved) return 0;
+  const { cities: _, ...asks } = settings;
+  let moved = 0;
+  for (const c of cities) {
+    const out = path.join(dir, srcId, `${c.id}.json`);
+    const items = saved.items.filter(i => i.__city === c.id).map(({ __city, ...rest }) => rest);
+    if (!items.length || fs.existsSync(out)) continue;
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, JSON.stringify({ at: saved.at, key: scrapeKey(srcId, asks, windowDays, [c]), items }));
+    moved++;
+  }
+  fs.rmSync(file);
+  return moved;
 }

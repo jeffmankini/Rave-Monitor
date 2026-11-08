@@ -64,7 +64,9 @@ That's at most about $4.55 per full scrape. Paid sources reuse their last scrape
 
 Apify's free plan includes $5 of usage a month and pauses your account, rather than billing you, when it runs out. That covers about one full scrape a month at the default caps.
 
-If a scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing the last good scrape for that source, for up to 30 days. Editing a source's settings or its city entries makes the next run pull it again.
+Scrapes are saved per city. If a city's scrape fails or comes back empty (an expired token, used-up credit, a site change), the page keeps showing that city's last good scrape for up to 30 days. Editing a city's entry or adding a city pulls just that city again on the next run; editing a source's settings pulls all its cities again.
+
+Apify also limits how much memory your runs can use at once (16 GB on the free plan). The job queues runs to stay under `apifyMemoryMb` in `config/sources.json`; raise it if your plan allows more.
 
 Each city gets its own scraper run and cap, so a busy city can't use up the others' share. The scrapers list events date by date, so in the busiest cities (Berlin, London, New York) the cap fills up with the next few nights; raise `maxItemsPerCity` for fuller weeks.
 
@@ -72,7 +74,7 @@ To spend less, cut cities, lower `maxItemsPerCity`, raise `maxAgeHours` or switc
 
 ## Configuration
 
-- `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE city name, the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a run reports an error for one, copy the right URL from ra.co.
+- `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE city name, the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a city comes back empty, copy the right URL from ra.co. A city can list more than one RA page, and a wrong one simply returns nothing.
 - `config/sources.json` turns sources on or off and sets cities, caps, spending limits and how long a scrape stays fresh. Any Apify actor can be swapped in by changing `actor` and its `normalize()` in `pipeline/sources/`.
 
 ## Scraping responsibly

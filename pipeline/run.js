@@ -8,8 +8,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runActor } from './lib/apify.js';
-import { loadOrCollect, scrapeKey } from './lib/cache.js';
+import { runActor, setMemoryBudget } from './lib/apify.js';
+import { loadOrCollect, scrapeKey, cityCache, splitSourceCache } from './lib/cache.js';
 import { dedupe } from './lib/dedupe.js';
 import { ra, dice, posh, partiful, luma } from './sources/apify-sources.js';
 import { ticketmaster, skiddle } from './sources/api-sources.js';
@@ -62,6 +62,8 @@ async function main() {
   const sampleDelta = Math.ceil((now - SAMPLE_ANCHOR - 86400e3) / (7 * 86400e3)) * 7 * 86400e3;
 
   const all = [], report = [];
+  const windowDays = srcCfg.windowDays || 14;
+  setMemoryBudget(srcCfg.apifyMemoryMb);
   const tasks = SOURCES.filter(s => (!only || only.includes(s.id)) && srcCfg.sources[s.id] && srcCfg.sources[s.id].enabled !== false);
 
   await Promise.all(tasks.map(async src => {
@@ -88,17 +90,32 @@ async function main() {
       } else {
         const missing = src.needs.filter(k => !env[k]);
         if (missing.length) { entry.error = `skipped: set ${missing.join(' and ')}`; console.log(`[${src.id}] ${entry.error}`); return; }
-        const got = await loadOrCollect({
-          file: cacheFile, fresh, now, warn: ctx.warn,
-          key: scrapeKey(src.id, settings, srcCfg.windowDays || 14, cityCfg.cities),
-          maxAgeHours: settings.maxAgeHours || 24,
-          collect: () => src.collect(ctx)
-        });
-        raw = got.items;
-        entry.cached = got.cached; entry.scrapedAt = new Date(got.at).toISOString();
-        if (got.stale) entry.stale = true;
-        if (got.cached) console.log(`[${src.id}] using the ${got.stale ? 'last good' : 'saved'} scrape from ${entry.scrapedAt} (${raw.length} items)`);
-        else entry.estCostUsd = +(raw.length * (settings.pricePerResultUsd || 0)).toFixed(3);
+        if (src.perCity) {
+          // One scrape per city, each saved on its own (see cityCache).
+          const moved = splitSourceCache({ dir: cacheDir, srcId: src.id, settings, windowDays, cities: cityCfg.cities });
+          if (moved) console.log(`[${src.id}] split the saved scrape into ${moved} city files`);
+          const stats = {};
+          ctx.cachedCity = cityCache({ dir: cacheDir, srcId: src.id, settings, windowDays, fresh, now, warn: ctx.warn, stats });
+          raw = await src.collect(ctx);
+          entry.cityRuns = { scraped: stats.scraped || 0, saved: stats.saved || 0, stale: stats.stale || 0 };
+          entry.cached = !stats.scraped && (stats.saved || stats.stale) > 0;
+          if (entry.cached && stats.stale) entry.stale = true;
+          if (stats.oldestAt) entry.scrapedAt = new Date(stats.oldestAt).toISOString();
+          entry.estCostUsd = +((stats.scrapedItems || 0) * (settings.pricePerResultUsd || 0)).toFixed(3);
+          console.log(`[${src.id}] cities: ${entry.cityRuns.scraped} scraped, ${entry.cityRuns.saved} saved, ${entry.cityRuns.stale} kept from an earlier scrape`);
+        } else {
+          const got = await loadOrCollect({
+            file: cacheFile, fresh, now, warn: ctx.warn,
+            key: scrapeKey(src.id, settings, windowDays, cityCfg.cities),
+            maxAgeHours: settings.maxAgeHours || 24,
+            collect: () => src.collect(ctx)
+          });
+          raw = got.items;
+          entry.cached = got.cached; entry.scrapedAt = new Date(got.at).toISOString();
+          if (got.stale) entry.stale = true;
+          if (got.cached) console.log(`[${src.id}] using the ${got.stale ? 'last good' : 'saved'} scrape from ${entry.scrapedAt} (${raw.length} items)`);
+          else entry.estCostUsd = +(raw.length * (settings.pricePerResultUsd || 0)).toFixed(3);
+        }
       }
       entry.raw = raw.length;
       // Counts only, so a run can be tuned from the public feed without publishing what was dropped.

@@ -13,8 +13,9 @@ const citiesFor = (ctx, key) => {
  */
 async function perCity(ctx, key, scrape) {
   const cities = citiesFor(ctx, key), errors = [];
+  const cached = ctx.cachedCity || ((c, pull) => pull()); // run.js adds per-city saved scrapes
   const results = await pool(cities, ctx.settings.concurrency || 3, async c => {
-    try { return (await scrape(c)).map(x => ({ ...x, __city: c.id })); }
+    try { return (await cached(c, () => scrape(c))).map(x => ({ ...x, __city: c.id })); }
     catch (err) { errors.push(err); ctx.warn(`${c.name}: ${err.message}`); return []; }
   });
   if (cities.length && errors.length === cities.length) throw errors[0];
@@ -26,15 +27,20 @@ const diceTag = raw => { const k = String(raw).split(':').pop().toLowerCase(); r
 
 /* ---------------- Resident Advisor ---------------- */
 export const ra = {
-  id: 'ra', label: 'Resident Advisor', needs: ['APIFY_TOKEN'],
+  id: 'ra', label: 'Resident Advisor', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
-    return perCity(ctx, 'ra', async c => (await ctx.apify(s.actor, {
-      startUrls: [{ url: c.sources.ra }],
-      dateRangeFrom: isoDay(ctx.from), dateRangeTo: isoDay(ctx.to),
-      maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 1200,
-      proxyConfiguration: { useApifyProxy: !!s.useProxy }
-    }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun })).items);
+    return perCity(ctx, 'ra', async c => {
+      // A city can list more than one area page (when unsure which one RA uses); a wrong one just returns nothing.
+      const { items } = await ctx.apify(s.actor, {
+        startUrls: [].concat(c.sources.ra).map(url => ({ url })),
+        dateRangeFrom: isoDay(ctx.from), dateRangeTo: isoDay(ctx.to),
+        maxItems: s.maxItemsPerCity, enforceMaxItems: true, downloadDelay: 1200,
+        proxyConfiguration: { useApifyProxy: !!s.useProxy }
+      }, { maxItems: s.maxItemsPerCity, maxChargeUsd: s.maxChargeUsdPerRun });
+      const seen = new Set();
+      return items.filter(it => !it.id || (!seen.has(it.id) && seen.add(it.id)));
+    });
   },
   normalize(it, ctx) {
     // RA gives local wall-clock times; fall back to the scraped city's zone if the item has none.
@@ -59,7 +65,7 @@ export const ra = {
 /* ---------------- DICE ---------------- */
 const DICE_ELECTRONIC = /techno|house|electronic|dance|drum|dnb|jungle|garage|disco|trance|dubstep|bass|club|dj|rave|edm|amapiano|afro|breaks|electro|ambient|hardcore/;
 export const dice = {
-  id: 'dice', label: 'DICE', needs: ['APIFY_TOKEN'],
+  id: 'dice', label: 'DICE', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
     return perCity(ctx, 'dice', async c => (await ctx.apify(s.actor, {
@@ -101,7 +107,7 @@ export const dice = {
 
 /* ---------------- Posh ---------------- */
 export const posh = {
-  id: 'posh', label: 'Posh', needs: ['APIFY_TOKEN'],
+  id: 'posh', label: 'Posh', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
     // Posh's explore filter takes named time frames; widen to the year when the window runs into next month.
@@ -160,7 +166,7 @@ export const partiful = {
 
 /* ---------------- Luma ---------------- */
 export const luma = {
-  id: 'luma', label: 'Luma', needs: ['APIFY_TOKEN'],
+  id: 'luma', label: 'Luma', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
     return perCity(ctx, 'luma', async c => (await ctx.apify(s.actor, {

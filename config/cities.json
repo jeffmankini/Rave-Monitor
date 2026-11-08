@@ -436,7 +436,7 @@
       "region": "na",
       "currency": "USD",
       "sources": {
-        "ra": "https://ra.co/events/us/newyork",
+        "ra": ["https://ra.co/events/us/newyorkcity", "https://ra.co/events/us/newyork"],
         "dice": "New York",
         "posh": "New York, NY, USA",
         "partiful": "nyc",
