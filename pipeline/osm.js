@@ -29,9 +29,10 @@ export function bboxOf(c, radiusKm = RADIUS_KM) {
 }
 
 /** One Overpass query for a group of cities: their clubs and music venues, with a centre for buildings.
- *  A short declared timeout gets a query scheduled sooner on a busy server. */
+ *  A short declared timeout and a small memory cap get a query scheduled sooner on a busy server
+ *  (a city's clubs are well under a megabyte). */
 export function overpassQuery(cities) {
-  return '[out:json][timeout:60];(' +
+  return '[out:json][timeout:25][maxsize:33554432];(' +
     cities.map(c => `nwr["amenity"~"^(nightclub|music_venue)$"](${bboxOf(c).join(',')});`).join('') +
     ');out center tags qt;';
 }
@@ -95,8 +96,11 @@ export function parseElements(elements, group, allCities = group) {
   return out;
 }
 
+// The server to ask first: the next one after a slow or failed answer, which spreads the load too.
+let first = 0;
 async function overpass(query, fetchImpl, log, timeoutMs) {
-  for (const url of ENDPOINTS) {
+  for (let n = 0; n < ENDPOINTS.length; n++) {
+    const url = ENDPOINTS[(first + n) % ENDPOINTS.length], t0 = Date.now();
     try {
       const res = await fetchImpl(url, {
         method: 'POST', body: new URLSearchParams({ data: query }).toString(),
@@ -107,9 +111,11 @@ async function overpass(query, fetchImpl, log, timeoutMs) {
       const json = await res.json();
       if (!Array.isArray(json.elements)) throw new Error('no elements in the answer');
       if (json.remark && /error|timed out/i.test(json.remark)) throw new Error(json.remark.slice(0, 120));
+      if (Date.now() - t0 > 20e3) first = (first + n + 1) % ENDPOINTS.length;
       return json;
     } catch (err) {
       log(`  Overpass at ${new URL(url).host}: ${err.message}`);
+      first = (first + n + 1) % ENDPOINTS.length;
     }
   }
   return null;
@@ -121,10 +127,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 /**
  * Fetch the clubs for every city whose list is a week old (or all, with force), a few cities per query.
  * Small queries (a city each) are what busy servers take. A city whose query fails keeps its last list and
- * is tried again on the next run. A run stops starting queries after `budgetMs`, or after three failures
+ * is tried again on the next run. A run stops starting queries after `budgetMs` (8 minutes), or after three failures
  * in a row (Overpass is down), so it never holds up the site: what's left is due next run, oldest first.
  */
-export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 1, pause = 2000, timeoutMs = 75e3, budgetMs = 5 * 60e3 } = {}) {
+export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 1, pause = 2000, timeoutMs = 60e3, budgetMs = 8 * 60e3 } = {}) {
   const started = Date.now();
   const osmDir = path.join(dir, 'osm');
   fs.mkdirSync(osmDir, { recursive: true });
@@ -142,10 +148,10 @@ export async function refreshOsm(dir, cities, { force = false, now = Date.now(),
     if (Date.now() - started > budgetMs) { log(`  Out of time; ${due.length - i} cities wait for the next run.`); break; }
     if (failures >= 3) { log(`  Overpass isn't answering; ${due.length - i} cities wait for the next run.`); break; }
     if (i) await sleep(pause); // one query at a time, with a pause: Overpass is a shared, free service
-    const json = await overpass(overpassQuery(group), fetchImpl, log, timeoutMs);
+    const t1 = Date.now(), json = await overpass(overpassQuery(group), fetchImpl, log, timeoutMs);
     if (!json) { failures++; log(`  Kept the last lists for ${group.map(c => c.id).join(', ')}.`); continue; }
     failures = 0;
-    log(`  ${group.map(c => c.id).join(', ')}: ${json.elements.length} places.`);
+    log(`  ${group.map(c => c.id).join(', ')}: ${json.elements.length} places, ${Math.round((Date.now() - t1) / 1000)} s.`);
     const rows = parseElements(json.elements, group, placed);
     for (const c of group) {
       const file = path.join(osmDir, `${c.id}.json`), old = readJson(file);
