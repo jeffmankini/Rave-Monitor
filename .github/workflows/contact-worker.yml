@@ -43,19 +43,40 @@ jobs:
             [ -n "${!k}" ] || missing="$missing $k"
           done
           if [ -n "$missing" ]; then echo "::error::Missing GitHub Actions secrets:$missing"; exit 1; fi
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: worker/contact
-          wranglerVersion: '4'
-          secrets: |
-            CONTACT_TO
-            TURNSTILE_SECRET
+      - name: Check the Cloudflare token
         env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          api() { curl -s -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4$1"; }
+          say() { echo "$1: $(echo "$2" | jq -r 'if .success then "ok" else "FAILED " + ([.errors[]? | "\(.code) \(.message)"] | join("; ")) end')"; }
+          say "Token is valid" "$(api /user/tokens/verify)"
+          echo "Accounts this token can use: $(api '/accounts?per_page=50' | jq -r '[.result[]? | .name] | join(", ")')"
+          if api '/accounts?per_page=50' | jq -e --arg a "$CF_ACCOUNT" '[.result[]?.id] | index($a)' > /dev/null; then echo "CLOUDFLARE_ACCOUNT_ID: matches one of them"; else echo "::error::CLOUDFLARE_ACCOUNT_ID isn't an account this token can use. Copy the Account ID (not the Zone ID) from the dashboard, or scope the token to that account."; fi
+          say "Account access" "$(api "/accounts/$CF_ACCOUNT")"
+          say "Workers Scripts (account)" "$(api "/accounts/$CF_ACCOUNT/workers/scripts")"
+          zone=$(api '/zones?name=ravemonitor.com' | jq -r '.result[0].id // empty')
+          if [ -z "$zone" ]; then echo "::error::The token can't see the ravemonitor.com zone. Add the zone to the token's Zone Resources."; else
+            say "Workers Routes (ravemonitor.com)" "$(api "/zones/$zone/workers/routes")"
+            say "DNS (ravemonitor.com)" "$(api "/zones/$zone/dns_records?per_page=1")"
+          fi
+      - name: Deploy to Cloudflare
+        working-directory: worker/contact
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+      - name: Set the Worker's secrets
+        working-directory: worker/contact
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CONTACT_TO: ${{ secrets.CONTACT_TO }}
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+        run: |
+          jq -n '{CONTACT_TO: env.CONTACT_TO, TURNSTILE_SECRET: env.TURNSTILE_SECRET}' > "$RUNNER_TEMP/secrets.json"
+          npx --yes wrangler@4 secret bulk "$RUNNER_TEMP/secrets.json"
+          rm -f "$RUNNER_TEMP/secrets.json"
       - name: Check it answers
         run: |
           for i in 1 2 3 4 5 6; do
