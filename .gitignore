@@ -5,3 +5,7 @@ dist/
 .env
 .DS_Store
 archive-data/
+
+# Local secrets for wrangler dev
+.dev.vars
+.wrangler/

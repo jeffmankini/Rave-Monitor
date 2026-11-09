@@ -65,6 +65,30 @@ jobs:
             # Not needed so far: the custom domain was created without it.
             api "/zones/$zone/dns_records?per_page=1" | jq -e .success > /dev/null || echo "::notice::The token can't read DNS records. That's fine unless api.ravemonitor.com stops resolving; then add Zone > DNS > Edit."
           fi
+      - name: Check the contact settings
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CONTACT_TO: ${{ secrets.CONTACT_TO }}
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+        run: |
+          # A made-up token: a working secret answers invalid-input-response, a wrong one invalid-input-secret.
+          codes=$(curl -s https://challenges.cloudflare.com/turnstile/v0/siteverify --data-urlencode "secret=$TURNSTILE_SECRET" --data-urlencode "response=setup-check" | jq -r '."error-codes" | join(",")')
+          echo "Turnstile secret check: $codes"
+          case "$codes" in *invalid-input-secret*) echo "::error::TURNSTILE_SECRET isn't a valid Turnstile secret key. Copy the Secret Key from the ravemonitor.com widget in Cloudflare > Turnstile.";; esac
+          case "$CONTACT_TO" in
+            *@ravemonitor.com) echo "::warning::CONTACT_TO is an @ravemonitor.com address. Cloudflare only delivers to verified destination addresses: use the inbox hello@ravemonitor.com forwards to.";;
+            *@*) echo "CONTACT_TO: an outside address (good)";;
+            *) echo "::error::CONTACT_TO doesn't look like an email address.";;
+          esac
+          dest=$(curl -s -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/email/routing/addresses?per_page=50")
+          if [ "$(echo "$dest" | jq -r .success)" = "true" ]; then
+            state=$(echo "$dest" | jq -r --arg e "$CONTACT_TO" '[.result[] | select((.email | ascii_downcase) == ($e | ascii_downcase))][0] | if . == null then "not listed" elif .verified then "verified" else "not verified yet" end')
+            echo "CONTACT_TO in Email Routing destination addresses: $state"
+            [ "$state" = "verified" ] || echo "::error::CONTACT_TO must be a verified destination address in Cloudflare Email Routing (it is $state)."
+          else
+            echo "Can't read Email Routing destination addresses with this token (optional: Account > Email Routing Addresses > Read)."
+          fi
       - name: Deploy to Cloudflare
         working-directory: worker/contact
         env:

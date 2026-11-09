@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handle, mime, TOPICS } from '../worker/contact/src/index.js';
+import { handle, mime, TOPICS } from '../worker/contact/src/handler.js';
 
 const ORIGIN = 'https://ravemonitor.com';
 function setup(over = {}) {
@@ -101,4 +101,16 @@ test('raw MIME encodes non-ASCII headers and the body', () => {
   assert.match(raw, /\r\nMessage-ID: <[0-9a-f-]+@ravemonitor\.com>\r\n/);
   const body = raw.split('\r\n\r\n')[1].replace(/\r\n/g, '');
   assert.equal(Buffer.from(body, 'base64').toString('utf8'), 'Ça va?\nYes.');
+});
+
+test('with Email Routing, the binding gets an EmailMessage holding raw MIME', async () => {
+  const { env, sent, fetch } = setup();
+  class EmailMessage { constructor(from, to, raw) { Object.assign(this, { from, to, raw }); } }
+  const res = await handle(post(good), env, { fetch, EmailMessage });
+  assert.equal(res.status, 200);
+  assert.ok(sent[0] instanceof EmailMessage);
+  assert.equal(sent[0].from, 'hello@ravemonitor.com');
+  assert.equal(sent[0].to, 'inbox@example.com');
+  assert.match(sent[0].raw, /\r\nReply-To: Ana <ana@example\.org>\r\n/);
+  assert.match(sent[0].raw, /\r\nTo: <inbox@example\.com>\r\n/);
 });
