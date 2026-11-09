@@ -66,11 +66,13 @@ test('refresh writes each city, an index for search, skips fresh lists and keeps
   // Eight days later both are due; every server fails, so the lists stay, and after three failed
   // queries in a row the run gives up (a city per query by default).
   let tries = 0;
-  const fail = async () => { tries++; throw new Error('offline'); };
+  const hosts = [];
+  const fail = async url => { tries++; hosts.push(new URL(url).host); throw new Error('offline'); };
   const many = Array.from({ length: 5 }, (_, i) => ({ id: 'c' + i, name: 'C' + i, country: 'DE', lat: 50 + i, lon: 10 }));
   const r3 = await refreshOsm(dir, [berlin, london, ...many], { fetchImpl: fail, log: () => {}, pause: 0, now: Date.parse('2026-11-17T12:00:00Z') });
   assert.equal(r3.fetched, 0);
   assert.equal(tries, 3 * 3); // three queries, each tried on three servers
+  for (let q = 0; q < 3; q++) assert.equal(new Set(hosts.slice(q * 3, q * 3 + 3)).size, 3); // each server once per query
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'osm', 'berlin.json'), 'utf8')).clubs[0][1], 'Tresor');
   // Out of time before the first query: nothing fetched, nothing lost.
   const r4 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: () => {}, pause: 0, budgetMs: -1, now: Date.parse('2026-11-18T00:00:00Z') });

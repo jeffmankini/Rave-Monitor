@@ -29,10 +29,10 @@ export function bboxOf(c, radiusKm = RADIUS_KM) {
 }
 
 /** One Overpass query for a group of cities: their clubs and music venues, with a centre for buildings.
- *  A short declared timeout and a small memory cap get a query scheduled sooner on a busy server
- *  (a city's clubs are well under a megabyte). */
+ *  A short declared timeout and a modest memory cap get a query scheduled sooner on a busy server
+ *  (32 MB is too little for a big city's box; the default is 512 MB). */
 export function overpassQuery(cities) {
-  return '[out:json][timeout:25][maxsize:33554432];(' +
+  return '[out:json][timeout:25][maxsize:134217728];(' +
     cities.map(c => `nwr["amenity"~"^(nightclub|music_venue)$"](${bboxOf(c).join(',')});`).join('') +
     ');out center tags qt;';
 }
@@ -96,11 +96,13 @@ export function parseElements(elements, group, allCities = group) {
   return out;
 }
 
-// The server to ask first: the next one after a slow or failed answer, which spreads the load too.
+// The server to ask first: the one that last answered quickly; after a slow answer or a failure, the
+// next one, which spreads the load too.
 let first = 0;
 async function overpass(query, fetchImpl, log, timeoutMs) {
+  const start = first;
   for (let n = 0; n < ENDPOINTS.length; n++) {
-    const url = ENDPOINTS[(first + n) % ENDPOINTS.length], t0 = Date.now();
+    const at = (start + n) % ENDPOINTS.length, url = ENDPOINTS[at], t0 = Date.now();
     try {
       const res = await fetchImpl(url, {
         method: 'POST', body: new URLSearchParams({ data: query }).toString(),
@@ -111,13 +113,13 @@ async function overpass(query, fetchImpl, log, timeoutMs) {
       const json = await res.json();
       if (!Array.isArray(json.elements)) throw new Error('no elements in the answer');
       if (json.remark && /error|timed out/i.test(json.remark)) throw new Error(json.remark.slice(0, 120));
-      if (Date.now() - t0 > 20e3) first = (first + n + 1) % ENDPOINTS.length;
+      first = Date.now() - t0 > 20e3 ? (at + 1) % ENDPOINTS.length : at;
       return json;
     } catch (err) {
       log(`  Overpass at ${new URL(url).host}: ${err.message}`);
-      first = (first + n + 1) % ENDPOINTS.length;
     }
   }
+  first = (start + 1) % ENDPOINTS.length;
   return null;
 }
 
