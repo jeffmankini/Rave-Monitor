@@ -70,6 +70,8 @@ jobs:
             git worktree add -q --orphan -b archive archive-data
           fi
           node pipeline/archive.js archive-data public/events.json
+          # OpenStreetMap's clubs around each city, about once a week (pipeline/osm.js).
+          node pipeline/osm.js archive-data || echo "OpenStreetMap refresh failed; keeping the last lists."
           cd archive-data
           git add -A
           if git diff --cached --quiet; then echo "Archive unchanged."; else git commit -q -m "Archive $(date -u +%F)" && git push -q origin archive; fi

@@ -67,6 +67,12 @@ export async function exportArchive(dir, out) {
   for (const [m, list] of Object.entries(browse.months)) fs.writeFileSync(path.join(out, 'data', `${m}.json`), JSON.stringify(list));
   // The venue directory the map's Venues tab and layer use (pipeline/venues.js has the row format).
   fs.writeFileSync(path.join(out, 'data', 'venues.json'), JSON.stringify(buildVenues([...archive.records.values()], archive.cities)));
+  // OpenStreetMap's clubs around each city, as fetched (pipeline/osm.js), for the venues layer.
+  const osmDir = path.join(dir, 'osm');
+  if (fs.existsSync(osmDir)) {
+    fs.mkdirSync(path.join(out, 'data', 'osm'), { recursive: true });
+    for (const f of fs.readdirSync(osmDir)) if (f.endsWith('.json')) fs.copyFileSync(path.join(osmDir, f), path.join(out, 'data', 'osm', f));
+  }
   const flat = rows(archive);
   const cols = Object.keys(flat[0] || { id: 1 });
   fs.writeFileSync(path.join(out, 'events.csv'), [cols.join(','), ...flat.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\n') + '\n');

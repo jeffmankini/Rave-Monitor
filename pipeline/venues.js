@@ -22,11 +22,12 @@ const CLUB = /\b(night ?club|day ?club|beach club|club|lounge|bar|discoth[eè]qu
 export const isConcertVenue = name => CONCERT.test(name) && !CLUB.test(name);
 
 /**
- * A venue's name as a matching key: lowercase, no accents or punctuation, no rooms in brackets,
- * no leading "the", and without the city's name at either end ("Clock Factory Bristol" = "Clock Factory").
+ * A venue's name as a matching key: lowercase, no accents or punctuation, no rooms in brackets (even
+ * an unclosed one), no leading "the", and without the city's name at either end ("Clock Factory
+ * Bristol" = "Clock Factory").
  */
 export function venueKey(name, cityName = '') {
-  let s = norm(String(name || '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')).replace(/&/g, ' and ').replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  let s = norm(String(name || '').replace(/\([^)]*\)|\[[^\]]*\]|\([^)]*$/g, ' ')).replace(/&/g, ' and ').replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
   const c = norm(cityName).replace(/[^a-z0-9]+/g, ' ').trim();
   if (c && s !== c) {
     if (s.endsWith(' ' + c)) s = s.slice(0, -c.length - 1);
@@ -57,6 +58,8 @@ function nightOf(iso, tz) {
 
 const median = arr => { const a = [...arr].sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
 const tokens = k => new Set(k.split(' ').filter(Boolean));
+// What a name has in brackets, as keys: "Barras Art And Design (BAaD)" is also "baad".
+const bracketKeys = name => (String(name || '').match(/\(([^)]+)\)|\[([^\]]+)\]/g) || []).map(b => venueKey(b.slice(1, -1))).filter(Boolean);
 const subset = (a, b) => [...a].every(t => b.has(t));
 
 /** records: archive records; cities: { id: { name } }; now: ISO time. */
@@ -70,11 +73,13 @@ export function buildVenues(records, cities = {}, now = new Date().toISOString()
     if (!key || NOT_A_VENUE.test(key)) continue;
     const gk = r.cityId + '|' + key;
     let g = groups.get(gk);
-    if (!g) groups.set(gk, g = { cityId: r.cityId, keys: new Set([key]), recs: [] });
+    if (!g) groups.set(gk, g = { cityId: r.cityId, keys: new Set([key]), brackets: new Set(), recs: [] });
     g.recs.push(r);
+    for (const b of bracketKeys(v.name)) g.brackets.add(b);
   }
   // 2. Within a city, fold a group into a bigger one at the same spot whose name contains it
-  //    ("Phonox Brixton" into "Phonox", "Melkweg Oude Zaal" into "Melkweg").
+  //    ("Phonox Brixton" into "Phonox", "Melkweg Oude Zaal" into "Melkweg"), is the same without spaces
+  //    ("Room 2" and "Room2"), or is what the other has in brackets ("BAaD" and "Barras Art And Design (BAaD)").
   const pos = g => {
     const ex = g.recs.filter(r => !r.venue.approx && Number.isFinite(r.venue.lat) && Number.isFinite(r.venue.lon));
     return ex.length ? [median(ex.map(r => r.venue.lat)), median(ex.map(r => r.venue.lon))] : null;
@@ -84,12 +89,15 @@ export function buildVenues(records, cities = {}, now = new Date().toISOString()
   for (const list of Object.values(byCity)) {
     list.sort((a, b) => b.recs.length - a.recs.length);
     for (let i = list.length - 1; i > 0; i--) {
-      const small = list[i], sp = pos(small), st = tokens([...small.keys][0]);
+      const small = list[i], sp = pos(small), sk = [...small.keys][0], st = tokens(sk);
       for (let j = 0; j < i; j++) {
-        const big = list[j], bp = pos(big), bt = tokens([...big.keys][0]);
-        if (!sp || !bp || km(sp[0], sp[1], bp[0], bp[1]) > 0.15) continue;
-        if (!(subset(bt, st) || subset(st, bt))) continue;
+        const big = list[j], bp = pos(big), bk = [...big.keys][0], bt = tokens(bk);
+        if (!sp || !bp) continue;
+        const d = km(sp[0], sp[1], bp[0], bp[1]);
+        const same = d <= 1 && sk.replace(/ /g, '') === bk.replace(/ /g, '');
+        if (!same && (d > 0.15 || !(subset(bt, st) || subset(st, bt) || big.brackets.has(sk) || small.brackets.has(bk)))) continue;
         for (const k of small.keys) big.keys.add(k);
+        for (const b of small.brackets) big.brackets.add(b);
         big.recs.push(...small.recs);
         list.splice(i, 1);
         break;

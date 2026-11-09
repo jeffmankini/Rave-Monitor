@@ -145,6 +145,10 @@ the night is over. Updated by the daily refresh job; don't edit by hand.
   (status changes such as sold out or cancelled, with when they were seen).
 - \`cities.json\`: names and coordinates for each \`cityId\`.
 - \`summary.json\`: counts by month, city, genre and platform.
+- \`osm/\`: clubs and music venues around each city from OpenStreetMap, refreshed weekly, for the map's
+  venues layer (\`osm/<city>.json\`, and \`osm/index.json\` with their names for search). That data is
+  © OpenStreetMap contributors and available under the Open Database License (ODbL 1.0):
+  https://www.openstreetmap.org/copyright
 
 Event facts only: no descriptions, attendee lists or organizer contact details. The site also offers
 the whole archive as a SQLite database and a CSV file.

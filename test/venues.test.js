@@ -9,6 +9,7 @@ test('venue keys ignore case, accents, rooms, "the" and the city name', () => {
   assert.equal(venueKey('Manchester New Century Hall', 'Manchester'), 'new century hall');
   assert.equal(venueKey('Ëlsewhere — Zone One', 'New York'), 'elsewhere zone one');
   assert.equal(venueKey('Berlin', 'Berlin'), 'berlin');
+  assert.equal(venueKey('G2 (The Garage', 'Glasgow'), 'g2');
 });
 
 test('names drop the city at the end unless too little is left; clubs in casinos are clubs', () => {
@@ -59,6 +60,18 @@ test('rooms and spellings at the same spot merge into one venue under its base n
   assert.equal(byName['Sub Club'][6], '22 Jamaica St');
   assert.equal(byName['OVO Hydro Arena'][5] & 2, 2); // concert venue
   assert.equal(byName['Sub Club'][5], 0);
+});
+
+test('the same name without spaces, or in brackets, is the same venue', () => {
+  const v = buildVenues([
+    rec('1', { name: 'Room2', lat: 55.86213, lon: -4.2544 }),
+    rec('2', { name: 'Room 2', lat: 55.86179, lon: -4.25425 }, { start: '2026-11-21T22:00:00Z' }),
+    rec('3', { name: 'Barras Art And Design (BAaD)', lat: 55.8546, lon: -4.23697 }),
+    rec('4', { name: 'BAaD', lat: 55.85456, lon: -4.23694 }, { start: '2026-11-22T22:00:00Z' }),
+    rec('5', { name: 'BAaD', lat: 55.85456, lon: -4.23694 }, { start: '2026-11-23T22:00:00Z' })
+  ], cities, '2026-11-09T00:00:00Z');
+  assert.deepEqual(v.venues.map(r => r[1]).sort(), ['BAaD', 'Room2']);
+  assert.deepEqual(v.venues.find(r => r[1] === 'BAaD')[14], ['barras art and design']);
 });
 
 test('far-apart places with overlapping names stay separate; no position means the city only', () => {

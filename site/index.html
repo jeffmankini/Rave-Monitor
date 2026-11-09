@@ -220,6 +220,7 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .lg-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); box-shadow: 0 0 0 2px var(--void), 0 0 0 3.5px var(--now); }
 .lg-fest { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink-2); }
 .lg-ring { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(169,171,203,.8); background: rgba(169,171,203,.18); }
+.lg-ring.lg-osm { width: 9px; height: 9px; border-style: dashed; border-color: rgba(169,171,203,.65); background: rgba(169,171,203,.06); }
 .lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(246,236,216,.08); }
 .legend .demo-note { color: var(--ink-3); }
 /* One quiet line at the bottom: the archive, policies and privacy settings. */
@@ -722,7 +723,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <label><input type="checkbox" id="ly-belt" checked> <span>Night and club hours<small>Where it's roughly 11 pm to 4 am</small></span></label>
         <label><input type="checkbox" id="ly-heat" checked> <span>Scene heat<small>Glow by activity, next 72 hours</small></span></label>
         <label><input type="checkbox" id="ly-fest" checked> <span>Festivals</span></label>
-        <label><input type="checkbox" id="ly-venues" checked> <span>Venues<small>Every club and venue in the listings, as you zoom in</small></span></label>
+        <label><input type="checkbox" id="ly-venues" checked> <span>Venues<small>Every club and venue as you zoom in, with the ones not listed yet</small></span></label>
         <label><input type="checkbox" id="ly-tours"> <span>Headliner tour routes<small>Next gig to next gig</small></span></label>
         <label><input type="checkbox" id="ly-streets" checked> <span>Street map<small>Streets and neighbourhoods as you zoom in</small></span></label>
         <label><input type="checkbox" id="ly-labels" checked> <span>Place names</span></label>
@@ -740,6 +741,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <span><i class="lg-hollow"></i>Sold out</span>
         <span class="lg-extra"><i class="lg-fest"></i>Festival</span>
         <span class="lg-extra"><i class="lg-ring"></i>Venue</span>
+        <span class="lg-extra"><i class="lg-ring lg-osm"></i>No listings yet</span>
         <span class="lg-extra"><i class="lg-band"></i>Club hours</span>
         <span class="lg-genres" id="lg-genres" hidden></span>
         <span class="demo-note">Demo listings, fictional</span>
