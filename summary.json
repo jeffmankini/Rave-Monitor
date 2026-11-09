@@ -1,19 +1,19 @@
 {
  "updatedAt": "2026-11-09",
- "events": 1900,
+ "events": 1901,
  "firstEvent": "2026-11-05T00:30:00.000Z",
- "lastEvent": "2026-12-10T01:30:00.000Z",
+ "lastEvent": "2026-12-10T22:00:00.000Z",
  "months": {
   "2026-11": 1647,
-  "2026-12": 253
+  "2026-12": 254
  },
  "cities": {
   "london": 258,
   "manchester": 144,
   "losangeles": 126,
   "newyork": 120,
+  "glasgow": 89,
   "berlin": 88,
-  "glasgow": 88,
   "bristol": 79,
   "chicago": 78,
   "amsterdam": 71,
@@ -54,20 +54,20 @@
  },
  "genres": {
   "electronic": 606,
-  "house": 501,
+  "house": 502,
   "misc": 420,
-  "techno": 291,
+  "techno": 292,
   "afro": 238,
   "garage": 164,
   "disco": 100,
   "dnb": 96,
-  "trance": 91,
+  "trance": 92,
   "bass": 66
  },
  "sources": {
   "Ticketmaster": 805,
   "Resident Advisor": 637,
-  "Skiddle": 443,
+  "Skiddle": 444,
   "Posh": 56,
   "Luma": 24,
   "Partiful": 15
