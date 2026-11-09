@@ -51,14 +51,18 @@ jobs:
           api() { curl -s -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4$1"; }
           say() { echo "$1: $(echo "$2" | jq -r 'if .success then "ok" else "FAILED " + ([.errors[]? | "\(.code) \(.message)"] | join("; ")) end')"; }
           say "Token is valid" "$(api /user/tokens/verify)"
-          echo "Accounts this token can use: $(api '/accounts?per_page=50' | jq -r '[.result[]? | .name] | join(", ")')"
-          if api '/accounts?per_page=50' | jq -e --arg a "$CF_ACCOUNT" '[.result[]?.id] | index($a)' > /dev/null; then echo "CLOUDFLARE_ACCOUNT_ID: matches one of them"; else echo "::error::CLOUDFLARE_ACCOUNT_ID isn't an account this token can use. Copy the Account ID (not the Zone ID) from the dashboard, or scope the token to that account."; fi
+          accounts=$(api '/accounts?per_page=50')
+          if [ "$(echo "$accounts" | jq '.result | length')" = "0" ]; then
+            echo "::error::This token can't use any Cloudflare account. Edit it: add Account > Workers Scripts > Edit (and Account Settings > Read), and set Account Resources to your account."
+          elif echo "$accounts" | jq -e --arg a "$CF_ACCOUNT" '[.result[]?.id] | index($a)' > /dev/null; then echo "CLOUDFLARE_ACCOUNT_ID: matches an account the token can use"
+          else echo "::error::CLOUDFLARE_ACCOUNT_ID isn't an account this token can use. Copy the Account ID (not the Zone ID) from the dashboard."; fi
           say "Account access" "$(api "/accounts/$CF_ACCOUNT")"
           say "Workers Scripts (account)" "$(api "/accounts/$CF_ACCOUNT/workers/scripts")"
           zone=$(api '/zones?name=ravemonitor.com' | jq -r '.result[0].id // empty')
           if [ -z "$zone" ]; then echo "::error::The token can't see the ravemonitor.com zone. Add the zone to the token's Zone Resources."; else
             say "Workers Routes (ravemonitor.com)" "$(api "/zones/$zone/workers/routes")"
             say "DNS (ravemonitor.com)" "$(api "/zones/$zone/dns_records?per_page=1")"
+            api "/zones/$zone/dns_records?per_page=1" | jq -e .success > /dev/null || echo "::error::The token needs Zone > DNS > Edit for ravemonitor.com, so the Worker can have api.ravemonitor.com."
           fi
       - name: Deploy to Cloudflare
         working-directory: worker/contact
