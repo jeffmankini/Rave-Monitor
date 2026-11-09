@@ -15,7 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { km } from './lib/util.js';
 
-const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+// Public Overpass servers, tried in turn when one is busy (they answer 429, 502 or 504 under load).
+const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const USER_AGENT = 'RaveMonitor/1.0 (+https://ravemonitor.com; a weekly list of clubs for its map)';
 export const LICENSE = 'Data © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0): https://www.openstreetmap.org/copyright';
 export const RADIUS_KM = 30;
@@ -27,9 +28,10 @@ export function bboxOf(c, radiusKm = RADIUS_KM) {
   return [c.lat - dLat, c.lon - dLon, c.lat + dLat, c.lon + dLon].map(v => +v.toFixed(4));
 }
 
-/** One Overpass query for a group of cities: their clubs and music venues, with a centre for buildings. */
+/** One Overpass query for a group of cities: their clubs and music venues, with a centre for buildings.
+ *  A short declared timeout gets a query scheduled sooner on a busy server. */
 export function overpassQuery(cities) {
-  return '[out:json][timeout:180];(' +
+  return '[out:json][timeout:60];(' +
     cities.map(c => `nwr["amenity"~"^(nightclub|music_venue)$"](${bboxOf(c).join(',')});`).join('') +
     ');out center tags qt;';
 }
@@ -118,10 +120,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
  * Fetch the clubs for every city whose list is a week old (or all, with force), a few cities per query.
- * A city whose query fails keeps its last list and is tried again on the next run. A run stops starting
- * queries after `budgetMs`, so a slow Overpass never holds up the site: what's left is due next run.
+ * Small queries (a city each) are what busy servers take. A city whose query fails keeps its last list and
+ * is tried again on the next run. A run stops starting queries after `budgetMs`, or after three failures
+ * in a row (Overpass is down), so it never holds up the site: what's left is due next run, oldest first.
  */
-export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 6, pause = 3000, timeoutMs = 90e3, budgetMs = 5 * 60e3 } = {}) {
+export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 1, pause = 2000, timeoutMs = 75e3, budgetMs = 5 * 60e3 } = {}) {
   const started = Date.now();
   const osmDir = path.join(dir, 'osm');
   fs.mkdirSync(osmDir, { recursive: true });
@@ -129,16 +132,19 @@ export async function refreshOsm(dir, cities, { force = false, now = Date.now(),
   const index = readJson(indexFile) || {};
   const checked = { ...(index.checked || {}) };
   const placed = cities.filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lon));
-  const due = placed.filter(c => force || !checked[c.id] || now - Date.parse(checked[c.id]) > WEEK);
+  const due = placed.filter(c => force || !checked[c.id] || now - Date.parse(checked[c.id]) > WEEK)
+    .sort((a, b) => (checked[a.id] || '').localeCompare(checked[b.id] || '')); // never fetched, then the oldest
   if (!due.length) { log('OpenStreetMap clubs: up to date.'); return { fetched: 0, changed: 0 }; }
   const iso = new Date(now).toISOString();
-  let fetched = 0, changed = 0;
+  let fetched = 0, changed = 0, failures = 0;
   for (let i = 0; i < due.length; i += batch) {
     const group = due.slice(i, i + batch);
     if (Date.now() - started > budgetMs) { log(`  Out of time; ${due.length - i} cities wait for the next run.`); break; }
+    if (failures >= 3) { log(`  Overpass isn't answering; ${due.length - i} cities wait for the next run.`); break; }
     if (i) await sleep(pause); // one query at a time, with a pause: Overpass is a shared, free service
     const json = await overpass(overpassQuery(group), fetchImpl, log, timeoutMs);
-    if (!json) { log(`  Kept the last lists for ${group.map(c => c.id).join(', ')}.`); continue; }
+    if (!json) { failures++; log(`  Kept the last lists for ${group.map(c => c.id).join(', ')}.`); continue; }
+    failures = 0;
     log(`  ${group.map(c => c.id).join(', ')}: ${json.elements.length} places.`);
     const rows = parseElements(json.elements, group, placed);
     for (const c of group) {

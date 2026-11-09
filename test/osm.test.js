@@ -52,7 +52,7 @@ test('refresh writes each city, an index for search, skips fresh lists and keeps
   let calls = 0;
   const ok = async () => { calls++; return { ok: true, json: async () => answer }; };
   const logs = [];
-  const r1 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: m => logs.push(m), pause: 0, now: Date.parse('2026-11-09T00:00:00Z') });
+  const r1 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: m => logs.push(m), pause: 0, batch: 2, now: Date.parse('2026-11-09T00:00:00Z') });
   assert.equal(calls, 1); // both cities in one query
   assert.equal(r1.fetched, 2);
   const b = JSON.parse(fs.readFileSync(path.join(dir, 'osm', 'berlin.json'), 'utf8'));
@@ -63,10 +63,14 @@ test('refresh writes each city, an index for search, skips fresh lists and keeps
   // A day later nothing is due.
   const r2 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: () => {}, pause: 0, now: Date.parse('2026-11-10T00:00:00Z') });
   assert.equal(r2.fetched, 0); assert.equal(calls, 1);
-  // Eight days later both are due; every endpoint fails, so the lists stay.
-  const fail = async () => { throw new Error('offline'); };
-  const r3 = await refreshOsm(dir, [berlin, london], { fetchImpl: fail, log: () => {}, pause: 0, now: Date.parse('2026-11-17T12:00:00Z') });
+  // Eight days later both are due; every server fails, so the lists stay, and after three failed
+  // queries in a row the run gives up (a city per query by default).
+  let tries = 0;
+  const fail = async () => { tries++; throw new Error('offline'); };
+  const many = Array.from({ length: 5 }, (_, i) => ({ id: 'c' + i, name: 'C' + i, country: 'DE', lat: 50 + i, lon: 10 }));
+  const r3 = await refreshOsm(dir, [berlin, london, ...many], { fetchImpl: fail, log: () => {}, pause: 0, now: Date.parse('2026-11-17T12:00:00Z') });
   assert.equal(r3.fetched, 0);
+  assert.equal(tries, 3 * 3); // three queries, each tried on three servers
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'osm', 'berlin.json'), 'utf8')).clubs[0][1], 'Tresor');
   // Out of time before the first query: nothing fetched, nothing lost.
   const r4 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: () => {}, pause: 0, budgetMs: -1, now: Date.parse('2026-11-18T00:00:00Z') });
