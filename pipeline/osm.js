@@ -93,13 +93,13 @@ export function parseElements(elements, group, allCities = group) {
   return out;
 }
 
-async function overpass(query, fetchImpl, log) {
+async function overpass(query, fetchImpl, log, timeoutMs) {
   for (const url of ENDPOINTS) {
     try {
       const res = await fetchImpl(url, {
         method: 'POST', body: new URLSearchParams({ data: query }).toString(),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(240e3)
+        signal: AbortSignal.timeout(timeoutMs)
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
@@ -118,9 +118,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
  * Fetch the clubs for every city whose list is a week old (or all, with force), a few cities per query.
- * A city whose query fails keeps its last list and is tried again on the next run.
+ * A city whose query fails keeps its last list and is tried again on the next run. A run stops starting
+ * queries after `budgetMs`, so a slow Overpass never holds up the site: what's left is due next run.
  */
-export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 8, pause = 3000 } = {}) {
+export async function refreshOsm(dir, cities, { force = false, now = Date.now(), fetchImpl = globalThis.fetch, log = console.log, batch = 6, pause = 3000, timeoutMs = 90e3, budgetMs = 5 * 60e3 } = {}) {
+  const started = Date.now();
   const osmDir = path.join(dir, 'osm');
   fs.mkdirSync(osmDir, { recursive: true });
   const indexFile = path.join(osmDir, 'index.json');
@@ -133,9 +135,11 @@ export async function refreshOsm(dir, cities, { force = false, now = Date.now(),
   let fetched = 0, changed = 0;
   for (let i = 0; i < due.length; i += batch) {
     const group = due.slice(i, i + batch);
+    if (Date.now() - started > budgetMs) { log(`  Out of time; ${due.length - i} cities wait for the next run.`); break; }
     if (i) await sleep(pause); // one query at a time, with a pause: Overpass is a shared, free service
-    const json = await overpass(overpassQuery(group), fetchImpl, log);
+    const json = await overpass(overpassQuery(group), fetchImpl, log, timeoutMs);
     if (!json) { log(`  Kept the last lists for ${group.map(c => c.id).join(', ')}.`); continue; }
+    log(`  ${group.map(c => c.id).join(', ')}: ${json.elements.length} places.`);
     const rows = parseElements(json.elements, group, placed);
     for (const c of group) {
       const file = path.join(osmDir, `${c.id}.json`), old = readJson(file);

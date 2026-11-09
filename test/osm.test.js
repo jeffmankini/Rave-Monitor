@@ -68,5 +68,8 @@ test('refresh writes each city, an index for search, skips fresh lists and keeps
   const r3 = await refreshOsm(dir, [berlin, london], { fetchImpl: fail, log: () => {}, pause: 0, now: Date.parse('2026-11-17T12:00:00Z') });
   assert.equal(r3.fetched, 0);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'osm', 'berlin.json'), 'utf8')).clubs[0][1], 'Tresor');
+  // Out of time before the first query: nothing fetched, nothing lost.
+  const r4 = await refreshOsm(dir, [berlin, london], { fetchImpl: ok, log: () => {}, pause: 0, budgetMs: -1, now: Date.parse('2026-11-18T00:00:00Z') });
+  assert.equal(r4.fetched, 0); assert.equal(calls, 1);
   fs.rmSync(dir, { recursive: true, force: true });
 });

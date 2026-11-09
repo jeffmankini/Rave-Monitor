@@ -1224,9 +1224,33 @@
   }
   // The chip's Details: the venue card in the Venues tab, scrolled into view on phones.
   function venueDetails() {
+    setMapFull(false); // the card is in the lists, under the map
     selectTab('venues');
     if (S.mode !== 'wide') { const bar = $('#tabbar'); window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - 4, behavior: reduceMotion ? 'auto' : 'smooth' }); }
   }
+
+  /* ---------- full-screen map ---------- */
+  // The map over the whole window, and the whole screen where the browser allows it (not on iPhones,
+  // where it fills the window). The button, Esc or F leave it.
+  let realFull = false;
+  function setMapFull(on) {
+    on = !!on;
+    if (on === document.body.classList.contains('mapfull')) return;
+    document.body.classList.toggle('mapfull', on);
+    const b = $('#fullscreen');
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', on ? 'Leave the full-screen map' : 'Full-screen map');
+    b.title = on ? 'Leave full screen (F)' : 'Full-screen map (F)';
+    const root = document.documentElement;
+    try {
+      if (on && root.requestFullscreen && !document.fullscreenElement) root.requestFullscreen({ navigationUI: 'hide' }).then(() => { realFull = true; }, () => {});
+      else if (!on && document.fullscreenElement && document.exitFullscreen) { realFull = false; document.exitFullscreen().catch(() => {}); }
+    } catch (err) { /* the window-sized map is enough */ }
+    if (S.showFab) S.showFab();
+    MapView.resize();
+    track('fullscreen_map', { state: on ? 'on' : 'off' });
+  }
+  const mapFull = () => document.body.classList.contains('mapfull');
 
   /* ---------- near me ---------- */
   function kmBetween(la1, lo1, la2, lo2) {
@@ -2296,6 +2320,7 @@
         if (!$('#results').hidden) return hideResults();
         if (S.sel) return closeDrawer();
         if (!$('#layers').hidden) return toggleLayers(false);
+        if (mapFull()) return setMapFull(false);
         if (S.route) return setRoute(null);
         if (S.label) return setLabel(null);
         return;
@@ -2303,6 +2328,7 @@
       if (typing || ev.metaKey || ev.ctrlKey || ev.altKey) return;
       if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); }
       else if (ev.key === 'g') MapView.setView(S.view === 'map' ? 'globe' : 'map');
+      else if (ev.key === 'f') setMapFull(!mapFull());
       else if (/^[1-9]$/.test(ev.key) && S.mode !== 'narrow') { const id = tabIdsFor(S.mode)[+ev.key - 1]; if (id) selectTab(id, true); }
     });
     $('#tabbar').addEventListener('keydown', ev => {
@@ -2318,7 +2344,7 @@
     const fab = $('#mapfab');
     if ('IntersectionObserver' in window) {
       let mapGone = false;
-      const showFab = () => { fab.hidden = !(S.mode === 'narrow' && mapGone && !S.sel); };
+      const showFab = () => { fab.hidden = !(S.mode === 'narrow' && mapGone && !S.sel && !mapFull()); };
       new IntersectionObserver(es => { mapGone = !es[es.length - 1].isIntersecting; showFab(); }, { threshold: 0, rootMargin: '-35% 0px 0px 0px' }).observe($('#stage'));
       S.showFab = showFab;
     }
@@ -2339,6 +2365,9 @@
     $('#zoom-out').addEventListener('click', () => MapView.zoomBy(0.5));
     $('#zoom-home').addEventListener('click', () => MapView.home(true));
     $('#locate').addEventListener('click', () => { movedSinceStart = true; locateMe(); });
+    $('#fullscreen').addEventListener('click', () => setMapFull(!mapFull()));
+    // Leaving the browser's full screen (Esc, a swipe) leaves the full-screen map too.
+    document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && realFull) { realFull = false; setMapFull(false); } });
     // Once the visitor moves the map or searches, a late position from startNear() stays out of the way.
     ['pointerdown', 'wheel', 'keydown'].forEach(type => $('#stage').addEventListener(type, () => { movedSinceStart = true; }, { capture: true, passive: true }));
     $('#q').addEventListener('focus', () => { movedSinceStart = true; loadVenues(); loadOsmNames(); });

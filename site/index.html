@@ -201,6 +201,11 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .tool.locate { display: inline-grid; place-items: center; padding: 0; width: 32px; }
 .tool.locate svg { width: 17px; height: 17px; }
 .tool.locate[aria-busy="true"] svg { animation: rm-spin 1.2s linear infinite; }
+.tool.fs { display: inline-grid; place-items: center; padding: 0; width: 32px; }
+.tool.fs svg { width: 16px; height: 16px; }
+.tool.fs .fs-out, .tool.fs[aria-pressed="true"] .fs-in { display: none; }
+.tool.fs[aria-pressed="true"] .fs-out { display: inline; }
+.tool.fs[aria-pressed="true"] { border-color: var(--now); }
 @keyframes rm-spin { to { transform: rotate(360deg); } }
 .maptoast {
   max-width: min(420px, 100%); padding: 8px 12px; border-radius: 9px; background: rgba(12,15,34,.95); border: 1px solid var(--line); color: var(--ink);
@@ -558,8 +563,9 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .view-toggle button { height: 34px; padding: 0 12px; }
   .tools { right: 10px; top: 10px; gap: 8px; }
   .tool { height: 40px; min-width: 40px; border-radius: 10px; font-size: var(--s-14); }
-  .tool.locate { width: 40px; }
+  .tool.locate, .tool.fs { width: 40px; }
   .tool.locate svg { width: 19px; height: 19px; }
+  .tool.fs svg { width: 18px; height: 18px; }
   .layers { top: 58px; right: 10px; width: min(300px, calc(100% - 20px)); max-height: calc(100% - 70px); overflow: auto; }
   .layers label { min-height: 44px; }
   .layers input { width: 20px; height: 20px; }
@@ -662,6 +668,17 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 @media (prefers-reduced-motion: reduce) {
   .drawer { transition: none; }
 }
+
+/* ---------- full-screen map ----------
+   The map over the whole window, its controls clear of notches and the home bar. The event sheet,
+   its scrim and dialogs still open on top. */
+body.mapfull { overflow: hidden; }
+body.mapfull #stage { position: fixed; inset: 0; z-index: 22; width: auto; height: auto; min-height: 0; max-height: none; border: 0; }
+body.mapfull .view-toggle { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
+body.mapfull .tools { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); }
+body.mapfull .layers, body.mapfull .mapchips { top: calc(max(12px, env(safe-area-inset-top)) + 48px); }
+body.mapfull .legend { bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); }
+body.mapfull .mapfab { display: none; }
 </style>
 </head>
 <body class="wide">
@@ -715,6 +732,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
       <div class="tools">
         <button class="tool" type="button" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers</button>
         <button class="tool locate" type="button" id="locate" aria-label="Near me: show listings around you" title="Near me"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        <button class="tool fs" type="button" id="fullscreen" aria-pressed="false" aria-label="Full-screen map" title="Full-screen map (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fs-in" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path class="fs-out" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="tool" type="button" id="zoom-in" aria-label="Zoom in">+</button>
         <button class="tool" type="button" id="zoom-out" aria-label="Zoom out">&minus;</button>
         <button class="tool" type="button" id="zoom-home" aria-label="Reset view">&#x27F2;</button>
