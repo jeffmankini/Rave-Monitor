@@ -54,6 +54,12 @@ export function detectLabels(f, list = labelList()) {
     if (hit) out.push(l.name);
     if (out.length === 4) break;
   }
+  // A promoter named like a label ('American Death Records', 'Roam Recordings') is one, even off the list.
+  // Capitalised only: 'public records' is a club.
+  for (const p of f.promoters || []) {
+    if (out.length === 4) break;
+    if (/\s(Records|Recordings)$/.test(p) && !out.some(n => fold(n) === fold(p) || fold(p).startsWith(fold(n).slice(0, -1) + ' records') || fold(p).startsWith(fold(n).slice(0, -1) + ' recordings'))) out.push(p);
+  }
   return out;
 }
 

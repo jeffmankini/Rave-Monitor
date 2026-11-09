@@ -35,6 +35,14 @@ test('promoter names can name the label', () => {
   assert.deepEqual(detectLabels({ title: 'Friday', promoters: ['Into The Woods LA'], genres: ['house'] }), []);
 });
 
+test('promoters named like labels count as labels', () => {
+  assert.deepEqual(detectLabels({ title: 'Night', promoters: ['American Death Records', 'Pretty But Wicked'], genres: ['techno'] }), ['American Death Records']);
+  assert.deepEqual(detectLabels({ title: 'Night', promoters: ['Roam Recordings'], genres: ['house'] }), ['Roam Recordings']);
+  assert.deepEqual(detectLabels({ title: 'Night', promoters: ['public records'], genres: ['house'] }), []);
+  assert.deepEqual(detectLabels({ title: 'Sunday Sessions', promoters: ['Defected Records'], genres: ['house'] }), ['Defected']);
+  assert.deepEqual(detectLabels({ title: 'Warehouse', promoters: ['Hospital Records'], genres: ['dnb'] }), ['Hospital Records']);
+});
+
 test('promoter names: strings or objects, no links or addresses, no duplicates', () => {
   assert.deepEqual(promoterNames([{ name: 'Into The Woods LA', blurb: 'long text' }, 'Into the Woods LA', { name: 'bookings@promo.com' }, 'www.party.com', ' Hospital  Records ']),
     ['Into The Woods LA', 'Hospital Records']);
