@@ -4,7 +4,8 @@ Every listing [Rave Monitor](https://ravemonitor.com) has shown, merged across p
 the night is over. Updated by the daily refresh job; don't edit by hand.
 
 - `events/YYYY-MM.ndjson`: one JSON object per line, filed by the event's local month. Each has the
-  event facts (title, start, end, tz, cityId, venue, lineup, genres, tags, type, price, status), the
+  event facts (title, start, end, tz, cityId, venue, lineup, genres, tags, type, price, status, and
+  record labels and promoter names when known), the
   platforms it was listed on (`sources`), when it was first and last seen, and `statusLog`
   (status changes such as sold out or cancelled, with when they were seen).
 - `cities.json`: names and coordinates for each `cityId`.
