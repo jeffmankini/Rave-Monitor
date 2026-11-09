@@ -85,10 +85,13 @@ var RMData = (function () {
     { id: 'disco', name: 'Disco & edits', bpm: '105–124', color: '#d55181', subs: ['Nu-disco', 'Italo', 'Balearic', 'Edits', 'Cosmic'] },
     { id: 'garage', name: 'Garage & breaks', bpm: '130–140', color: '#008300', subs: ['UK garage', 'Speed garage', 'Breaks', 'Electro', 'Bassline'] },
     { id: 'trance', name: 'Trance & psy', bpm: '130–145', color: '#9085e9', subs: ['Trance', 'Psytrance', 'Progressive trance', 'Hard trance', 'Goa'] },
-    { id: 'bass', name: 'Bass & dubstep', bpm: '140–150', color: '#e66767', subs: ['Dubstep', 'Riddim', 'Wave', 'Bass house', 'Grime'] }
+    { id: 'bass', name: 'Bass & dubstep', bpm: '140–150', color: '#e66767', subs: ['Dubstep', 'Riddim', 'Wave', 'Bass house', 'Grime'] },
+    // For listings none of the families fit: dance and electronic music in general, and everything else.
+    { id: 'electronic', name: 'Dance/electronic', bpm: 'varies', color: '#22b8cf', subs: ['EDM', 'Electronica', 'Club', 'Ambient', 'Experimental', 'Big room'] },
+    { id: 'misc', name: 'Misc', bpm: 'varies', color: '#8b8fa8', subs: ['Pop', 'Hip-hop', 'R&B', 'Rock', 'Latin', 'Live'] }
   ];
-  var OTHER = { id: 'other', name: 'Mixed', bpm: 'varies', color: '#8b8fa8', subs: ['Mixed'] };
-  var GENRE = {}; GENRES.forEach(function (g) { GENRE[g.id] = g; }); GENRE.other = OTHER;
+  var GENRE = {}; GENRES.forEach(function (g) { GENRE[g.id] = g; });
+  var OTHER = GENRE.misc; GENRE.other = OTHER; // feeds from before the two buckets said 'other'
 
   var REGIONS = { eu: 'Europe', na: 'North America', la: 'Latin America', ap: 'Asia-Pacific', af: 'Africa & Middle East' };
 

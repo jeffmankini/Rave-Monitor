@@ -97,7 +97,7 @@ export const skiddle = {
       startMs, endMs: it.enddate ? localToUtc(it.enddate, tz) : undefined, tz,
       venueName: v.name, address: [v.address, v.town].filter(Boolean).join(', '),
       lat: num(v.latitude), lon: num(v.longitude), cityName: v.town, country: 'GB', cityHint: it.__city,
-      lineup: (it.artists || []).map(a => a.name || a), genres, tags: genreNames,
+      lineup: (it.artists || []).map(a => a.name || a), genres, tags: genreNames, genreText: it.description,
       price: parsePrice(it.entryprice, 'GBP'), status: String(it.ticketsavailable) === '0' ? 'soldout' : 'onsale',
       age: it.minage ? it.minage + '+' : undefined
     });

@@ -29,7 +29,7 @@ NTS Radio + YouTube → pipeline/streams.js → public/streams.json ─┘
 
 - **Normalize.** Every source maps to one event shape: title, start and end, venue and coordinates, lineup, genres, price, ticket status and source links.
 - **Filter.** RA and Ticketmaster's Dance/Electronic genre are electronic by definition. DICE uses its genre tags. Posh, Partiful, Luma and Skiddle listings must clearly mention electronic music (techno, house, rave, drum and bass and so on); brunches, sample sales and meetups are dropped.
-- **Genres.** Listings map to eight families: techno, house, drum and bass, afro and amapiano, disco and edits, garage and breaks, trance and psy, bass and dubstep.
+- **Genres.** Listings map to eight families: techno, house, drum and bass, afro and amapiano, disco and edits, garage and breaks, trance and psy, bass and dubstep. A listing none of them fits is **Dance/electronic** (EDM, electronica, club and ambient nights, or an untagged night from a source that only lists electronic music, like RA) or **Misc** (pop, rock, hip-hop, R&B, Latin and other shows, or no clue at all). A genre tag on the listing decides first: Ticketmaster's "Dance/Electronic" is Dance/electronic, its "Pop/Rock" is Misc.
 - **Merge.** The same night at the same venue on several platforms becomes one event that keeps every link. DICE set times are kept when present.
 
 ## Try it without any keys

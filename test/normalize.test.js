@@ -79,3 +79,19 @@ test('free-text lineups are split into names, without room headers or role label
     ['Nia Varan', 'Marco', '404ghostboy', 'HADES', 'MAGOLLA', 'KENNY', 'CR.GAEL']);
   assert.deepEqual(splitLineup(['Ben UFO', 'DJ Seinfeld', 'AC/DC', 'Kerri Chandler b2b Dennis Ferrer', 'Âme']), ['Ben UFO', 'DJ Seinfeld', 'AC/DC', 'Kerri Chandler b2b Dennis Ferrer', 'Âme']);
 });
+
+test('no family: electronic or misc', async () => {
+  const { fallbackGenre, genresFrom } = await import('../pipeline/lib/normalize.js');
+  assert.equal(fallbackGenre({ title: 'Flammable', tags: ['Dance/Electronic'], source: 'ticketmaster' }), 'electronic');
+  assert.equal(fallbackGenre({ title: 'iKeda', tags: ['Dance Pop', 'Dance/Electronic'], source: 'ticketmaster' }), 'electronic');
+  assert.equal(fallbackGenre({ title: 'Mogwai 30', tags: ['Pop/Rock'], source: 'ticketmaster' }), 'misc');
+  assert.equal(fallbackGenre({ title: 'Carl Cox - Club Darc', tags: ['Other'], source: 'ticketmaster' }), 'electronic');
+  assert.equal(fallbackGenre({ title: 'N2Deep R&B Brunch', tags: ['R&B'], source: 'ra' }), 'misc');
+  assert.equal(fallbackGenre({ title: 'Atomiser presents: Nirosta Steel', tags: [], source: 'ra' }), 'electronic');
+  assert.equal(fallbackGenre({ title: 'Ska night', tags: ['Ska', 'Reggae', 'Dub'], source: 'skiddle' }), 'misc');
+  assert.equal(fallbackGenre({ title: 'Sunday Perreo City', tags: [], text: 'reggaeton and perreo all night with DJs', source: 'posh' }), 'misc');
+  assert.equal(fallbackGenre({ title: 'Warehouse party', tags: [], text: 'a rave in a warehouse', source: 'posh' }), 'electronic');
+  assert.equal(fallbackGenre({ title: 'Pop-up party', tags: [], text: 'dj set till late', source: 'partiful' }), 'electronic');
+  assert.deepEqual(genresFrom("Drum 'n' Bass", 'Andy C'), ['dnb']);
+  assert.deepEqual(genresFrom('Psy/GoaTrance'), ['trance']);
+});

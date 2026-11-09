@@ -1,17 +1,21 @@
 // Turns each source's raw item into one shared event shape, decides whether it is
-// electronic music, maps genres to the map's eight families and assigns a city.
+// electronic music, maps genres to the map's eight families (or 'electronic' and 'misc' when none
+// fits) and assigns a city.
 import { km, norm, slug, localHour } from './util.js';
 import { detectLabels, promoterNames } from './labels.js';
 
 export const FAMILIES = ['techno', 'house', 'dnb', 'afro', 'disco', 'garage', 'trance', 'bass'];
+// When no family fits: 'electronic' (dance and electronic music in general: EDM, electronica, club,
+// ambient) or 'misc' (everything else: pop, rock, hip-hop, R&B, Latin, live shows, or no clue at all).
+export const FALLBACKS = ['electronic', 'misc'];
 
 // Order matters: the more specific phrase wins (afro house before house).
 const GENRE_RULES = [
   ['afro', /\b(amapiano|afro ?house|afro ?tech|gqom|baile funk|3 ?step)\b/],
   ['bass', /\b(dubstep|riddim|bass house|bass music|future bass|grime|wave music|halftime)\b/],
-  ['dnb', /\b(drum ?(?:&|and|n) ?bass|dnb|d&b|d ?n ?b|jungle|liquid funk|neurofunk|jump ?up)\b/],
+  ['dnb', /\b(drum ?(?:&|and|'?n'?) ?bass|dnb|d&b|d ?n ?b|jungle|liquid funk|neurofunk|jump ?up)\b/],
   ['garage', /\b(uk ?g(?:arage)?|ukg|speed garage|2[- ]?step|garage|breakbeat|breaks|electro|bassline)\b/],
-  ['trance', /\b(psytrance|psy[- ]?trance|goa trance|trance|hard ?style|hard ?dance|hardcore|gabber)\b/],
+  ['trance', /\b(psytrance|psy[- ]?trance|goa ?trance|psy|trance|hard ?style|hard ?dance|hardcore|gabber)\b/],
   ['disco', /\b(nu[- ]?disco|disco|italo|balearic|edits|cosmic)\b/],
   ['techno', /\b(techno|hard groove|acid|industrial|ebm|hypnotic|peak[- ]?time)\b/],
   ['house', /\b(tech ?house|deep house|house music|house|minimal|lo-?fi house|progressive house|jackin)\b/]
@@ -35,6 +39,30 @@ export function genresFrom(...texts) {
     rest = rest.replace(new RegExp(re.source, 'g'), ' '); // 'afro house' should not also count as house
   }
   return found;
+}
+
+// For listings no family fits. Tags decide first: a genre tag is the listing's own word for it.
+const ELECTRONIC_TAG = /\b(dance\s*\/\s*electronic|electronic|electronica|edm|club dance|dance pop|dance music|club classics|club|dj|electro ?pop|synth ?pop|synthwave|ambient|downtempo|experimental|idm|trip ?hop|big room|eurodance|hyperpop|bass|rave)\b/;
+const ELECTRONIC_TEXT = /\b(electronic|electronica|edm|rave|ambient|downtempo|synthwave|idm|dance music|club night|dj set|warehouse)\b/;
+const NOT_ELECTRONIC = /\b(pop(?!-? ?up)|rock|hip ?-?hop|rap|r ?& ?b|rnb|jazz|blues|reggae|reggaeton|perreo|dancehall|latin|latino|salsa|bachata|cumbia|merengue|country|folk|metal|punk|emo|indie|alternative|soul|funk|gospel|k-?pop|afrobeats?|drag|comedy|performance art|motorsports?|racing|ska|new wave|karaoke)\b/;
+const ELECTRONIC_SOURCES = new Set(['ra', 'dice', 'ticketmaster']);
+
+/**
+ * 'electronic' or 'misc' for a listing no family fits. Genre tags win (Ticketmaster's 'Dance/Electronic'
+ * is electronic, its 'Pop/Rock' is misc); without tags, the title and listing text, and whether the
+ * source only lists electronic music (RA, DICE's electronic tags, Ticketmaster's Dance/Electronic).
+ */
+export function fallbackGenre({ title = '', tags = [], text = '', source = '' } = {}) {
+  const tagText = norm(tags.join(' | '));
+  if (tags.length) {
+    if (ELECTRONIC_TAG.test(tagText)) return 'electronic';
+    if (NOT_ELECTRONIC.test(tagText)) return 'misc';
+  }
+  const all = norm([title, text].filter(Boolean).join(' | '));
+  const strong = (all.replace(NOT_DISCO, ' ').match(STRONG) || []).length > 0;
+  if (NOT_ELECTRONIC.test(all) && !strong) return 'misc';
+  if (ELECTRONIC_SOURCES.has(source) || strong || ELECTRONIC_TEXT.test(all)) return 'electronic';
+  return 'misc';
 }
 
 /** Score how clearly a listing is electronic music. Sources that only list electronic music skip this. */
@@ -172,7 +200,8 @@ export function makeEvent(ctx, f) {
   const dur = { club: 6, after: 6, day: 7, concert: 3.5, festival: 12 }[type] || 5;
   let endMs = Number.isFinite(f.endMs) && f.endMs > f.startMs ? f.endMs : f.startMs + dur * 3600e3;
   if (endMs - f.startMs > 4 * 86400e3) endMs = f.startMs + 4 * 86400e3;
-  const genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
+  let genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
+  if (!genres.length) genres = [fallbackGenre({ title: f.title, tags: f.tags || [], text: [f.genreText, f.lineupText].filter(Boolean).join(' | '), source: f.source })];
   const lineup = [...new Set(splitLineup(f.lineup).filter(n => n.length < 80 && !isContactLine(n)))].slice(0, 24);
   const promoters = promoterNames(f.promoters).filter(n => !isContactLine(n));
   const labels = detectLabels({ title: f.title, promoters, lineup, genres });
@@ -186,7 +215,7 @@ export function makeEvent(ctx, f) {
     venue: { name: cleanName(f.venueName || 'Venue to be announced').slice(0, 120), address: f.address ? cleanName(f.address).slice(0, 160) : undefined, lat: +lat.toFixed(5), lon: +lon.toFixed(5), approx: approx || undefined },
     lineup,
     sets: f.sets && f.sets.length ? f.sets : undefined,
-    genres: genres.length ? genres : ['other'],
+    genres,
     tags: [...new Map((f.tags || []).map(cleanName).filter(Boolean).map(t => [norm(t).replace(/[^a-z0-9]/g, ''), t])).values()].slice(0, 8),
     type,
     price: f.price || null,

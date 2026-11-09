@@ -149,7 +149,7 @@ export const dice = {
       address: [loc.street, loc.city].filter(Boolean).join(', ') || v.address,
       lat: num(pick(loc, 'lat', 'latitude') ?? pick(v, 'location.lat')), lon: num(pick(loc, 'lng', 'long', 'longitude') ?? pick(v, 'location.lng')),
       cityName: loc.city || pick(v, 'city.name') || pick(it, 'cities.0.name'), country: loc.country || pick(v, 'city.country_code'), cityHint: it.__city,
-      lineup, sets, genres: genresFrom(tagText, it.name), tags: genreTags.map(diceTag), price, status, age: it.age_limit
+      lineup, sets, genres: genresFrom(tagText, it.name), genreText: desc, tags: genreTags.map(diceTag), price, status, age: it.age_limit
     });
   }
 };
@@ -180,7 +180,7 @@ export const posh = {
       venueName: it.venueName, address: it.venueAddress, lat: num(it.latitude), lon: num(it.longitude),
       cityName: it.city, country: it.country, cityHint: it.__city,
       lineup: (it.lineup || []).map(l => l.name), lineupText,
-      genres: genresFrom(it.name, it.description, lineupText),
+      genres: genresFrom(it.name, it.description, lineupText), genreText: it.description,
       price: it.isFree ? { min: 0, max: 0, currency: it.currency, free: true } : (num(it.lowestPrice) !== undefined ? { min: num(it.lowestPrice), max: num(it.highestPrice) ?? num(it.lowestPrice), currency: it.currency } : null),
       status: soldOut ? 'soldout' : 'onsale', popularity: num(it.attendingCount),
       promoters: it.organizerName
@@ -208,7 +208,7 @@ export const partiful = {
       startMs: Date.parse(it.startDate), endMs: Date.parse(it.endDate), tz: it.timezone,
       venueName: address ? String(address).split(',')[0] : undefined, address,
       lat: num(pick(it, 'location.latitude', 'latitude')), lon: num(pick(it, 'location.longitude', 'longitude')),
-      cityName: it.city, genres: genresFrom(it.title, it.description),
+      cityName: it.city, genres: genresFrom(it.title, it.description), genreText: it.description,
       status: 'unknown', popularity: num(it.goingCount ?? it.guestCount)
     });
   }
@@ -236,7 +236,7 @@ export const luma = {
       startMs: Date.parse(it.startAt), endMs: Date.parse(it.endAt), tz: it.timezone,
       venueName: loc.name, address: loc.address, lat: num(loc.latitude), lon: num(loc.longitude),
       cityName: loc.city, country: loc.country, cityHint: it.__city,
-      genres: genresFrom(it.name, it.description),
+      genres: genresFrom(it.name, it.description), genreText: [it.description, ...(it.categoryNames || [])].filter(Boolean).join(' | '),
       price: t.isFree ? { min: 0, max: 0, currency: t.currency, free: true } : (num(t.minPrice) !== undefined ? { min: num(t.minPrice), max: num(t.maxPrice) ?? num(t.minPrice), currency: t.currency } : null),
       status: t.isSoldOut ? 'soldout' : 'onsale', popularity: num(it.guestCount ?? t.guestCount)
     });

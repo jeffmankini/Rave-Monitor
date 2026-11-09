@@ -47,7 +47,7 @@ function merge(group) {
   for (const e of group.slice(1)) {
     for (const s of e.sources) if (!out.sources.some(x => x.id === s.id && x.url === s.url)) out.sources.push(s);
     for (const n of e.lineup) if (!out.lineup.some(x => norm(x) === norm(n))) out.lineup.push(n);
-    for (const g of e.genres) if (g !== 'other' && !out.genres.includes(g)) out.genres.push(g);
+    for (const g of e.genres) if (!out.genres.includes(g)) out.genres.push(g);
     for (const t of e.tags) if (!out.tags.includes(t)) out.tags.push(t);
     if (!out.price && e.price) out.price = e.price;
     if (out.status === 'unknown' && e.status !== 'unknown') out.status = e.status;
@@ -58,7 +58,9 @@ function merge(group) {
     if (!out.age && e.age) out.age = e.age;
     for (const f of ['labels', 'promoters']) for (const x of e[f] || []) { out[f] ||= []; if (!out[f].includes(x)) out[f].push(x); }
   }
-  if (out.genres.length > 1) out.genres = out.genres.filter(g => g !== 'other');
+  // A real family beats the fallbacks, and 'electronic' beats 'misc' (old feeds said 'other').
+  if (out.genres.some(g => !['electronic', 'misc', 'other'].includes(g))) out.genres = out.genres.filter(g => !['electronic', 'misc', 'other'].includes(g));
+  else if (out.genres.includes('electronic')) out.genres = ['electronic'];
   out.lineup = out.lineup.slice(0, 24);
   return out;
 }

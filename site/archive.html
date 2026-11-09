@@ -115,7 +115,8 @@ footer a { color: var(--ink-2); }
   'use strict';
   // Same genre colours as the map.
   var GENRES = { techno: ['Techno', '#3987e5'], house: ['House', '#d95926'], dnb: ['Drum & bass', '#199e70'], afro: ['Afro & amapiano', '#c98500'],
-    disco: ['Disco & edits', '#d55181'], garage: ['Garage & breaks', '#008300'], trance: ['Trance & psy', '#9085e9'], bass: ['Bass & dubstep', '#e66767'], other: ['Mixed', '#8b8fa8'] };
+    disco: ['Disco & edits', '#d55181'], garage: ['Garage & breaks', '#008300'], trance: ['Trance & psy', '#9085e9'], bass: ['Bass & dubstep', '#e66767'],
+    electronic: ['Dance/electronic', '#22b8cf'], misc: ['Misc', '#8b8fa8'] };
   var PAGE = 100, LINEUP = 10;
   var $ = function (s) { return document.querySelector(s); };
   var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
@@ -135,7 +136,7 @@ footer a { color: var(--ink-2); }
 
   // Row: [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type, labels, promoters]
   function prep(r, month) {
-    var o = { id: r[0], title: r[1] || '', start: Date.parse(r[2]), tz: r[3] || 'UTC', city: r[4] || '', venue: r[5] || '', lineup: r[6] || [], genres: r[7] || [],
+    var o = { id: r[0], title: r[1] || '', start: Date.parse(r[2]), tz: r[3] || 'UTC', city: r[4] || '', venue: r[5] || '', lineup: r[6] || [], genres: (r[7] || []).map(function (g) { return g === 'other' ? 'misc' : g; }),
       tags: r[8] || [], sources: r[9] || [], status: r[10] || '', type: r[11] || '', labels: r[12] || [], promoters: r[13] || [], month: month };
     o.cityName = (cities[o.city] || [o.city])[0] || '';
     o.nLineup = o.lineup.map(words); o.nVenue = words(o.venue);
@@ -173,7 +174,7 @@ footer a { color: var(--ink-2); }
       o.labels.concat(o.promoters).forEach(function (l) { lc[l] = (lc[l] || 0) + 1; });
       if (o.venue) vc[o.venue] = (vc[o.venue] || 0) + 1;
       o.lineup.forEach(function (a) { ac[a] = (ac[a] || 0) + 1; });
-      (o.genres.length ? o.genres : ['other']).forEach(function (g) { gc[g] = (gc[g] || 0) + 1; });
+      (o.genres.length ? o.genres : ['misc']).forEach(function (g) { gc[g] = (gc[g] || 0) + 1; });
     });
     Object.keys(cc).sort(function (a, b) { return ((cities[a] || [a])[0]).localeCompare((cities[b] || [b])[0]); }).forEach(function (id) {
       F.city.insertAdjacentHTML('beforeend', '<option value="' + esc(id) + '">' + esc((cities[id] || [id])[0]) + ' (' + nf.format(cc[id]) + ')</option>');
@@ -194,7 +195,7 @@ footer a { color: var(--ink-2); }
     matches = all.filter(function (o) {
       if (ci && o.city !== ci) return false;
       if (mo === 'past' ? o.start >= now : mo === 'upcoming' ? o.start < now : mo && o.month !== mo) return false;
-      if (ge && (o.genres.length ? o.genres : ['other']).indexOf(ge) < 0) return false;
+      if (ge && (o.genres.length ? o.genres : ['misc']).indexOf(ge) < 0) return false;
       if (ve && !has(o.nVenue, ve)) return false;
       if (ar && !o.nLineup.some(function (a) { return has(a, ar); })) return false;
       if (la && !has(o.nTitle, la) && !o.nLabels.some(function (l) { return has(l, la); })) return false;
@@ -232,7 +233,7 @@ footer a { color: var(--ink-2); }
     var names = expanded[o.id] ? o.lineup : o.lineup.slice(0, LINEUP);
     var lineup = names.map(function (a, i) { return '<button type="button" class="pick' + (ar && has(o.nLineup[i], ar) ? ' on' : '') + '" data-f="artist" data-v="' + esc(a) + '">' + esc(a) + '</button>'; }).join(', ') +
       (o.lineup.length > names.length ? ', <button type="button" class="linkbtn" data-expand="' + esc(o.id) + '">+' + (o.lineup.length - names.length) + ' more</button>' : '');
-    var g = (o.genres.length ? o.genres : ['other']).filter(function (x) { return GENRES[x]; })[0] || 'other';
+    var g = (o.genres.length ? o.genres : ['misc']).filter(function (x) { return GENRES[x]; })[0] || 'misc';
     var genreText = o.tags.length ? o.tags.slice(0, 2).join(', ') : GENRES[g][0];
     var listed = o.sources.map(function (s) { return s[1] ? '<a href="' + esc(s[1]) + '" target="_blank" rel="noopener nofollow">' + esc(s[0]) + '</a>' : esc(s[0]); }).join(', ');
     return '<li class="row"><div class="when"><b>' + esc(fmt(o.tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(o.start)) + '</b><span>' +

@@ -1609,7 +1609,7 @@
     (feed.events || []).forEach(x => (x.lineup || []).forEach(n => { const k = norm(n); appearances[k] = (appearances[k] || 0) + 1; }));
     const artistId = name => {
       const k = norm(name), id = 'n:' + k;
-      if (!ds.artistById[id]) { const a = { id: id, name: name, genre: 'other', tier: appearances[k] > 1 ? 2 : 3 }; ds.artists.push(a); ds.artistById[id] = a; }
+      if (!ds.artistById[id]) { const a = { id: id, name: name, genre: 'misc', tier: appearances[k] > 1 ? 2 : 3 }; ds.artists.push(a); ds.artistById[id] = a; }
       return id;
     };
     (feed.events || []).forEach(x => {
@@ -1621,12 +1621,12 @@
       const vkey = 'v:' + x.cityId + ':' + norm(x.venue.name) + ':' + pos.lat.toFixed(3) + ':' + pos.lon.toFixed(3);
       if (!ds.venueById[vkey]) { const v = { id: vkey, cityId: c.id, name: x.venue.name, type: 'club', cap: 0, lat: pos.lat, lon: pos.lon, approx: pos.approx }; ds.venues.push(v); ds.venueById[vkey] = v; c.venues.push(v); }
       const ids = (x.lineup || []).map(artistId);
-      const genres = (x.genres || []).filter(g => RM.GENRE[g]);
+      const genres = (x.genres || []).map(g => g === 'other' ? 'misc' : g).filter(g => RM.GENRE[g]);
       const lp = RM.localParts(x.tz || c.tz, start);
       const pop = Number.isFinite(x.popularity) ? x.popularity : null;
       const e = {
         id: x.id, cityId: c.id, venueId: vkey, dayKey: new Date(start).toISOString().slice(0, 10), type: x.type || 'club',
-        genre: genres[0] || 'other', festGenres: genres.length > 1 ? genres : undefined, sub: (x.tags && x.tags[0]) || (RM.GENRE[genres[0]] || RM.OTHER).name,
+        genre: genres[0] || 'misc', festGenres: genres.length > 1 ? genres : undefined, sub: (x.tags && x.tags[0]) || (RM.GENRE[genres[0]] || RM.OTHER).name,
         title: x.title, series: x.title, heads: ids.slice(0, 1), support: ids.slice(1), headTier: ids.length && ds.artistById[ids[0]].tier === 2 ? 2 : 3, anl: false,
         start: start, end: end, cap: pop ? Math.max(150, Math.min(6000, pop * 1.6)) : 400, base: x.status === 'soldout' ? 1.05 : 0.75,
         priceMin: x.price ? x.price.min : 0, priceMax: x.price ? x.price.max : 0, cur: (x.price && x.price.currency) || c.cur || 'USD',

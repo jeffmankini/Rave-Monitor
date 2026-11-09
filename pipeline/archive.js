@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isContactLine, positionQuality, jitter, splitLineup } from './lib/normalize.js';
+import { isContactLine, positionQuality, jitter, splitLineup, genresFrom, fallbackGenre } from './lib/normalize.js';
 import { detectLabels } from './lib/labels.js';
 import { norm } from './lib/util.js';
 
@@ -47,6 +47,11 @@ export function loadArchive(dir) {
  */
 function tidy(r, cities) {
   if (Array.isArray(r.lineup)) r.lineup = [...new Set(splitLineup(r.lineup).filter(n => !isContactLine(n)))];
+  // Nights saved before the 'electronic' and 'misc' buckets said 'other' (or nothing).
+  if (!Array.isArray(r.genres) || !r.genres.length || (r.genres.length === 1 && r.genres[0] === 'other')) {
+    const fam = genresFrom(r.title, r.tags || []);
+    r.genres = fam.length ? fam : [fallbackGenre({ title: r.title, tags: r.tags || [], source: (r.sources && r.sources[0] && r.sources[0].id) || '' })];
+  } else r.genres = r.genres.filter(g => g !== 'other');
   const labels = detectLabels(r);
   if (labels.length) r.labels = labels; else delete r.labels;
   const v = r.venue, c = cities[r.cityId];
