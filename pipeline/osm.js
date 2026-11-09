@@ -15,7 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { km } from './lib/util.js';
 
-// Public Overpass servers, tried in turn when one is busy (they answer 429, 502 or 504 under load).
+// Public Overpass servers: the main one first, every time (it answers, if slowly, where the others often
+// time out from GitHub's runners); the others only when it fails, with less time each.
 const ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const USER_AGENT = 'RaveMonitor/1.0 (+https://ravemonitor.com; a weekly list of clubs for its map)';
 export const LICENSE = 'Data © OpenStreetMap contributors, available under the Open Database License (ODbL 1.0): https://www.openstreetmap.org/copyright';
@@ -96,30 +97,24 @@ export function parseElements(elements, group, allCities = group) {
   return out;
 }
 
-// The server to ask first: the one that last answered quickly; after a slow answer or a failure, the
-// next one, which spreads the load too.
-let first = 0;
 async function overpass(query, fetchImpl, log, timeoutMs) {
-  const start = first;
   for (let n = 0; n < ENDPOINTS.length; n++) {
-    const at = (start + n) % ENDPOINTS.length, url = ENDPOINTS[at], t0 = Date.now();
+    const url = ENDPOINTS[n];
     try {
       const res = await fetchImpl(url, {
         method: 'POST', body: new URLSearchParams({ data: query }).toString(),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(timeoutMs)
+        signal: AbortSignal.timeout(n ? Math.min(timeoutMs, 30e3) : timeoutMs)
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       if (!Array.isArray(json.elements)) throw new Error('no elements in the answer');
       if (json.remark && /error|timed out/i.test(json.remark)) throw new Error(json.remark.slice(0, 120));
-      first = Date.now() - t0 > 20e3 ? (at + 1) % ENDPOINTS.length : at;
       return json;
     } catch (err) {
       log(`  Overpass at ${new URL(url).host}: ${err.message}`);
     }
   }
-  first = (start + 1) % ENDPOINTS.length;
   return null;
 }
 
