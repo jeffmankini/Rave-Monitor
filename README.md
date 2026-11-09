@@ -1,4 +1,4 @@
-# Rave Monitor, by Geff Bohm
+# Rave Monitor, by [split/shift](https://splitshift.fm)
 
 Live at [ravemonitor.com](https://ravemonitor.com). Like it? [Buy me a coffee](https://buymeacoffee.com/geffbohm). A live map of electronic music: club nights, festivals, day parties and where touring DJs play next. It's an open-source proof of concept, inspired by World Monitor-style dashboards and built for fun.
 
@@ -9,6 +9,8 @@ On the page:
 - **The map.** Zoomed out, each city is a cluster of dots. Zoom in and a street map fades in (OpenStreetMap data from OpenFreeMap's free vector tiles, drawn with MapLibre and loaded only when you zoom), with neighbourhoods, streets and each venue in its place. Selecting a city frames its venues.
 - **Listings, for planning.** Every listing in the chosen time window (live now up to 30 days), grouped by night, with lineups, genres and prices, plus the busiest nights, the leading genres and who's playing more than once. Zoomed in to street level, each venue on the map shows its next date and headliners in the genre's colour, and the legend says which colour is which genre.
 - **Lists follow the map.** Once you zoom in yourself (scroll, pinch, the + button or picking a city), Live now, Wire, Scene heat, Genres and the other lists only show what's in the map area, and "Show everywhere" zooms back out. Opening an event from a list moves the map without narrowing the list.
+- **Near me.** The map opens near you, from a guess based on your browser's time zone, and the crosshair button uses your actual location to frame the closest city with listings and show where you are. The location stays in the browser: it isn't sent anywhere, and the browser only asks for it when you press the button.
+- **Record labels.** Search a label (Drumcode, Hospital Records, Hessle Audio…) or a promoter to filter the map and every list to their nights. A label with nothing coming up links to its past nights in the archive. Labels come from a curated list (`config/labels.json`) found in event titles, promoter names and lineup credits like "Ben UFO (Hessle Audio)"; listings have no label field of their own.
 - **Streams.** What's on air on NTS Radio right now and its coming club shows, plus live and scheduled YouTube streams from Boiler Room, Cercle, HÖR and other channels.
 
 ## How it works
@@ -102,7 +104,9 @@ To build it locally: `node pipeline/archive.js <dir> public/events.json`, then `
 ## Configuration
 
 - `config/cities.json` lists the 72 cities and, for each, what to ask every source for: the RA area page, the DICE browse page (the part after dice.fm/browse/), the Posh explore location, the Partiful city slug and the Luma city handle. Some RA area pages are best guesses; if a city comes back empty, copy the right URL from ra.co. A city can list more than one RA page, and a wrong one simply returns nothing.
-- `config/site.json` holds `gaMeasurementId`, the Google Analytics 4 Measurement ID (empty: no analytics). The tag uses Google Consent Mode: no ad features anywhere, and analytics cookies stay off in the EEA, the UK and Switzerland until the consent tool says yes. Paste the consent tool's embed code (Termageddon and Usercentrics) into `site/consent.html`; the build puts it at the top of the head, between the Consent Mode defaults and the Analytics tag. Besides page views, the site sends `open_event`, `ticket_click`, `stream_click`, `select_city`, `select_search_result`, `open_tab`, `set_filter` and `set_view` events; register parameters such as `city` and `listing_source` as custom dimensions in Analytics to see them in reports.
+- `config/site.json` holds `gaMeasurementId`, the Google Analytics 4 Measurement ID (empty: no analytics). The tag uses Google Consent Mode: no ad features anywhere, and analytics cookies stay off in the EEA, the UK and Switzerland until the consent tool says yes. Paste the consent tool's embed code (Termageddon and Usercentrics) into `site/consent.html`; the build puts it at the top of the head, between the Consent Mode defaults and the Analytics tag. Besides page views, the site sends `open_event`, `ticket_click`, `stream_click`, `select_city`, `select_search_result`, `open_tab`, `set_filter` (genres, labels, promoters), `set_view`, `locate` (how, and the nearest listing city, never coordinates), `archive_search` and `contact_submit` events; register parameters such as `city` and `listing_source` as custom dimensions in Analytics to see them in reports.
+- `config/labels.json` is the record label list. Each label has a `name` and, where its name is an ordinary word, distinctive `match` phrases ("Warp Records", not "Warp", which would match "Time Warp"), `lead` phrases that only count at the start of a title ("RINSE: …") or `genres` it's limited to ("Hospitality" only for drum and bass nights). The archive works labels out again on every run, so additions reach past nights too.
+- The contact page (`/contact/`) is built when `config/site.json` has `contactEndpoint` and `turnstileSiteKey`. Its back end is a Cloudflare Worker (`worker/contact`) that checks Cloudflare Turnstile, a per-IP rate limit and a honeypot, then emails the message through Cloudflare Email Routing with Reply-To set to the visitor; nothing is stored. `.github/workflows/contact-worker.yml` deploys it to `api.ravemonitor.com` when it changes, with the GitHub Actions secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CONTACT_TO` (the verified Email Routing destination) and `TURNSTILE_SECRET`.
 - `config/legal.json` lists the policy pages built to `/<slug>/` (Termageddon policies by their embed ID, or the page's own text, like the accessibility statement). They're linked from the About panel and from each other, with the consent tool's Privacy Settings link.
 - `config/sources.json`: `feedDays` (31) is how far ahead the feed goes. Keep `windowDays` as it is: saved scrapes are matched by it, so changing it means paying for every scrape again.
 - `config/streams.json` sets the YouTube channels for the Streams tab (add any channel id; `genres` and `city` are optional) and how far ahead NTS shows are listed.
@@ -123,7 +127,7 @@ Each scraper is run by its own author under the platform's terms. Check those te
 
 ## The feed format
 
-`events.json` holds `generatedAt`, `sources` (a per-source report), `cities` and `events`. Each event looks like this:
+`events.json` holds `generatedAt`, `sources` (a per-source report), `cities` and `events`. Each event looks like this (`labels` and `promoters` only when there are some; promoters are names only):
 
 ```json
 {
@@ -142,6 +146,8 @@ Each scraper is run by its own author under the platform's terms. Check those te
   "price": { "min": 15, "max": 15, "currency": "GBP" },
   "status": "onsale",
   "popularity": 300,
+  "labels": ["Hessle Audio"],
+  "promoters": ["Body Heat"],
   "sources": [
     { "id": "ra", "name": "Resident Advisor", "url": "https://ra.co/events/9100005" },
     { "id": "dice", "name": "DICE", "url": "https://dice.fm/event/..." }
@@ -158,8 +164,9 @@ pipeline/streams.js builds public/streams.json (NTS and YouTube)
 pipeline/lib/      normalize, merge duplicates, Apify client, helpers
 pipeline/sources/  one adapter per source
 pipeline/sample/   sample input in each platform's format
-site/              the map: index.html, app.js, demo engine, map shapes
-scripts/           build-site.js (assembles dist/), serve.js (local preview)
+site/              the map: index.html, app.js, demo engine, map shapes, archive and contact pages
+worker/contact/    the contact form's Cloudflare Worker
+scripts/           build-site.js (assembles dist/), serve.js (local preview), make-tz.js (site/tz.json)
 test/              node --test
 ```
 

@@ -27,6 +27,10 @@
     sel: null, route: null, mode: null, tab: { right: 'listings', single: 'live' }, liveAll: false, listAll: false, ds: null,
     // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
     area: null, areaOn: false,
+    // A record label or promoter to filter by: { key, name, kind: 'label' | 'promoter' }, or null.
+    label: null,
+    // The visitor's position, only after they press Near me (or allowed it before): { lat, lon }. Never sent anywhere.
+    me: null,
     streams: [], streamFile: null, streamsAt: 0, ntsLive: null, streamsTried: false
   };
   const D = {};
@@ -35,6 +39,10 @@
   const venue = e => S.ds.venueById[e.venueId];
   const gen = e => RM.GENRE[e.genre] || RM.OTHER;
   const artist = id => S.ds.artistById[id];
+  // Label and promoter names compare without case, accents, apostrophes or punctuation, & as 'and'.
+  const lkey = s => norm(s).replace(/['’‘`´]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const labelsOf = e => (e.labels || []).concat(e.promoters || []);
+  const hasLabel = e => labelsOf(e).some(n => lkey(n) === S.label.key);
 
   /* ---------- formatting ---------- */
   const fmtCache = {};
@@ -104,7 +112,9 @@
 
   /* ---------- derived data ---------- */
   function derive() {
-    const ds = S.ds, t = S.now, g = S.genres;
+    // A label filter narrows everything to that label's nights; Peakcon stays the whole scene's.
+    const ds = S.label ? Object.assign({}, S.ds, { events: S.ds.events.filter(hasLabel) }) : S.ds, t = S.now, g = S.genres;
+    D.ds = ds;
     D.win = ds.events.filter(e => RM.inWindow(e, ds, t, S.win) && RM.inGenres(e, g));
     D.live = ds.events.filter(e => RM.isLive(e, t) && RM.inGenres(e, g));
     D.byCity = new Map();
@@ -112,7 +122,7 @@
       if (!D.byCity.has(e.cityId)) D.byCity.set(e.cityId, []);
       D.byCity.get(e.cityId).push(e);
     });
-    D.peak = RM.peakcon(ds, t);
+    D.peak = RM.peakcon(S.ds, t);
     D.wire = RM.wire(ds, t, g);
     if (ds.source !== 'demo') D.wire = D.wire.filter(w => w.type === 'doors');
     D.heat = RM.heatIndex(ds, t, g);
@@ -135,7 +145,7 @@
   // What the lists show: everything, or only what's inside the map once you've zoomed in.
   // The map itself always draws everything (D.*); the lists read D.L.
   function deriveLists() {
-    const ds = S.ds, t = S.now, A = S.area;
+    const ds = D.ds, t = S.now, A = S.area;
     if (!A) { D.L = { area: false, live: D.live, soon: D.soon, win: D.win, wire: D.wire, heat: D.heat, genres: D.genres, surges: D.surges, events: ds.events, cities: D.byCity.size }; return; }
     const inA = e => A.has(e.venueId);
     const events = ds.events.filter(inA), view = Object.assign({}, ds, { events: events });
@@ -236,7 +246,7 @@
       '<div class="what"><span class="title">' + esc(e.title) + '</span>' +
       '<div class="sub"><span>' + esc(v.name) + ', ' + esc(c.name) + '</span></div>' +
       (names ? '<div class="sub2 lineup"><span>' + esc(names) + '</span></div>' : '') +
-      '<div class="sub2">' + (gt ? '<span class="gtag" style="--c:' + G.color + '">' + esc(gt) + '</span>' : '') + (price ? '<span>' + esc(price) + '</span>' : '') + '</div></div>' +
+      '<div class="sub2">' + (gt ? '<span class="gtag" style="--c:' + G.color + '">' + esc(gt) + '</span>' : '') + (e.labels && e.labels.length ? '<span class="ltag">' + esc(e.labels[0]) + '</span>' : '') + (price ? '<span>' + esc(price) + '</span>' : '') + '</div></div>' +
       '<div class="side">' + statusChip(e) + '</div></li>';
   }
   function listingsBrief(list) {
@@ -248,7 +258,7 @@
       new Set(e.heads.concat(e.support).map(id => artist(id)).filter(a => a && !NOT_NAMES.test(a.name.trim())).map(a => a.name)).forEach(n => { who[n] = (who[n] || 0) + 1; });
     });
     const top = (obj, n) => Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, n);
-    let txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b> ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.';
+    let txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b>' + (S.label ? ' for ' + esc(S.label.name) : '') + ' ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.';
     const busiest = top(Object.fromEntries(Object.entries(nights).map(([k, v]) => [k, v.n])), 2);
     if (Object.keys(nights).length > 2) txt += ' Busiest nights: ' + busiest.map(k => F(nights[k].tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(nights[k].ms - NIGHT_SHIFT) + ' (' + nights[k].n + ')').join(', ') + '.';
     const artists = top(who, 3).filter(n => who[n] > 1);
@@ -262,7 +272,8 @@
       return ka < kb ? -1 : ka > kb ? 1 : a.start - b.start;
     });
     if (!list.length) {
-      body('listings').innerHTML = areaBar() + '<p class="fine">No listings ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') + '. Try a longer time window' + (D.L.area ? ' or zoom out' : '') + '.</p>';
+      body('listings').innerHTML = areaBar() + '<p class="fine">No listings ' + (S.label ? 'for ' + esc(S.label.name) + ' ' : '') + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') + '. Try a longer time window' + (D.L.area ? ' or zoom out' : '') + '.' +
+        (S.label ? ' Past nights may be in the <a href="' + archiveLabelUrl(S.label.name) + '" style="color:inherit">archive</a>.' : '') + '</p>';
       meta('listings', ''); return;
     }
     const n = S.listAll ? list.length : Math.min(list.length, 120);
@@ -635,6 +646,7 @@
     } else lg.hidden = true;
     $$('#gchips .gchip').forEach(b => b.setAttribute('aria-pressed', b.dataset.genre === 'all' ? String(!S.genres.size) : String(S.genres.has(b.dataset.genre))));
     $$('#win button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.win === S.win)));
+    if (S.label) renderLabelChip();
   }
   function renderHeader() {
     const pk = D.peak;
@@ -707,6 +719,10 @@
       if (!live && e.start > t && st !== 'soldout' && !e.door && !e.free) facts.push(['Sell-out odds', Math.round(odds * 100) + '%']);
     } else if (Number.isFinite(e.popularity)) facts.push(['Interested or going', fmtN(e.popularity)]);
     if (e.age) facts.push(['Entry', e.age]);
+    const pick = (names, kind) => names.map(n => '<button type="button" class="linkish" data-act="label" data-kind="' + kind + '" data-name="' + esc(n) + '">' + esc(n) + '</button>').join(', ');
+    if (e.labels && e.labels.length) facts.push([e.labels.length > 1 ? 'Labels' : 'Label', pick(e.labels, 'label')]);
+    const pr = (e.promoters || []).filter(n => !(e.labels || []).some(l => lkey(l) === lkey(n)));
+    if (pr.length) facts.push(['Presented by', pick(pr, 'promoter')]);
     // One link per platform, even when a platform listed the same night twice.
     const srcs = (e.sources && e.sources.length ? e.sources : (e.src ? [{ name: e.src }] : [])).filter((x, i, a) => a.findIndex(y => y.name === x.name) === i);
     if (srcs.length) facts.push(['Listed on', srcs.map(x => x.url && !demo ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:inherit">' + esc(x.name) + '</a>' : esc(x.name)).join(', ') + (demo ? ', demo' : '')]);
@@ -718,14 +734,16 @@
       '<div class="dr-kicker"><i class="gdot" style="--c:' + G.color + '"></i><span>' + esc(G.name) + (e.sub && e.sub !== G.name ? ', ' + esc(e.sub) : '') + '</span>' + (G.id !== 'other' ? '<span>' + G.bpm + ' BPM</span>' : '') + statusChip(e) + '</div>' +
       '<h2 id="dr-title">' + esc(e.title) + '</h2><p class="dr-venue">' + esc(v.name) + ', ' + esc(c.name) + '</p></div>' +
       '<div class="dr-when"><div class="big">' + tTime(e.start, c.tz) + '<small>to ' + tTime(e.end, c.tz) + ', ' + esc(c.name) + ' time</small></div>' +
-      '<p>' + tDate(e.start, c.tz) + '. ' + when + '</p><p>Your time: ' + tDate(e.start) + ', ' + tTime(e.start) + '</p></div>' +
+      '<p>' + tDate(e.start, c.tz).replace(/\.$/, '') + '. ' + when + '</p><p>Your time: ' + tDate(e.start) + ', ' + tTime(e.start) + '</p></div>' +
       (sets ? '<section class="dr-sec"><h3>' + (timed ? 'Set times' : 'Lineup') + '</h3><ol class="sets' + (timed ? '' : ' untimed') + '">' + sets + '</ol></section>' : '') +
       '<section class="dr-sec"><h3>Tickets and listing</h3><dl class="facts">' + facts.map(f => '<div><dt>' + f[0] + '</dt><dd>' + f[1] + '</dd></div>').join('') + '</dl></section>' +
       (e.tags && e.tags.length ? '<section class="dr-sec"><h3>' + (demo ? 'Door and floor' : 'Tags') + '</h3><div class="tags">' + e.tags.map(x => '<span>' + esc(x) + '</span>').join('') + '</div></section>' : '') +
       '<div class="dr-actions">' + (tourer ? '<button class="btn primary" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
       '<button class="btn" type="button" data-act="copy">Copy details</button>' +
       (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click"' + Object.entries(eventParams(e)).map(([k, v]) => ' data-p-' + k + '="' + esc(String(v)) + '"').join('') + '>' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
-      '<p class="dr-note" id="dr-note">' + note + '</p>';
+      '<p class="dr-note" id="dr-note">' + note + '</p>' +
+      // Promoters and venues can ask for a fix or removal.
+      (window.RM_CONTACT && !demo ? '<p class="dr-note"><a href="' + window.RM_CONTACT + '?topic=listing&amp;about=' + encodeURIComponent(e.title + ', ' + v.name + ', ' + c.name + ', ' + tDate(e.start, c.tz)) + '" style="color:inherit">Report a problem with this listing</a></p>' : '');
   }
   function ticketLabel(e) { return !e.src ? 'Get tickets' : e.src === 'Promoter submission' ? 'Promoter link' : 'Tickets on ' + e.src; }
   async function copyDetails() {
@@ -750,6 +768,109 @@
     MapView.changed(false);
   }
 
+  /* ---------- record labels and promoters ---------- */
+  // Every label and promoter in the feed with its upcoming nights, plus the curated labels
+  // (built into the page) so a search for one with nothing coming up can point to the archive.
+  let labelIdx = null;
+  function labelIndex() {
+    if (labelIdx && labelIdx.ds === S.ds) return labelIdx.list;
+    const m = new Map(), t = S.now;
+    const add = (name, kind, e) => {
+      const k = lkey(name); if (!k) return;
+      let x = m.get(k);
+      if (!x) { x = { key: k, name: name, kind: kind, n: 0 }; m.set(k, x); }
+      if (kind === 'label') x.kind = 'label';
+      if (e && e.end > t) x.n++;
+    };
+    S.ds.events.forEach(e => { (e.labels || []).forEach(n => add(n, 'label', e)); (e.promoters || []).forEach(n => add(n, 'promoter', e)); });
+    (window.RM_LABELS || []).forEach(n => add(n, 'label', null));
+    labelIdx = { ds: S.ds, list: Array.from(m.values()) };
+    return labelIdx.list;
+  }
+  const archiveLabelUrl = name => '/archive/?label=' + encodeURIComponent(name);
+  function setLabel(x) {
+    S.label = x ? { key: x.key, name: x.name, kind: x.kind } : null;
+    S.listAll = false;
+    if (S.label) {
+      // Widen the time window when the label's next night is further out than it shows.
+      const t = S.now, next = S.ds.events.filter(e => e.end > t && hasLabel(e)).sort((a, b) => a.start - b.start);
+      if (next.length && !next.some(e => RM.inWindow(e, S.ds, t, S.win))) S.win = next.some(e => RM.inWindow(e, S.ds, t, '7d')) ? '7d' : next.some(e => RM.inWindow(e, S.ds, t, '14d')) ? '14d' : '30d';
+      track('set_filter', { filter: S.label.kind, value: cut(S.label.name) });
+    }
+    derive(); renderAll();
+    renderLabelChip();
+    if (S.label && D.win.length) { if (S.sel && S.mode === 'narrow') closeDrawer(); MapView.fitEvents(D.win); }
+    MapView.changed(false);
+  }
+  function renderLabelChip() {
+    const chip = $('#label-chip');
+    if (!S.label) { chip.hidden = true; return; }
+    const n = D.win.length;
+    chip.innerHTML = '<span>' + (S.label.kind === 'promoter' ? 'Promoter: ' : 'Label: ') + esc(S.label.name) + ' · ' + (n ? plural(n, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing coming up') + '</span>' +
+      (n ? '' : '<a href="' + archiveLabelUrl(S.label.name) + '">Archive</a>') + '<button type="button" data-act="label-clear">Clear</button>';
+    chip.hidden = false;
+  }
+
+  /* ---------- near me ---------- */
+  function kmBetween(la1, lo1, la2, lo2) {
+    const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(a)));
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('#maptoast');
+    el.textContent = msg; el.hidden = !msg;
+    clearTimeout(toastTimer);
+    if (msg) toastTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+  // The browser's time zone, as a rough place to start (site/tz.json, built into the page).
+  function tzGuess() {
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) { return null; }
+    const c = S.ds.cities.find(x => x.tz === tz && x.lat != null);
+    if (c) return [c.lat, c.lon];
+    const p = (window.RM_TZ || {})[tz];
+    return p ? p : null;
+  }
+  let movedSinceStart = false;
+  function goNear(lat, lon, precise, how) {
+    const best = MapView.focusNear(lat, lon, precise, how !== 'start');
+    if (precise) { S.me = { lat: lat, lon: lon }; MapView.changed(false); }
+    if (how !== 'start' || precise) track('locate', { method: precise ? 'gps' : 'timezone', city: cut(best ? best.c.name : ''), nearby: !!(best && best.d <= 120) });
+    if (how === 'start') return best;
+    if (!best) toast('No listings coming up anywhere near you yet.');
+    else if (best.d > 120) toast('Nearest listings: ' + best.c.name + ', about ' + fmtN(Math.round(best.d / 10) * 10) + ' km away.');
+    else toast('Showing listings near you. Zoom out to see everywhere.');
+    return best;
+  }
+  function locateMe() {
+    const btn = $('#locate');
+    if (!navigator.geolocation) { toast('Your browser doesn\'t share a location.'); return; }
+    btn.setAttribute('aria-busy', 'true'); toast('Finding you…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      btn.removeAttribute('aria-busy');
+      goNear(pos.coords.latitude, pos.coords.longitude, true, 'button');
+    }, err => {
+      btn.removeAttribute('aria-busy');
+      const guess = tzGuess();
+      if (guess && MapView.focusNear(guess[0], guess[1], false, true)) toast(err.code === 1 ? 'Location is off for this site, so this is a guess from your time zone.' : 'Couldn\'t get your location, so this is a guess from your time zone.');
+      else toast(err.code === 1 ? 'Location is off for this site. You can allow it in your browser settings.' : 'Couldn\'t get your location. Try again in a moment.');
+    }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
+  }
+  // On load: near the visitor right away from their time zone, then, if they've already allowed this
+  // site their location, on their own position. No permission prompt until they press Near me.
+  function startNear() {
+    const guess = tzGuess();
+    if (guess) goNear(guess[0], guess[1], false, 'start');
+    try {
+      if (!navigator.permissions || !navigator.geolocation) return;
+      navigator.permissions.query({ name: 'geolocation' }).then(st => {
+        if (st.state !== 'granted') return;
+        navigator.geolocation.getCurrentPosition(pos => { if (!movedSinceStart) goNear(pos.coords.latitude, pos.coords.longitude, true, 'start'); }, () => {}, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
+      }, () => {});
+    } catch (err) { /* no permissions API */ }
+  }
+
   /* ---------- search ---------- */
   let results = [], activeIdx = -1;
   function searchItems(q) {
@@ -758,6 +879,12 @@
     ds.cities.filter(c => norm(c.name).indexOf(s) >= 0).slice(0, 4).forEach(c => out.push({ g: 'Cities', kind: 'city', id: c.id, label: c.name, hint: plural((D.byCity.get(c.id) || []).length, 'event', 'events') + ' ' + WIN_LABEL[S.win] }));
     RM.GENRES.filter(g => norm(g.name).indexOf(s) >= 0 || g.subs.some(x => norm(x).indexOf(s) >= 0)).slice(0, 3).forEach(g => out.push({ g: 'Genres', kind: 'genre', id: g.id, label: g.name, hint: 'Filter the map' }));
     ds.artists.filter(a => norm(a.name).indexOf(s) >= 0).sort((a, b) => a.tier - b.tier).slice(0, 5).forEach(a => { const n = routeGigs(a.id).length; out.push({ g: 'DJs and artists', kind: 'artist', id: a.id, label: a.name, hint: plural(n, 'upcoming date', 'upcoming dates') }); });
+    const ls = lkey(q);
+    if (ls.length >= 2) {
+      const hits = labelIndex().filter(x => (' ' + x.key).indexOf(' ' + ls) >= 0).sort((a, b) => b.n - a.n || a.name.length - b.name.length);
+      hits.filter(x => x.kind === 'label').slice(0, 4).forEach(x => out.push({ g: 'Record labels', kind: x.n ? 'label' : 'label-archive', id: x.key, label: x.name, hint: x.n ? plural(x.n, 'upcoming night', 'upcoming nights') : 'Nothing coming up · search the archive' }));
+      hits.filter(x => x.kind === 'promoter' && x.n).slice(0, 3).forEach(x => out.push({ g: 'Promoters', kind: 'label', id: x.key, label: x.name, hint: plural(x.n, 'upcoming night', 'upcoming nights') }));
+    }
     ds.events.filter(e => e.end > t && norm(e.title).indexOf(s) >= 0).slice(0, 6).forEach(e => out.push({ g: 'Events', kind: 'event', id: e.id, label: e.title, hint: city(e).name + ', ' + tDate(e.start, city(e).tz) }));
     ds.venues.filter(v => norm(v.name).indexOf(s) >= 0).slice(0, 4).forEach(v => out.push({ g: 'Venues', kind: 'venue', id: v.id, label: v.name, hint: ds.cityById[v.cityId].name }));
     return out;
@@ -767,7 +894,7 @@
     results = searchItems(q); activeIdx = results.length ? 0 : -1;
     if (norm(q).trim().length < 2) { hideResults(); return; }
     let html = '', lastG = null;
-    if (!results.length) html = '<div class="empty">No matches. Try a city, a genre or a DJ name.</div>';
+    if (!results.length) html = '<div class="empty">No matches. Try a city, a genre, a DJ or a record label.</div>';
     results.forEach((r, i) => {
       if (r.g !== lastG) { html += '<h4>' + r.g + '</h4>'; lastG = r.g; }
       html += '<div role="option" id="opt-' + i + '" data-i="' + i + '" aria-selected="' + (i === activeIdx) + '"><span>' + esc(r.label) + '</span><small>' + esc(r.hint) + '</small></div>';
@@ -792,6 +919,8 @@
     if (r.kind === 'city') MapView.flyToCity(ds.cityById[r.id]);
     else if (r.kind === 'genre') setGenre(r.id, true);
     else if (r.kind === 'artist') setRoute(r.id);
+    else if (r.kind === 'label') setLabel(labelIndex().find(x => x.key === r.id));
+    else if (r.kind === 'label-archive') location.href = archiveLabelUrl(r.label);
     else if (r.kind === 'event') openEvent(r.id);
     else if (r.kind === 'venue') MapView.flyToVenue(ds.venueById[r.id]);
   }
@@ -840,7 +969,7 @@
     // The lists follow the map once you zoom in yourself; zooming back out to the world lets them go.
     // Opening an event from a list moves the map without narrowing the list.
     const zoomedIn = () => S.view === 'map' ? mapT.k > homeK() * 1.2 : globe.k > 1.3;
-    function userMoved() { S.areaOn = zoomedIn(); }
+    function userMoved() { S.areaOn = zoomedIn(); movedSinceStart = true; }
     const baseProj = () => d3.geoMercator().rotate([-lon0, 0]).scale(base).translate([0, 0]);
     function setProj() {
       if (S.view === 'map') {
@@ -994,6 +1123,29 @@
       const k = Math.max(kMin, Math.min(kMax, Math.max(minPpd / unitPpd(), Math.min(kFit, maxPpd / unitPpd()))));
       const t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
       (reduceMotion ? sel : sel.transition().duration(900)).call(zMap.transform, t);
+    }
+    // Near me: frame the closest city with listings coming up. precise is the visitor's own position,
+    // otherwise a guess from their time zone, which gets a regional view rather than a street-level one.
+    function focusNear(lat, lon, precise, animate) {
+      const t = S.now, ahead = t + 31 * DAY, n = {};
+      S.ds.events.forEach(e => { if (e.end > t && e.start < ahead) n[e.cityId] = (n[e.cityId] || 0) + 1; });
+      let best = null;
+      Object.keys(n).forEach(id => { const c = S.ds.cityById[id]; if (!c) return; const d = kmBetween(lat, lon, c.lat, c.lon); if (!best || d < best.d) best = { c: c, d: d }; });
+      if (!best || best.d > (precise ? 20000 : 1500)) return null;
+      if (S.view !== 'map') setView('map');
+      S.areaOn = true;
+      if (!precise) flyTo(best.c.lon, best.c.lat, W < 760 ? 45 : 60, animate);
+      else if (best.d <= 120) {
+        // Their city's venues (the middle 90%) with them in the frame.
+        const vs = S.ds.events.filter(e => e.cityId === best.c.id && e.end > t).map(venue).filter(v => v && !v.approx);
+        const lons = vs.map(v => v.lon).concat(lon).sort((a, b) => a - b), lats = vs.map(v => v.lat).concat(lat).sort((a, b) => a - b);
+        const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round((arr.length - 1) * f)))];
+        const trim = vs.length >= 10 ? 0.05 : 0;
+        const box = [[Math.min(lon, q(lons, trim)), Math.min(lat, q(lats, trim))], [Math.max(lon, q(lons, 1 - trim)), Math.max(lat, q(lats, 1 - trim))]];
+        fitBox(box, 150, 1500);
+      } else fitBox([[Math.min(lon, best.c.lon), Math.min(lat, best.c.lat)], [Math.max(lon, best.c.lon), Math.max(lat, best.c.lat)]], 2, 260);
+      changed(true);
+      return best;
     }
     function fitEvents(list) {
       if (!list.length) return;
@@ -1158,7 +1310,7 @@
     }
     function frame(time) {
       rafId = 0;
-      const anim = !reduceMotion && !document.hidden && (liveMarks > 0 || (S.layers.tours && D.tours.length) || S.route);
+      const anim = !reduceMotion && !document.hidden && (liveMarks > 0 || (S.layers.tours && D.tours.length) || S.route || S.me);
       if (baseDirty || overDirty || posDirty || (anim && time - lastDraw > 33)) {
         if (baseDirty || posDirty) setProj();
         if (baseDirty) { syncStreets(); drawBase(); baseDirty = false; }
@@ -1321,6 +1473,16 @@
         });
         ctx.textAlign = 'left';
       }
+      // You are here (Near me): a light dot with a slow pulse, under the labels.
+      let meP = null;
+      if (S.me && vis(S.me.lon, S.me.lat)) {
+        meP = proj([S.me.lon, S.me.lat]);
+        if (meP) {
+          const ph = reduceMotion ? 0.5 : (time / 2400) % 1;
+          ctx.beginPath(); ctx.arc(meP[0], meP[1], 7 + ph * 12, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(120,200,255,' + ((1 - ph) * 0.7).toFixed(3) + ')'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.beginPath(); ctx.arc(meP[0], meP[1], 5.5, 0, Math.PI * 2); ctx.fillStyle = '#78c8ff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#f6f8ff'; ctx.stroke();
+        }
+      }
       /* labels */
       const boxes = [];
       const put = (text, x, y, color, font, align) => {
@@ -1335,6 +1497,7 @@
         return true;
       };
       boxes.push([0, 0, 260, 50], [W - 220, 0, W, 50]);
+      if (meP) put('You are here', meP[0] + 11, meP[1], '#9fd8ff', '650 11px ' + FONT);
       if (S.layers.belt && streets.t < 1) { // the band itself is under the street map
         const band = RM.clubBand(S.now);
         const edge = (lon, text, align) => {
@@ -1418,7 +1581,7 @@
     }
     function hideTip() { tip.hidden = true; }
 
-    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, zoomBy: zoomBy, resize: resize, setStreets: setStreets };
+    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets };
   })();
 
   /* ---------- live feed (events.json written by the pipeline) ---------- */
@@ -1468,6 +1631,7 @@
         start: start, end: end, cap: pop ? Math.max(150, Math.min(6000, pop * 1.6)) : 400, base: x.status === 'soldout' ? 1.05 : 0.75,
         priceMin: x.price ? x.price.min : 0, priceMax: x.price ? x.price.max : 0, cur: (x.price && x.price.currency) || c.cur || 'USD',
         free: !!(x.price && x.price.free), door: false, age: x.age || '', tags: x.tags || [], streamed: false, festivalId: null,
+        labels: x.labels || [], promoters: x.promoters || [],
         url: x.sources && x.sources[0] && x.sources[0].url, sources: x.sources || [], src: x.sources && x.sources[0] && x.sources[0].name,
         extStatus: x.status || 'unknown', soldOutAt: x.status === 'soldout' ? start - DAY : null, finalAt: null, popularity: pop,
         ldow: lp.dow, lh: lp.h, seed: hashSeed(x.id)
@@ -1541,6 +1705,8 @@
       if (a === 'copy') return copyDetails();
       if (a === 'route') { setRoute(act.dataset.artist); return; }
       if (a === 'route-clear') return setRoute(null);
+      if (a === 'label-clear') return setLabel(null);
+      if (a === 'label') return setLabel({ key: lkey(act.dataset.name), name: act.dataset.name, kind: act.dataset.kind === 'promoter' ? 'promoter' : 'label' });
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
       if (a === 'list-all') { S.listAll = true; renderListings(); return; }
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
@@ -1569,6 +1735,7 @@
         if (S.sel) return closeDrawer();
         if (!$('#layers').hidden) return toggleLayers(false);
         if (S.route) return setRoute(null);
+        if (S.label) return setLabel(null);
         return;
       }
       if (typing || ev.metaKey || ev.ctrlKey || ev.altKey) return;
@@ -1595,7 +1762,11 @@
     $('#zoom-in').addEventListener('click', () => MapView.zoomBy(2));
     $('#zoom-out').addEventListener('click', () => MapView.zoomBy(0.5));
     $('#zoom-home').addEventListener('click', () => MapView.home(true));
-    $('#brand').addEventListener('click', ev => { ev.preventDefault(); setRoute(null); if (S.sel) closeDrawer(); MapView.home(true); });
+    $('#locate').addEventListener('click', () => { movedSinceStart = true; locateMe(); });
+    // Once the visitor moves the map or searches, a late position from startNear() stays out of the way.
+    ['pointerdown', 'wheel', 'keydown'].forEach(type => $('#stage').addEventListener(type, () => { movedSinceStart = true; }, { capture: true, passive: true }));
+    $('#q').addEventListener('focus', () => { movedSinceStart = true; });
+    $('#brand').addEventListener('click', ev => { ev.preventDefault(); setRoute(null); if (S.label) setLabel(null); if (S.sel) closeDrawer(); MapView.home(true); });
     $('#layers-btn').addEventListener('click', () => toggleLayers($('#layers').hidden));
     const lyMap = { 'ly-belt': 'belt', 'ly-heat': 'heat', 'ly-fest': 'fest', 'ly-tours': 'tours', 'ly-labels': 'labels' };
     Object.keys(lyMap).forEach(id => $('#' + id).addEventListener('change', ev => { S.layers[lyMap[id]] = ev.target.checked; MapView.changed(true); }));
@@ -1633,6 +1804,7 @@
     wire();
     renderAll();
     MapView.init();
+    startNear();
     updateClock();
     setInterval(updateClock, 10000);
     setInterval(() => { S.now = Date.now(); derive(); renderAll(); MapView.changed(true); }, 30000);

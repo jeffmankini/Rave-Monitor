@@ -22,6 +22,7 @@ export function rows(archive) {
       venue: r.venue?.name || null, address: r.venue?.address || null,
       lat: Number.isFinite(r.venue?.lat) ? r.venue.lat : null, lon: Number.isFinite(r.venue?.lon) ? r.venue.lon : null,
       type: r.type || null, genres: r.genres.join(', '), tags: r.tags.join(', '), lineup: r.lineup.join(', '),
+      labels: (r.labels || []).join(', '), promoters: (r.promoters || []).join(', '),
       price_min: r.price?.min ?? null, price_max: r.price?.max ?? null, currency: r.price?.currency || null,
       status: r.status || null, listed_on: r.sources.map(s => s.name).join(', '), links: r.sources.map(s => s.url).filter(Boolean).join(' '),
       first_seen: r.firstSeen, last_seen: r.lastSeen
@@ -31,17 +32,20 @@ export function rows(archive) {
 
 /**
  * The archive page's data: an index (months with counts, city names) and, per month, compact rows:
- * [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type].
+ * [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type, labels, promoters]
+ * (the last two only when the night has any).
  */
 export function browseData(archive, now = new Date().toISOString()) {
   const months = {};
   for (const r of [...archive.records.values()].sort((a, b) => a.start.localeCompare(b.start))) {
     const m = monthOf(r);
-    (months[m] ||= []).push([
+    const row = [
       r.id, r.title, r.start, r.tz || null, r.cityId || null, r.venue?.name || null,
       (r.lineup || []).filter(a => !PLACEHOLDER.test(a.trim())), r.genres || [], (r.tags || []).slice(0, 3),
       (r.sources || []).map(x => [x.name, x.url || null]), r.status || null, r.type || null
-    ]);
+    ];
+    if (r.labels?.length || r.promoters?.length) row.push(r.labels || [], r.promoters || []);
+    (months[m] ||= []).push(row);
   }
   const cities = {};
   for (const [id, c] of Object.entries(archive.cities)) cities[id] = [c.name || id, c.country || null];
@@ -74,12 +78,14 @@ export async function exportArchive(dir, out) {
   db.exec(`
     CREATE TABLE events (${cols.map(c => `${c} ${['lat', 'lon', 'price_min', 'price_max'].includes(c) ? 'REAL' : 'TEXT'}${c === 'id' ? ' PRIMARY KEY' : ''}`).join(', ')});
     CREATE TABLE event_artists (event_id TEXT, artist TEXT);
+    CREATE TABLE event_labels (event_id TEXT, label TEXT);
     CREATE TABLE event_sources (event_id TEXT, source TEXT, url TEXT);
     CREATE TABLE event_status (event_id TEXT, status TEXT, seen_at TEXT);
     CREATE TABLE cities (id TEXT PRIMARY KEY, name TEXT, country TEXT, lat REAL, lon REAL, tz TEXT);
   `);
   const insEvent = db.prepare(`INSERT INTO events (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`);
   const insArtist = db.prepare('INSERT INTO event_artists VALUES (?, ?)');
+  const insLabel = db.prepare('INSERT INTO event_labels VALUES (?, ?)');
   const insSource = db.prepare('INSERT INTO event_sources VALUES (?, ?, ?)');
   const insStatus = db.prepare('INSERT INTO event_status VALUES (?, ?, ?)');
   const insCity = db.prepare('INSERT INTO cities VALUES (?, ?, ?, ?, ?, ?)');
@@ -87,6 +93,7 @@ export async function exportArchive(dir, out) {
   for (const r of flat) insEvent.run(...cols.map(c => r[c]));
   for (const r of archive.records.values()) {
     for (const a of r.lineup) if (!PLACEHOLDER.test(a.trim())) insArtist.run(r.id, a);
+    for (const l of r.labels || []) insLabel.run(r.id, l);
     for (const s of r.sources) insSource.run(r.id, s.name, s.url || null);
     for (const s of r.statusLog) insStatus.run(r.id, s.status, s.at);
   }
@@ -94,7 +101,8 @@ export async function exportArchive(dir, out) {
   db.exec(`COMMIT;
     CREATE INDEX events_start ON events (start);
     CREATE INDEX events_city ON events (city_id, start);
-    CREATE INDEX artists_name ON event_artists (artist);`);
+    CREATE INDEX artists_name ON event_artists (artist);
+    CREATE INDEX labels_name ON event_labels (label);`);
   db.close();
   return { events: flat.length, sqlite: true };
 }

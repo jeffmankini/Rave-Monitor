@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 __HEAD_START__
 <title>The rave archive · Rave Monitor</title>
-<meta name="description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, venue, city and month. A living archive of electronic music nights around the world.">
+<meta name="description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, record label, venue, city and month. A living archive of electronic music nights around the world.">
 <link rel="canonical" href="__SITE_URL__/archive/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Rave Monitor">
 <meta property="og:title" content="The rave archive · Rave Monitor">
-<meta property="og:description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, venue, city and month.">
+<meta property="og:description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, record label, venue, city and month.">
 <meta property="og:url" content="__SITE_URL__/archive/">
 <meta property="og:image" content="__SITE_URL__/og-image.jpg">
 <meta property="og:image:width" content="1200">
@@ -37,7 +37,8 @@ a:hover, a:focus-visible { color: var(--now); }
 main { max-width: 980px; margin: 0 auto; padding: 28px 20px 48px; }
 h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; color: var(--ink); font-size: clamp(24px, 5vw, 34px); line-height: 1.15; margin: 0 0 10px; }
 .lede { margin: 0 0 20px; max-width: 680px; }
-.filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--deck); }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--deck); }
+.filters .wide { grid-column: span 2; }
 .filters label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; min-width: 0; }
 .filters input, .filters select { width: 100%; height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: 14px; }
 .filters input::placeholder { color: var(--ink-3); }
@@ -51,7 +52,7 @@ h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 80
 .results { list-style: none; margin: 0; padding: 0; }
 .mhead { margin: 22px 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 12px 2px; border-top: 1px solid var(--line); }
-.when b { display: block; color: var(--ink); font-weight: 650; font-size: 14px; }
+.when b { display: block; color: var(--ink); font-weight: 650; font-size: 14px; white-space: nowrap; }
 .when span { font-size: 13px; color: var(--ink-3); }
 .title { color: var(--ink); font-weight: 650; font-size: 15px; text-decoration: none; }
 .title:hover, .title:focus-visible { text-decoration: underline; color: var(--now); }
@@ -63,6 +64,7 @@ h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 80
 .pick:hover, .pick:focus-visible { color: var(--now); text-decoration: underline; }
 .lineup .pick { color: var(--ink); }
 .lineup .pick.on, .place .pick.on { color: var(--now); }
+.meta .pick.lab { color: #9fc4f5; font-weight: 600; }
 .meta { color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .meta a { color: var(--ink-2); }
 .g { display: inline-flex; align-items: center; gap: 6px; }
@@ -76,7 +78,8 @@ footer a { color: var(--ink-2); }
 @media (max-width: 760px) {
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters label:first-child { grid-column: 1 / -1; }
-  .row { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+  .row { grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+  .when b { font-size: 13.5px; }
 }
 </style>
 </head>
@@ -87,15 +90,16 @@ footer a { color: var(--ink-2); }
 </header>
 <main>
   <h1>The archive</h1>
-  <p class="lede">Every listing Rave Monitor has shown, kept after the night is over and merged across platforms. <span id="stats"></span></p>
+  <p class="lede">Every listing Rave Monitor has shown, kept after the night is over and merged across platforms. Search by artist, record label, venue, city or month. <span id="stats"></span></p>
   <form class="filters" id="filters" role="search" aria-label="Search the archive">
-    <label>Search<input id="f-q" type="search" autocomplete="off" placeholder="Event, artist, venue or city"></label>
+    <label class="wide">Search<input id="f-q" type="search" autocomplete="off" placeholder="Event, artist, venue or city"></label>
     <label>Artist<input id="f-artist" type="search" list="artists" autocomplete="off" placeholder="Any artist"></label>
+    <label>Record label<input id="f-label" type="search" list="labels" autocomplete="off" placeholder="Any label"></label>
     <label>Venue<input id="f-venue" type="search" list="venues" autocomplete="off" placeholder="Any venue"></label>
     <label>City<select id="f-city"><option value="">All cities</option></select></label>
     <label>Month<select id="f-month"><option value="">All months</option><option value="past">Past nights</option><option value="upcoming">Coming up</option></select></label>
     <label>Genre<select id="f-genre"><option value="">All genres</option></select></label>
-    <datalist id="artists"></datalist><datalist id="venues"></datalist>
+    <datalist id="artists"></datalist><datalist id="venues"></datalist><datalist id="labels"></datalist>
   </form>
   <div class="bar">
     <span id="count" aria-live="polite">Loading the archive…</span>
@@ -127,14 +131,16 @@ footer a { color: var(--ink-2); }
   }
   var nf = new Intl.NumberFormat();
   var all = [], cities = {}, monthsIdx = [], matches = [], shown = 0, expanded = {};
-  var F = { q: $('#f-q'), artist: $('#f-artist'), venue: $('#f-venue'), city: $('#f-city'), month: $('#f-month'), genre: $('#f-genre'), sort: $('#f-sort') };
+  var F = { q: $('#f-q'), artist: $('#f-artist'), label: $('#f-label'), venue: $('#f-venue'), city: $('#f-city'), month: $('#f-month'), genre: $('#f-genre'), sort: $('#f-sort') };
 
-  // Row: [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type]
+  // Row: [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type, labels, promoters]
   function prep(r, month) {
     var o = { id: r[0], title: r[1] || '', start: Date.parse(r[2]), tz: r[3] || 'UTC', city: r[4] || '', venue: r[5] || '', lineup: r[6] || [], genres: r[7] || [],
-      tags: r[8] || [], sources: r[9] || [], status: r[10] || '', type: r[11] || '', month: month };
+      tags: r[8] || [], sources: r[9] || [], status: r[10] || '', type: r[11] || '', labels: r[12] || [], promoters: r[13] || [], month: month };
     o.cityName = (cities[o.city] || [o.city])[0] || '';
     o.nLineup = o.lineup.map(words); o.nVenue = words(o.venue);
+    // A label search also finds nights that name the label only in their title ('Hessle Audio presents …').
+    o.nLabels = o.labels.concat(o.promoters).map(words); o.nTitle = words(o.title);
     o.hay = words([o.title, o.venue, o.cityName].concat(o.lineup).join(' '));
     return o;
   }
@@ -161,9 +167,10 @@ footer a { color: var(--ink-2); }
   }
 
   function pickers() {
-    var cc = {}, ac = {}, vc = {}, gc = {};
+    var cc = {}, ac = {}, vc = {}, gc = {}, lc = {};
     all.forEach(function (o) {
       cc[o.city] = (cc[o.city] || 0) + 1;
+      o.labels.concat(o.promoters).forEach(function (l) { lc[l] = (lc[l] || 0) + 1; });
       if (o.venue) vc[o.venue] = (vc[o.venue] || 0) + 1;
       o.lineup.forEach(function (a) { ac[a] = (ac[a] || 0) + 1; });
       (o.genres.length ? o.genres : ['other']).forEach(function (g) { gc[g] = (gc[g] || 0) + 1; });
@@ -177,11 +184,12 @@ footer a { color: var(--ink-2); }
     var top = function (obj, n) { return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a] || a.localeCompare(b); }).slice(0, n); };
     $('#artists').innerHTML = top(ac, 3000).map(function (a) { return '<option value="' + esc(a) + '">'; }).join('');
     $('#venues').innerHTML = top(vc, 2000).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+    $('#labels').innerHTML = top(lc, 1000).map(function (l) { return '<option value="' + esc(l) + '">'; }).join('');
     $('#stats').textContent = nf.format(all.length) + ' listings, ' + nf.format(Object.keys(ac).length) + ' artists, ' + nf.format(Object.keys(vc).length) + ' venues and ' + nf.format(Object.keys(cc).length) + ' cities so far.';
   }
 
   function apply(first) {
-    var q = words(F.q.value).trim().split(' ').filter(Boolean), ar = words(F.artist.value).trim(), ve = words(F.venue.value).trim();
+    var q = words(F.q.value).trim().split(' ').filter(Boolean), ar = words(F.artist.value).trim(), ve = words(F.venue.value).trim(), la = words(F.label.value).trim();
     var ci = F.city.value, mo = F.month.value, ge = F.genre.value, now = Date.now();
     matches = all.filter(function (o) {
       if (ci && o.city !== ci) return false;
@@ -189,12 +197,13 @@ footer a { color: var(--ink-2); }
       if (ge && (o.genres.length ? o.genres : ['other']).indexOf(ge) < 0) return false;
       if (ve && !has(o.nVenue, ve)) return false;
       if (ar && !o.nLineup.some(function (a) { return has(a, ar); })) return false;
+      if (la && !has(o.nTitle, la) && !o.nLabels.some(function (l) { return has(l, la); })) return false;
       for (var i = 0; i < q.length; i++) if (!has(o.hay, q[i])) return false;
       return true;
     });
     var dir = F.sort.value === 'old' ? 1 : -1;
     matches.sort(function (a, b) { return (a.start - b.start) * dir; });
-    var any = F.q.value || F.artist.value || F.venue.value || ci || mo || ge;
+    var any = F.q.value || F.artist.value || F.label.value || F.venue.value || ci || mo || ge;
     $('#count').textContent = (any ? nf.format(matches.length) + ' of ' + nf.format(all.length) : nf.format(all.length)) + ' listings';
     $('#clear').hidden = !any;
     shown = 0; $('#results').innerHTML = ''; render();
@@ -232,11 +241,14 @@ footer a { color: var(--ink-2); }
       '<div class="place">' + (o.venue ? '<button type="button" class="pick' + (ve && has(o.nVenue, ve) ? ' on' : '') + '" data-f="venue" data-v="' + esc(o.venue) + '">' + esc(o.venue) + '</button>, ' : '') +
       '<button type="button" class="pick" data-f="city" data-v="' + esc(o.city) + '">' + esc(o.cityName) + '</button></div>' +
       (lineup ? '<div class="lineup">' + lineup + '</div>' : '') +
-      '<div class="meta"><span class="g" style="--c:' + GENRES[g][1] + '">' + esc(genreText) + '</span>' + (listed ? '<span>Listed on ' + listed + '</span>' : '') + '</div></div></li>';
+      '<div class="meta"><span class="g" style="--c:' + GENRES[g][1] + '">' + esc(genreText) + '</span>' +
+      o.labels.map(function (l) { return '<button type="button" class="pick lab" data-f="label" data-v="' + esc(l) + '">' + esc(l) + '</button>'; }).join('') +
+      (o.promoters.length ? '<span>Presented by ' + o.promoters.filter(function (p) { return o.labels.indexOf(p) < 0; }).map(function (p) { return '<button type="button" class="pick" data-f="label" data-v="' + esc(p) + '">' + esc(p) + '</button>'; }).join(', ') + '</span>' : '') +
+      (listed ? '<span>Listed on ' + listed + '</span>' : '') + '</div></div></li>';
   }
 
   // Shareable searches: the filters live in the address (?artist=…&city=…&month=…).
-  var KEYS = ['q', 'artist', 'venue', 'city', 'month', 'genre', 'sort'];
+  var KEYS = ['q', 'artist', 'label', 'venue', 'city', 'month', 'genre', 'sort'];
   function readUrl() {
     var p = new URLSearchParams(location.search);
     KEYS.forEach(function (k) { var v = p.get(k); if (v != null) F[k].value = v; });
@@ -253,14 +265,14 @@ footer a { color: var(--ink-2); }
     clearTimeout(reportTimer);
     reportTimer = setTimeout(function () {
       if (typeof window.gtag !== 'function' || !window.RM_GA) return;
-      window.gtag('event', 'archive_search', { artist: F.artist.value.slice(0, 100), venue: F.venue.value.slice(0, 100), city: F.city.value ? (cities[F.city.value] || [F.city.value])[0] : '',
+      window.gtag('event', 'archive_search', { artist: F.artist.value.slice(0, 100), label: F.label.value.slice(0, 100), venue: F.venue.value.slice(0, 100), city: F.city.value ? (cities[F.city.value] || [F.city.value])[0] : '',
         month: F.month.value, genre: F.genre.value, has_keyword: !!F.q.value, results: matches.length });
     }, 2000);
   }
 
   var timer = 0;
   function soon() { clearTimeout(timer); timer = setTimeout(apply, 140); }
-  ['q', 'artist', 'venue'].forEach(function (k) { F[k].addEventListener('input', soon); });
+  ['q', 'artist', 'label', 'venue'].forEach(function (k) { F[k].addEventListener('input', soon); });
   ['city', 'month', 'genre', 'sort'].forEach(function (k) { F[k].addEventListener('change', function () { apply(); }); });
   $('#filters').addEventListener('submit', function (e) { e.preventDefault(); apply(); });
   $('#more').addEventListener('click', render);

@@ -56,6 +56,7 @@ function merge(group) {
     if (!out.sets && e.sets) out.sets = e.sets;
     if (out.venue.approx && !e.venue.approx) out.venue = e.venue;
     if (!out.age && e.age) out.age = e.age;
+    for (const f of ['labels', 'promoters']) for (const x of e[f] || []) { out[f] ||= []; if (!out[f].includes(x)) out[f].push(x); }
   }
   if (out.genres.length > 1) out.genres = out.genres.filter(g => g !== 'other');
   out.lineup = out.lineup.slice(0, 24);

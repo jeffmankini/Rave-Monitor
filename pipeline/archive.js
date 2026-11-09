@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isContactLine, positionQuality, jitter, splitLineup } from './lib/normalize.js';
+import { detectLabels } from './lib/labels.js';
 import { norm } from './lib/util.js';
 
 const uniq = a => [...new Set(a.filter(x => x !== undefined && x !== null && x !== ''))];
@@ -40,9 +41,14 @@ export function loadArchive(dir) {
   return { records, cities };
 }
 
-/** Clean up records saved before the feed's own checks: free-text and contact lines in lineups, venues at 0,0. */
+/**
+ * Clean up records saved before the feed's own checks: free-text and contact lines in lineups, venues
+ * at 0,0. Labels are worked out again each time, so additions to config/labels.json reach old nights.
+ */
 function tidy(r, cities) {
   if (Array.isArray(r.lineup)) r.lineup = [...new Set(splitLineup(r.lineup).filter(n => !isContactLine(n)))];
+  const labels = detectLabels(r);
+  if (labels.length) r.labels = labels; else delete r.labels;
   const v = r.venue, c = cities[r.cityId];
   if (v && c && positionQuality(v.lat, v.lon) === 'none') {
     const [lat, lon] = jitter(`${r.cityId}:${norm(v.name || r.id)}`, c.lat, c.lon);
@@ -75,6 +81,7 @@ export function mergeFeed(archive, feed, now = new Date().toISOString().slice(0,
       for (const extra of found.slice(1)) {
         rec.keys = uniq([...rec.keys, ...extra.keys]);
         for (const f of ['lineup', 'genres', 'tags']) rec[f] = uniq([...rec[f], ...extra[f]]);
+        for (const f of ['labels', 'promoters']) if (extra[f]) rec[f] = uniq([...(rec[f] || []), ...extra[f]]);
         rec.sources = mergeSources(rec.sources, extra.sources);
         rec.statusLog = [...rec.statusLog, ...extra.statusLog].sort((a, b) => a.at.localeCompare(b.at));
         records.delete(extra.id);
@@ -87,6 +94,7 @@ export function mergeFeed(archive, feed, now = new Date().toISOString().slice(0,
     rec.lineup = uniq([...rec.lineup, ...(e.lineup || [])]);
     rec.genres = uniq([...rec.genres, ...(e.genres || [])]);
     rec.tags = uniq([...rec.tags, ...(e.tags || [])]);
+    for (const f of ['labels', 'promoters']) if (e[f] && e[f].length) rec[f] = uniq([...(rec[f] || []), ...e[f]]);
     rec.sources = mergeSources(rec.sources, (e.sources || []).map(s => ({ name: s.name, url: s.url })));
     if (e.status && (rec.statusLog.at(-1) || {}).status !== e.status) rec.statusLog.push({ status: e.status, at: now });
     rec.status = e.status || rec.status;
@@ -126,7 +134,8 @@ Every listing [Rave Monitor](https://ravemonitor.com) has shown, merged across p
 the night is over. Updated by the daily refresh job; don't edit by hand.
 
 - \`events/YYYY-MM.ndjson\`: one JSON object per line, filed by the event's local month. Each has the
-  event facts (title, start, end, tz, cityId, venue, lineup, genres, tags, type, price, status), the
+  event facts (title, start, end, tz, cityId, venue, lineup, genres, tags, type, price, status, and
+  record labels and promoter names when known), the
   platforms it was listed on (\`sources\`), when it was first and last seen, and \`statusLog\`
   (status changes such as sold out or cancelled, with when they were seen).
 - \`cities.json\`: names and coordinates for each \`cityId\`.

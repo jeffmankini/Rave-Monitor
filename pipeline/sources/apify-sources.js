@@ -76,7 +76,8 @@ export const ra = {
       cityName: pick(it, 'venue.area.name'), country: pick(it, 'venue.area.country.urlCode'), cityHint: it.__city,
       lineup, genres: genresFrom(genreNames, it.title), tags: genreNames,
       price: parsePrice(it.cost), status: 'unknown', popularity: num(it.interestedCount),
-      age: it.minimumAge ? it.minimumAge + '+' : undefined, isFestival: !!it.isFestival
+      age: it.minimumAge ? it.minimumAge + '+' : undefined, isFestival: !!it.isFestival,
+      promoters: it.promoters || it.promoterNames
     });
   }
 };
@@ -181,7 +182,8 @@ export const posh = {
       lineup: (it.lineup || []).map(l => l.name), lineupText,
       genres: genresFrom(it.name, it.description, lineupText),
       price: it.isFree ? { min: 0, max: 0, currency: it.currency, free: true } : (num(it.lowestPrice) !== undefined ? { min: num(it.lowestPrice), max: num(it.highestPrice) ?? num(it.lowestPrice), currency: it.currency } : null),
-      status: soldOut ? 'soldout' : 'onsale', popularity: num(it.attendingCount)
+      status: soldOut ? 'soldout' : 'onsale', popularity: num(it.attendingCount),
+      promoters: it.organizerName
     });
   }
 };

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+__HEAD_START__
+<title>Contact · Rave Monitor</title>
+<meta name="description" content="Contact Rave Monitor, the electronic music map and archive by split/shift: questions, listing fixes and removals, cities and sources to add, press.">
+<link rel="canonical" href="__SITE_URL__/contact/">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#070814">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://challenges.cloudflare.com">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+:root { color-scheme: dark; --void: #070814; --deck: #0c0f22; --line: #1f2547; --ink: #eceaf6; --ink-2: #a9abcb; --ink-3: #7c7fa3; --now: #f6ecd8; --now-ink: #1a1408; --bad: #ff8f8f; --good: #8fe0a8; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--void); color: var(--ink-2); font: 16px/1.6 "Archivo", "Helvetica Neue", Arial, sans-serif; }
+a { color: var(--ink); }
+a:hover, a:focus-visible { color: var(--now); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.brand svg { width: 22px; height: 22px; color: var(--now); }
+.brand span { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.back { color: var(--ink-3); font-size: 14px; text-decoration: none; }
+main { max-width: 620px; margin: 0 auto; padding: 32px 20px 48px; }
+h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; color: var(--ink); font-size: clamp(24px, 5vw, 34px); line-height: 1.15; margin: 0 0 10px; }
+.lede { margin: 0 0 22px; }
+form { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--deck); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+label { display: grid; gap: 5px; font-size: 13px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; min-width: 0; }
+label small { font-weight: 500; letter-spacing: 0; }
+input, select, textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: 15px; }
+input, select { height: 42px; }
+textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--now); outline-offset: 1px; border-color: transparent; }
+input:user-invalid, textarea:user-invalid { border-color: var(--bad); }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.check { min-height: 65px; }
+.actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+button { height: 42px; padding: 0 20px; border: 0; border-radius: 21px; background: var(--now); color: var(--now-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+button[disabled] { opacity: .6; cursor: progress; }
+.status { margin: 0; font-size: 14px; }
+.status.bad { color: var(--bad); }
+.status.good { color: var(--good); }
+.fine { font-size: 13px; color: var(--ink-3); margin: 16px 0 0; }
+footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align: center; font-size: 14px; color: var(--ink-3); }
+footer a { color: var(--ink-2); }
+@media (max-width: 560px) { .two { grid-template-columns: 1fr; } form { padding: 14px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg><span>Rave Monitor</span></a>
+  <a class="back" href="/">Back to the map</a>
+</header>
+<main>
+  <h1>Contact</h1>
+  <p class="lede">Questions, a listing to fix or take down, a city or source to add, press: send a note and we'll reply by email.</p>
+  <form id="contact" novalidate>
+    <div class="two">
+      <label><span>Name <small>(optional)</small></span><input name="name" type="text" autocomplete="name" maxlength="100"></label>
+      <label>Email<input name="email" type="email" autocomplete="email" maxlength="200" required></label>
+    </div>
+    <label>Topic
+      <select name="topic">
+        <option>General</option>
+        <option value="Fix or remove a listing">Fix or remove a listing</option>
+        <option value="Suggest a city or source">Suggest a city or source</option>
+        <option value="Press or partnership">Press or partnership</option>
+      </select>
+    </label>
+    <label>Message<textarea name="message" minlength="10" maxlength="5000" required></textarea></label>
+    <label class="hp" aria-hidden="true">Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+    <div class="check cf-turnstile" data-sitekey="__TURNSTILE_SITE_KEY__" data-theme="dark" data-size="flexible" data-callback="rmCheckDone" data-expired-callback="rmCheckReset" data-error-callback="rmCheckFailed"></div>
+    <div class="actions">
+      <button type="submit" id="send">Send</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </form>
+  <p class="fine">Your name and email are used only to reply to you. Messages reach our inbox through Cloudflare, and Cloudflare Turnstile checks that you're not a bot. More in the <a href="/privacy-policy/">privacy policy</a>. Or email <a href="mailto:hello@ravemonitor.com">hello@ravemonitor.com</a>.</p>
+</main>
+<footer>__LEGAL_LINKS__</footer>
+<script>
+(function () {
+  var ENDPOINT = '__CONTACT_ENDPOINT__';
+  var form = document.getElementById('contact'), status = document.getElementById('status'), send = document.getElementById('send');
+  var started = Date.now(), checked = false;
+  window.rmCheckDone = function () { checked = true; if (status.dataset.wait) say(''); };
+  window.rmCheckReset = function () { checked = false; };
+  window.rmCheckFailed = function () { checked = false; say('The anti-spam check didn\'t load. Reload the page, or email hello@ravemonitor.com.', 'bad'); };
+  function say(msg, kind) { status.textContent = msg; status.className = 'status' + (kind ? ' ' + kind : ''); delete status.dataset.wait; }
+
+  // Links can open the form ready to go: /contact/?topic=listing&about=Night%20name
+  var p = new URLSearchParams(location.search);
+  var topics = { listing: 'Fix or remove a listing', city: 'Suggest a city or source', press: 'Press or partnership' };
+  if (topics[p.get('topic')]) form.topic.value = topics[p.get('topic')];
+  if (p.get('about')) form.message.value = 'About: ' + p.get('about').slice(0, 300) + '\n\n';
+
+  var ERRORS = {
+    invalid_email: 'That email address doesn\'t look right.',
+    too_short: 'Add a little more to your message.',
+    challenge: 'The anti-spam check didn\'t pass. Try it again.',
+    rate_limited: 'That\'s a lot of messages at once. Wait a minute and try again.',
+    send_failed: 'The message couldn\'t be sent just now. Try again, or email hello@ravemonitor.com.'
+  };
+  function track(result) {
+    try { if (typeof window.gtag === 'function' && window.RM_GA) window.gtag('event', 'contact_submit', { topic: form.topic.value, result: result }); } catch (err) { /* analytics is optional */ }
+  }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!form.email.value.trim() || !form.email.checkValidity()) { say(ERRORS.invalid_email, 'bad'); form.email.focus(); return; }
+    if (form.message.value.trim().length < 10) { say(ERRORS.too_short, 'bad'); form.message.focus(); return; }
+    var data = new URLSearchParams(new FormData(form));
+    if (!data.get('cf-turnstile-response')) { say('One moment: finish the anti-spam check above, then send.', 'bad'); status.dataset.wait = '1'; return; }
+    data.set('t', String(Date.now() - started));
+    data.set('page', location.origin + location.pathname);
+    send.disabled = true; say('Sending…');
+    fetch(ENDPOINT, { method: 'POST', body: data })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'send_failed' }; }); })
+      .then(function (res) {
+        if (res && res.ok) {
+          say('Thanks, your message is on its way. We\'ll reply by email.', 'good');
+          form.reset(); track('sent');
+        } else {
+          say(ERRORS[res && res.error] || ERRORS.send_failed, 'bad'); track((res && res.error) || 'error');
+        }
+      })
+      .catch(function () { say(ERRORS.send_failed, 'bad'); track('network'); })
+      .then(function () {
+        send.disabled = false; checked = false;
+        try { if (window.turnstile) window.turnstile.reset(); } catch (err) { /* widget not loaded */ }
+      });
+  });
+
+  // Privacy Settings opens the consent tool (Usercentrics version 3, or version 2's UC_UI).
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('[data-act="privacy-settings"]');
+    if (!a) return;
+    e.preventDefault();
+    try {
+      if (window.__ucCmp && typeof window.__ucCmp.showSecondLayer === 'function') window.__ucCmp.showSecondLayer();
+      else if (window.UC_UI && typeof window.UC_UI.showSecondLayer === 'function') window.UC_UI.showSecondLayer();
+    } catch (err) { /* the consent tool isn't loaded */ }
+  });
+})();
+</script>
+</body>
+</html>

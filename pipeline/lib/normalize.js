@@ -1,6 +1,7 @@
 // Turns each source's raw item into one shared event shape, decides whether it is
 // electronic music, maps genres to the map's eight families and assigns a city.
 import { km, norm, slug, localHour } from './util.js';
+import { detectLabels, promoterNames } from './labels.js';
 
 export const FAMILIES = ['techno', 'house', 'dnb', 'afro', 'disco', 'garage', 'trance', 'bass'];
 
@@ -173,6 +174,8 @@ export function makeEvent(ctx, f) {
   if (endMs - f.startMs > 4 * 86400e3) endMs = f.startMs + 4 * 86400e3;
   const genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
   const lineup = [...new Set(splitLineup(f.lineup).filter(n => n.length < 80 && !isContactLine(n)))].slice(0, 24);
+  const promoters = promoterNames(f.promoters).filter(n => !isContactLine(n));
+  const labels = detectLabels({ title: f.title, promoters, lineup, genres });
   return {
     id: `${f.source}:${f.id}`,
     title: cleanName(f.title).slice(0, 160),
@@ -190,6 +193,8 @@ export function makeEvent(ctx, f) {
     status: f.status || 'unknown',
     popularity: Number.isFinite(f.popularity) ? Math.round(f.popularity) : undefined,
     age: f.age || undefined,
+    labels: labels.length ? labels : undefined,
+    promoters: promoters.length ? promoters : undefined,
     sources: [{ id: f.source, name: f.sourceName, url: f.url }]
   };
 }

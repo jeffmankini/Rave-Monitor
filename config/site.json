@@ -1,4 +1,6 @@
 {
-  "_comment": "Site-wide settings. gaMeasurementId: your Google Analytics 4 Measurement ID (G-...), or empty for no analytics. A GA_MEASUREMENT_ID environment variable overrides it at build time.",
-  "gaMeasurementId": "G-0N5FDZ88K0"
+  "_comment": "Site-wide settings. gaMeasurementId: your Google Analytics 4 Measurement ID (G-...), or empty for no analytics; a GA_MEASUREMENT_ID environment variable overrides it at build time. contactEndpoint and turnstileSiteKey: the contact form's Worker (worker/contact) and the Cloudflare Turnstile site key (public); the contact page is built only when both are set. CONTACT_ENDPOINT and TURNSTILE_SITE_KEY environment variables override them.",
+  "gaMeasurementId": "G-0N5FDZ88K0",
+  "contactEndpoint": "https://api.ravemonitor.com/contact",
+  "turnstileSiteKey": "0x4AAAAAAF5Z9QoQ0buXuTsj"
 }

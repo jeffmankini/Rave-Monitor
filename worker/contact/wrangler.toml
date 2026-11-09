@@ -1,0 +1,26 @@
+# The contact form's back end: a Cloudflare Worker at https://api.ravemonitor.com/contact.
+# It checks the Turnstile challenge, then emails the message through Cloudflare Email Routing
+# to CONTACT_TO, from CONTACT_FROM, with Reply-To set to the visitor.
+#
+# Deployed by .github/workflows/contact-worker.yml. Secrets, set from GitHub Actions secrets there:
+#   CONTACT_TO        the verified destination address hello@ravemonitor.com forwards to
+#   TURNSTILE_SECRET  the Turnstile widget's secret key
+name = "ravemonitor-contact"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+routes = [{ pattern = "api.ravemonitor.com", custom_domain = true }]
+
+# Any verified destination address in Email Routing; the address itself is the CONTACT_TO secret.
+send_email = [{ name = "EMAIL" }]
+
+# At most 3 messages a minute from one IP address.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1101"
+simple = { limit = 3, period = 60 }
+
+[vars]
+CONTACT_FROM = "hello@ravemonitor.com"
+ALLOWED_ORIGINS = "https://ravemonitor.com,https://www.ravemonitor.com"
+TURNSTILE_HOSTNAMES = "ravemonitor.com,www.ravemonitor.com"
