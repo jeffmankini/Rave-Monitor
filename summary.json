@@ -53,14 +53,15 @@
   "auckland": 2
  },
  "genres": {
-  "other": 821,
+  "electronic": 606,
   "house": 501,
+  "misc": 420,
   "techno": 291,
   "afro": 238,
   "garage": 164,
   "disco": 100,
-  "dnb": 94,
-  "trance": 90,
+  "dnb": 96,
+  "trance": 91,
   "bass": 66
  },
  "sources": {
