@@ -6,6 +6,13 @@
   "lon": 4.895,
   "tz": "Europe/Amsterdam"
  },
+ "auckland": {
+  "name": "Auckland",
+  "country": "NZ",
+  "lat": -36.848,
+  "lon": 174.763,
+  "tz": "Pacific/Auckland"
+ },
  "austin": {
   "name": "Austin",
   "country": "US",
