@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 __HEAD_START__
 <title>Rave Monitor - Electronic Music Map &amp; Archive</title>
 <meta name="description" content="Rave Monitor - Electronic Music Map &amp; Archive. Raves, club nights, festivals and DJ sets on a live world map, plus a searchable archive of past nights.">
@@ -29,6 +29,11 @@ __HEAD_START__
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Rave Monitor">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#070814">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +76,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 
 /* ---------- header ---------- */
 .top {
-  display: flex; align-items: center; gap: 16px; padding: 10px 16px;
+  display: flex; align-items: center; gap: 16px; padding: max(10px, env(safe-area-inset-top)) 16px 10px;
   border-bottom: 1px solid var(--line); background: var(--void); position: relative; z-index: 12;
 }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
@@ -470,25 +475,147 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 .sets.untimed li { grid-template-columns: 0 minmax(0, 1fr); gap: 0; }
 
 /* ---------- narrow screens ---------- */
-@media (max-width: 759px) {
-  .top { flex-wrap: wrap; gap: 10px 12px; padding: 10px 12px; }
-  .brand-word { font-size: 13px; }
+/* Phone-only controls, hidden on wider screens. */
+.win-pick, .lg-toggle, .mapfab { display: none; }
+@media (max-width: 759px), (max-height: 499px) and (max-width: 1099px) {
+  /* Header: one row (brand and coffee), then a full-width search. Clock and Peakcon live in the tabs. */
+  .top { flex-wrap: wrap; gap: 8px 10px; padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
+  .brand-word { font-size: 14px; }
+  .byline { font-size: 11px; }
+  .clock, .peak-pill, .demo-chip { display: none; }
+  .support span { display: none; }
+  .support { width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 10px; }
   .search { order: 3; flex-basis: 100%; max-width: none; }
   .search kbd { display: none; }
-  .clock span { display: none; }
-  .demo-chip { display: none; }
-  .support span { display: none; }
-  .support { padding: 0 8px; }
-  .filters { padding: 8px 12px; gap: 8px; display: grid; grid-template-columns: minmax(0, 1fr); }
-  .filters .seg { justify-self: start; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .gchips { overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-  .gchips::-webkit-scrollbar, .filters .seg::-webkit-scrollbar { display: none; }
+  /* 16px stops iOS Safari zooming in when the field is focused. */
+  .search input {
+    height: 44px; font-size: 16px; border-radius: 12px; padding-left: 40px;
+    background: var(--deck) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7fa3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat 13px 50% / 18px 18px;
+  }
+  .results { top: 50px; max-height: min(62vh, 460px); border-radius: 12px; }
+  .results [role="option"] { min-height: 44px; align-items: center; padding: 8px 10px; font-size: var(--s-14); }
+  .results h4 { font-size: var(--s-12); }
+
+  /* Filters: one swipeable row, the time window as a native picker first. The edge fades to say there's more. */
+  .filters {
+    display: flex; gap: 8px; padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .filters::after { content: ''; flex: 0 0 20px; }
+  #win { display: none; }
+  .win-pick { display: inline-flex; flex: none; position: relative; }
+  .win-pick select {
+    appearance: none; -webkit-appearance: none; height: 36px; padding: 0 30px 0 13px; border-radius: 18px;
+    border: 1px solid var(--now); background: var(--now); color: var(--now-ink); font: inherit; font-size: 15px; font-weight: 650;
+  }
+  .win-pick::after {
+    content: ''; position: absolute; right: 13px; top: 50%; width: 7px; height: 7px; margin-top: -6px; pointer-events: none;
+    border-right: 2px solid var(--now-ink); border-bottom: 2px solid var(--now-ink); transform: rotate(45deg);
+  }
+  .gchips { overflow: visible; padding: 0; }
+  .gchip { height: 36px; font-size: var(--s-14); padding: 0 13px 0 11px; border-radius: 18px; }
+
+  /* Map: about half the screen (small-viewport units, so it doesn't resize while the address bar moves). */
+  body.narrow .stage { height: 50svh; min-height: 300px; max-height: 560px; }
+  .view-toggle { left: 10px; top: 10px; }
+  .view-toggle button { height: 34px; padding: 0 12px; }
+  .tools { right: 10px; top: 10px; gap: 8px; }
+  .tool { height: 40px; min-width: 40px; border-radius: 10px; font-size: var(--s-14); }
+  .tool.locate { width: 40px; }
+  .tool.locate svg { width: 19px; height: 19px; }
+  .layers { top: 58px; right: 10px; width: min(300px, calc(100% - 20px)); max-height: calc(100% - 70px); overflow: auto; }
+  .layers label { min-height: 44px; }
+  .layers input { width: 20px; height: 20px; }
+  .mapchips { top: 58px; }
+  .route-chip { min-height: 40px; font-size: var(--s-14); }
+  .route-chip button { height: 30px; padding: 0 12px; border-radius: 15px; }
+  /* The key folds away: just the count and a Key button until opened. */
+  .legend { left: 10px; bottom: 10px; max-width: calc(100% - 20px); padding: 4px 4px 4px 10px; gap: 4px 12px; }
+  .legend:not(.open) > span:not(.count):not(.lg-attrib) { display: none; }
+  .legend.open { padding: 8px 10px; }
+  .legend .count { font-size: var(--s-12); }
+  .lg-toggle { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck); color: var(--ink); font-size: var(--s-12); font-weight: 600; }
+  .legend.open .lg-toggle { order: 99; }
   .legend .lg-extra { display: none; }
-  .erow, .wrow, .hrow, .grow, .orow, .srow { padding-left: 12px; padding-right: 12px; }
+
+  /* Tabs: bigger targets, and the row fades at the edge to show it scrolls. */
+  .tabbar { padding: 4px max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left)); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  .tabbar::after { content: ''; flex: 0 0 24px; }
+  .tab { height: 44px; padding: 0 12px; font-size: var(--s-14); }
+  #p-listings .ph { display: none; }
+  .tabbed .ph { padding: 10px 16px 4px; }
+
+  /* Lists */
+  .erow, .wrow, .hrow, .grow, .orow, .srow { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .erow { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; padding-top: 12px; padding-bottom: 12px; }
+  .erow .title { font-size: var(--s-14); }
+  .erow .sub, .erow .sub2 { font-size: var(--s-13); }
   .hrow, .hhead { grid-template-columns: 22px minmax(0, 1fr) 76px 48px 50px; gap: 8px; }
   .pc-stats { grid-template-columns: 1fr 1fr; }
   .pc-stats div:last-child { grid-column: 1 / -1; }
   .regions li { grid-template-columns: 120px minmax(0, 1fr) 32px; }
+  .areabar { margin: 10px 14px 6px; font-size: var(--s-13); }
+  .areabar button { height: 34px; padding: 0 12px; font-size: var(--s-13); border-radius: 8px; }
+  .brief { margin: 4px 14px 10px; font-size: var(--s-13); }
+  .brief-more summary { margin-top: 6px; color: var(--ink); font-weight: 600; cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+  .brief-more summary::-webkit-details-marker { display: none; }
+  .brief-more summary::after { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin-top: -3px; }
+  .brief-more[open] summary::after { transform: rotate(-135deg); margin-top: 3px; }
+  .more { height: 44px; margin: 12px 14px 0; width: calc(100% - 28px); font-size: var(--s-14); }
+  /* Night headings stay pinned under the tabs while their listings scroll by. */
+  .nighthead { position: sticky; top: 49px; z-index: 4; margin: 10px 0 0; padding: 9px max(14px, env(safe-area-inset-left)) 7px; font-size: var(--s-13); background: var(--deck); border-bottom: 1px solid var(--line); }
+  .nighthead + .rows > li:first-child, .nighthead + ol > li:first-child { border-top: 0; }
+  /* Long lists: rows far down the page render only as they scroll near. */
+  .rows > li:nth-child(n+7) { content-visibility: auto; contain-intrinsic-size: auto none auto 96px; }
+
+  /* Back to the map once it has scrolled away. */
+  .mapfab {
+    display: inline-flex; align-items: center; gap: 8px; position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 20; height: 46px; padding: 0 20px 0 16px; border: 0; border-radius: 23px;
+    background: var(--now); color: var(--now-ink); font-size: var(--s-14); font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  .mapfab[hidden] { display: none; }
+  .mapfab svg { width: 18px; height: 18px; }
+
+  /* Event details: a taller sheet you can drag down to close, with the ticket link always in reach. */
+  body.narrow .drawer { max-height: 90dvh; touch-action: pan-y; }
+  body.narrow .drawer.dragging { transition: none; }
+  body.narrow .dr-grip { width: 44px; height: 5px; margin: 0 auto; border-radius: 3px; background: #3a4170; box-sizing: content-box; border: 10px solid transparent; border-width: 10px 30px; background-clip: padding-box; cursor: grab; touch-action: none; }
+  .dr-close { width: 40px; height: 40px; border-radius: 10px; font-size: 20px; }
+  .dr-head { padding: 6px 18px 12px; }
+  body.narrow .dr-head { touch-action: none; }
+  .dr-head h2 { font-size: 22px; }
+  .facts dd { font-size: var(--s-14); }
+  body.narrow .dr-actions {
+    position: sticky; bottom: 0; z-index: 2; margin-top: 8px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    background: linear-gradient(to bottom, rgba(12,15,34,0), var(--deck) 16px); flex-wrap: nowrap;
+  }
+  body.narrow .dr-actions .btn { height: 46px; justify-content: center; font-size: var(--s-14); border-radius: 12px; }
+  body.narrow .dr-actions .btn.primary { flex: 1 1 auto; }
+  body.narrow .dr-actions .btn:not(.primary) { flex: 0 1 auto; }
+  body.narrow .dr-actions .btn.route { display: none; }
+  .dr-route { display: none; }
+  body.narrow .dr-route { display: block; margin: 14px 18px 0; }
+  body.narrow .dr-route .btn { width: 100%; justify-content: center; height: 44px; }
+  .dr-note { margin-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  /* The page under an open sheet stays put. */
+  .scrim { overflow: hidden; overscroll-behavior: contain; touch-action: none; }
+
+  /* Footer links: room for thumbs. */
+  body.narrow .sitefoot { padding: 16px max(16px, env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .sitefoot nav a, .sitefoot span a { display: inline-block; padding: 7px 2px; }
+  dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 24px); }
+}
+/* Phones held sideways: the search fits on the brand's row. */
+@media (max-height: 499px) and (min-width: 600px) and (max-width: 1099px) {
+  .search { order: 0; flex: 1 1 auto; flex-basis: auto; max-width: 460px; }
+  .top-right { margin-left: 0; }
+}
+/* Touch screens zoom with two fingers, so the + and - buttons give way. */
+@media (max-width: 759px) and (pointer: coarse), (max-height: 499px) and (max-width: 1099px) and (pointer: coarse) {
+  #zoom-in, #zoom-out { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .drawer { transition: none; }
@@ -504,7 +631,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   <a class="byline" href="https://splitshift.fm" target="_blank" rel="noopener">by split/shift</a>
   <div class="search" role="search">
     <label class="sr-only" for="q">Search events, DJs, record labels, venues and cities</label>
-    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search events, DJs, labels, venues, cities" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+    <input id="q" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search events, DJs, labels, venues, cities" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
     <kbd aria-hidden="true">/</kbd>
     <div class="results" id="results" role="listbox" hidden></div>
   </div>
@@ -517,6 +644,10 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 </header>
 
 <div class="filters" id="filters">
+  <label class="win-pick"><span class="sr-only">Time window</span><select id="win-select">
+    <option value="live">Live now</option><option value="24h">Next 24h</option><option value="weekend">Weekend</option>
+    <option value="7d">7 days</option><option value="14d">14 days</option><option value="30d">30 days</option>
+  </select></label>
   <div class="seg" role="radiogroup" aria-label="Time window" id="win">
     <button type="button" role="radio" data-win="live" aria-checked="false">Live now</button>
     <button type="button" role="radio" data-win="24h" aria-checked="true">Next 24h</button>
@@ -561,6 +692,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
       </div>
       <div class="legend" id="legend">
         <span class="count" id="count"></span>
+        <button class="lg-toggle" type="button" id="lg-toggle" aria-expanded="false" aria-controls="legend">Key</button>
         <span><i class="lg-dot"></i>Event</span>
         <span><i class="lg-live"></i>Live now</span>
         <span><i class="lg-hollow"></i>Sold out</span>
@@ -578,6 +710,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <div class="tabpanels tabbed" id="tabpanels"></div>
   </aside>
 </main>
+<button class="mapfab" type="button" id="mapfab" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Map</button>
 <footer class="sitefoot">
   <span>Rave Monitor, by <a href="https://splitshift.fm" target="_blank" rel="noopener">split/shift</a></span>
   <nav aria-label="Archive and policies">__FOOTER_LINKS__</nav>

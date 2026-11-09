@@ -24,7 +24,7 @@
   const S = {
     now: Date.now(), win: '24h', genres: new Set(), view: 'map',
     layers: { belt: true, heat: true, fest: true, tours: false, labels: true, streets: true },
-    sel: null, route: null, mode: null, tab: { right: 'listings', single: 'live' }, liveAll: false, listAll: false, ds: null,
+    sel: null, route: null, mode: null, tab: { right: 'listings', single: 'listings' }, liveAll: false, listAll: false, ds: null,
     // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
     area: null, areaOn: false,
     // A record label or promoter to filter by: { key, name, kind: 'label' | 'promoter' }, or null.
@@ -258,13 +258,18 @@
       new Set(e.heads.concat(e.support).map(id => artist(id)).filter(a => a && !NOT_NAMES.test(a.name.trim())).map(a => a.name)).forEach(n => { who[n] = (who[n] || 0) + 1; });
     });
     const top = (obj, n) => Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, n);
-    let txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b>' + (S.label ? ' for ' + esc(S.label.name) : '') + ' ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.';
+    const txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b>' + (S.label ? ' for ' + esc(S.label.name) : '') + ' ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.' +
+      (D.L.area && S.mode === 'narrow' ? ' <button type="button" class="linkish" data-act="area-all">Show everywhere</button>' : '');
+    let more = '';
     const busiest = top(Object.fromEntries(Object.entries(nights).map(([k, v]) => [k, v.n])), 2);
-    if (Object.keys(nights).length > 2) txt += ' Busiest nights: ' + busiest.map(k => F(nights[k].tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(nights[k].ms - NIGHT_SHIFT) + ' (' + nights[k].n + ')').join(', ') + '.';
+    if (Object.keys(nights).length > 2) more += ' Busiest nights: ' + busiest.map(k => F(nights[k].tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(nights[k].ms - NIGHT_SHIFT) + ' (' + nights[k].n + ')').join(', ') + '.';
     const artists = top(who, 3).filter(n => who[n] > 1);
-    if (artists.length) txt += ' Playing more than once: ' + artists.map(n => esc(n) + ' (' + who[n] + ')').join(', ') + '.';
+    if (artists.length) more += ' Playing more than once: ' + artists.map(n => esc(n) + ' (' + who[n] + ')').join(', ') + '.';
     const genres = top(fam, 4).filter(g => RM.GENRE[g]);
-    return txt + (genres.length ? '<span class="gline">' + genres.map(g => '<span class="gtag" style="--c:' + RM.GENRE[g].color + '">' + esc(RM.GENRE[g].name) + ' ' + fmtN(fam[g]) + '</span>').join('') + '</span>' : '');
+    if (genres.length) more += '<span class="gline">' + genres.map(g => '<span class="gtag" style="--c:' + RM.GENRE[g].color + '">' + esc(RM.GENRE[g].name) + ' ' + fmtN(fam[g]) + '</span>').join('') + '</span>';
+    if (!more) return txt;
+    // Phones: the busiest nights, repeat names and genres fold away under one line.
+    return S.mode === 'narrow' ? txt + '<details class="brief-more"' + (S.briefOpen ? ' open' : '') + '><summary>Busiest nights and genres</summary>' + more + '</details>' : txt + more;
   }
   function renderListings() {
     const list = D.L.win.slice().sort((a, b) => {
@@ -277,7 +282,7 @@
       meta('listings', ''); return;
     }
     const n = S.listAll ? list.length : Math.min(list.length, 120);
-    let html = areaBar() + '<p class="brief">' + listingsBrief(list) + '</p>', night = '';
+    let html = (S.mode === 'narrow' ? '' : areaBar()) + '<div class="brief">' + listingsBrief(list) + '</div>', night = '';
     list.slice(0, n).forEach(e => {
       const c = city(e), k = nightKey(e.start, c.tz);
       if (k !== night) { html += (night ? '</ol>' : '') + '<h3 class="nighthead">' + esc(nightLabel(e.start, c.tz)) + '</h3><ol class="rows">'; night = k; }
@@ -380,7 +385,7 @@
     const fmtChg = c => c == null ? '' : (c >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(c * 100)) + '%';
     body('genres').innerHTML = areaBar() + '<div class="ghead" aria-hidden="true"><span>Genre</span><span>Next 7d</span><span>vs last</span><span>Daily, past and coming week</span></div><ol class="rows">' +
       D.L.genres.map(r => '<li class="grow" data-genre="' + r.genre.id + '" tabindex="0" role="button" aria-pressed="' + S.genres.has(r.genre.id) + '" aria-label="Filter to ' + esc(r.genre.name) + '">' +
-        '<span class="gname"><i class="gdot" style="--c:' + r.genre.color + '"></i><b>' + esc(r.genre.name) + '</b><small>' + r.genre.bpm + ' BPM, ' + Math.round(r.share * 100) + '% of listings</small></span>' +
+        '<span class="gname"><i class="gdot" style="--c:' + r.genre.color + '"></i><b>' + esc(r.genre.name) + '</b><small>' + (r.genre.bpm !== 'varies' ? r.genre.bpm + ' BPM, ' : '') + Math.round(r.share * 100) + '% of listings</small></span>' +
         '<span class="gnum"><b>' + fmtN(r.next) + '</b><small>events</small></span>' +
         '<span class="chg">' + fmtChg(r.change) + '</span>' + spark(r.daily, 7) + '</li>').join('') +
       '</ol><p class="fine">Solid line: listings from the past 7 days. Dashed: what is booked for the next 7. Select a genre to filter the map.</p>';
@@ -602,14 +607,21 @@
   }
 
   /* ---------- layout and tabs ---------- */
-  function tabIdsFor(mode) { return mode === 'wide' ? ['listings', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'] : ['live', 'listings', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges']; }
+  function tabIdsFor(mode) {
+    if (mode === 'wide') return ['listings', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+    // Phones: planning first, then what's on now.
+    if (mode === 'narrow') return ['listings', 'live', 'streams', 'genres', 'wire', 'heat', 'sellouts', 'peakcon', 'surges'];
+    return ['live', 'listings', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+  }
   function layout() {
-    const w = window.innerWidth;
-    const mode = w >= 1100 ? 'wide' : w >= 760 ? 'mid' : 'narrow';
+    const w = window.innerWidth, h = window.innerHeight;
+    // Phones held sideways (short screens) get the phone layout too; the CSS uses the same test.
+    const mode = w >= 1100 ? 'wide' : w >= 760 && h >= 500 ? 'mid' : 'narrow';
     if (mode === S.mode) return;
     S.mode = mode;
     document.body.classList.remove('wide', 'mid', 'narrow');
     document.body.classList.add(mode);
+    $('#q').placeholder = mode === 'narrow' ? 'Search DJs, venues, cities…' : 'Search events, DJs, labels, venues, cities';
     const left = $('#rail-left'), tp = $('#tabpanels');
     const ids = tabIdsFor(mode);
     if (mode === 'wide') ['live', 'heat'].forEach(id => { const el = PANELS[id].el; el.hidden = false; el.removeAttribute('role'); el.removeAttribute('aria-labelledby'); left.appendChild(el); });
@@ -629,7 +641,12 @@
     if (S.mode === 'wide') S.tab.right = id; else S.tab.single = id;
     PANELS[id].render();
     const b = $('#t-' + id);
-    if (b) { b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (focus) b.focus(); }
+    if (b) {
+      // Bring the tab into view sideways only: scrollIntoView would also scroll the page down to the tabs.
+      const bar = $('#tabbar');
+      if (b.offsetLeft < bar.scrollLeft || b.offsetLeft + b.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = Math.max(0, b.offsetLeft - 16);
+      if (focus) b.focus({ preventScroll: true });
+    }
   }
   function renderAll() {
     renderHeader();
@@ -646,6 +663,7 @@
     } else lg.hidden = true;
     $$('#gchips .gchip').forEach(b => b.setAttribute('aria-pressed', b.dataset.genre === 'all' ? String(!S.genres.size) : String(S.genres.has(b.dataset.genre))));
     $$('#win button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.win === S.win)));
+    const ws = $('#win-select'); if (ws && ws.value !== S.win) ws.value = S.win;
     if (S.label) renderLabelChip();
   }
   function renderHeader() {
@@ -689,6 +707,8 @@
     const dr = $('#drawer');
     dr.classList.add('open'); dr.setAttribute('aria-hidden', 'false');
     $('#scrim').hidden = S.mode !== 'narrow';
+    dr.style.transform = '';
+    if (S.showFab) S.showFab();
     const close = $('.dr-close', dr); if (close) close.focus({ preventScroll: true });
     dr.scrollTop = 0;
     if (opt.fly !== false) MapView.flyToEvent(e);
@@ -699,7 +719,45 @@
     dr.classList.remove('open'); dr.setAttribute('aria-hidden', 'true');
     $('#scrim').hidden = true;
     S.sel = null; MapView.changed(false);
+    if (S.showFab) S.showFab();
     if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
+  }
+  // Phones: drag the event sheet down by its handle or header to close it. Dragging up there scrolls it.
+  function sheetDrag() {
+    const dr = $('#drawer');
+    let armed = false, mode = '', pid = null, y0 = 0, st0 = 0, dy = 0, lastY = 0, lastT = 0, vel = 0;
+    dr.addEventListener('pointerdown', ev => {
+      if (S.mode !== 'narrow' || !dr.classList.contains('open') || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+      if (!ev.target.closest('.dr-grip, .dr-head') || ev.target.closest('button, a')) return;
+      armed = true; mode = ''; pid = ev.pointerId; y0 = lastY = ev.clientY; lastT = ev.timeStamp; st0 = dr.scrollTop; dy = 0; vel = 0;
+    });
+    dr.addEventListener('pointermove', ev => {
+      if (!armed || ev.pointerId !== pid) return;
+      const d = ev.clientY - y0;
+      if (!mode) {
+        if (Math.abs(d) < 6) return;
+        mode = d > 0 && st0 <= 0 ? 'drag' : 'scroll';
+        try { dr.setPointerCapture(pid); } catch (err) { /* already released */ }
+        if (mode === 'drag') dr.classList.add('dragging');
+      }
+      if (mode === 'scroll') { dr.scrollTop = st0 - d; return; }
+      dy = Math.max(0, d);
+      const dt = ev.timeStamp - lastT;
+      if (dt > 0) vel = (ev.clientY - lastY) / dt;
+      lastY = ev.clientY; lastT = ev.timeStamp;
+      dr.style.transform = 'translateY(' + dy + 'px)';
+    });
+    const end = ev => {
+      if (!armed || ev.pointerId !== pid) return;
+      armed = false;
+      if (mode !== 'drag') return;
+      dr.classList.remove('dragging');
+      const h = dr.getBoundingClientRect().height;
+      dr.style.transform = '';
+      if (dy > Math.min(140, h * 0.28) || vel > 0.55) closeDrawer();
+    };
+    dr.addEventListener('pointerup', end);
+    dr.addEventListener('pointercancel', end);
   }
   function renderDrawer(e) {
     const c = city(e), v = venue(e), G = gen(e), t = S.now, live = RM.isLive(e, t), st = RM.statusAt(e, t);
@@ -731,19 +789,36 @@
         : 'Details come from the listing and can change. Check the source before you go.';
     $('#drawer').innerHTML = '<div class="dr-grip" aria-hidden="true"></div><div class="dr-head">' +
       '<button class="dr-close" type="button" data-act="close" aria-label="Close event details">&times;</button>' +
-      '<div class="dr-kicker"><i class="gdot" style="--c:' + G.color + '"></i><span>' + esc(G.name) + (e.sub && e.sub !== G.name ? ', ' + esc(e.sub) : '') + '</span>' + (G.id !== 'other' ? '<span>' + G.bpm + ' BPM</span>' : '') + statusChip(e) + '</div>' +
+      '<div class="dr-kicker"><i class="gdot" style="--c:' + G.color + '"></i><span>' + esc(G.name) + (e.sub && e.sub.toLowerCase() !== G.name.toLowerCase() ? ', ' + esc(e.sub) : '') + '</span>' + (G.bpm && G.bpm !== 'varies' ? '<span>' + G.bpm + ' BPM</span>' : '') + statusChip(e) + '</div>' +
       '<h2 id="dr-title">' + esc(e.title) + '</h2><p class="dr-venue">' + esc(v.name) + ', ' + esc(c.name) + '</p></div>' +
       '<div class="dr-when"><div class="big">' + tTime(e.start, c.tz) + '<small>to ' + tTime(e.end, c.tz) + ', ' + esc(c.name) + ' time</small></div>' +
       '<p>' + tDate(e.start, c.tz).replace(/\.$/, '') + '. ' + when + '</p><p>Your time: ' + tDate(e.start) + ', ' + tTime(e.start) + '</p></div>' +
       (sets ? '<section class="dr-sec"><h3>' + (timed ? 'Set times' : 'Lineup') + '</h3><ol class="sets' + (timed ? '' : ' untimed') + '">' + sets + '</ol></section>' : '') +
       '<section class="dr-sec"><h3>Tickets and listing</h3><dl class="facts">' + facts.map(f => '<div><dt>' + f[0] + '</dt><dd>' + f[1] + '</dd></div>').join('') + '</dl></section>' +
       (e.tags && e.tags.length ? '<section class="dr-sec"><h3>' + (demo ? 'Door and floor' : 'Tags') + '</h3><div class="tags">' + e.tags.map(x => '<span>' + esc(x) + '</span>').join('') + '</div></section>' : '') +
-      '<div class="dr-actions">' + (tourer ? '<button class="btn primary" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
-      '<button class="btn" type="button" data-act="copy">Copy details</button>' +
-      (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click"' + Object.entries(eventParams(e)).map(([k, v]) => ' data-p-' + k + '="' + esc(String(v)) + '"').join('') + '>' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
+      // On phones the route button sits above, so the bar pinned to the bottom holds tickets and share.
+      (tourer ? '<div class="dr-route"><button class="btn" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates on the map</button></div>' : '') +
+      '<div class="dr-actions">' +
+      (e.url && !demo ? '<a class="btn primary" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click"' + Object.entries(eventParams(e)).map(([k, v]) => ' data-p-' + k + '="' + esc(String(v)) + '"').join('') + '>' + esc(ticketLabel(e)) + '</a>' : '<span class="btn primary" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') +
+      (tourer ? '<button class="btn route" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
+      (canShare ? '<button class="btn" type="button" data-act="share">Share</button>' : '<button class="btn" type="button" data-act="copy">Copy details</button>') + '</div>' +
       '<p class="dr-note" id="dr-note">' + note + '</p>' +
       // Promoters and venues can ask for a fix or removal.
       (window.RM_CONTACT && !demo ? '<p class="dr-note"><a href="' + window.RM_CONTACT + '?topic=listing&amp;about=' + encodeURIComponent(e.title + ', ' + v.name + ', ' + c.name + ', ' + tDate(e.start, c.tz)) + '" style="color:inherit">Report a problem with this listing</a></p>' : '');
+  }
+  const canShare = typeof navigator.share === 'function';
+  // The phone's own share sheet: the listing's text and its ticket page.
+  async function shareEvent() {
+    const e = S.ds.eventById[S.sel]; if (!e) return;
+    const c = city(e), v = venue(e);
+    const text = e.title + ', ' + v.name + ', ' + c.name + ', ' + tDate(e.start, c.tz) + ' ' + tTime(e.start, c.tz);
+    try {
+      await navigator.share({ title: e.title, text: text, url: e.url || location.origin + '/' });
+      track('share_event', eventParams(e));
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // closed the share sheet
+      copyDetails();
+    }
   }
   function ticketLabel(e) { return !e.src ? 'Get tickets' : e.src === 'Promoter submission' ? 'Promoter link' : 'Tickets on ' + e.src; }
   async function copyDetails() {
@@ -932,12 +1007,21 @@
     let geo = null;
     try {
       const g = JSON.parse($('#geo').textContent);
+      const lo = topojson.feature(g.lo, g.lo.objects.land);
       geo = {
-        landLo: topojson.feature(g.lo, g.lo.objects.land),
+        landLo: lo,
         borders: topojson.mesh(g.lo, g.lo.objects.countries, (a, b) => a !== b),
-        landHi: topojson.feature(g.hi, g.hi.objects.land),
+        // The detailed coastline (about 0.5 MB) loads after the page, from geo-hi.json; until then the coarse one stands in.
+        landHi: g.hi ? topojson.feature(g.hi, g.hi.objects.land) : lo,
         lakes: topojson.feature(g.lakes, g.lakes.objects.lakes)
       };
+      if (!g.hi) {
+        fetch('geo-hi.json').then(r => r.ok ? r.json() : null).then(hi => {
+          if (!hi || !hi.objects || !hi.objects.land) return;
+          geo.landHi = topojson.feature(hi, hi.objects.land);
+          if (inited) changed(true);
+        }).catch(() => { /* keep the coarse coastline */ });
+      }
     } catch (err) { console.error('map data failed to load', err); }
     const grat = d3.geoGraticule10(), sphere = { type: 'Sphere' };
     const C = { sea: '#070814', land: '#171c3a', grat: 'rgba(150,160,230,0.055)', border: 'rgba(160,170,230,0.14)', now: '#f6ecd8', ink: '#eceaf6', ink2: '#a9abcb', ink3: '#7c7fa3' };
@@ -1171,7 +1255,9 @@
        canvas and the event canvas. It's loaded the first time you zoom in, fades in from regional
        zoom, and follows the d3 camera: same Web Mercator, so zoom = log2(360 * ppd / 512). */
     const ML = 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl';
-    const ST = { load: 25, preload: 60, from: 110, to: 240, maxPpd: 93000, flatMaxPpd: 1600, detailPpd: 2400 };
+    // MapLibre (about 220 KB) loads only once the view gets close to street level, so the regional
+    // view a phone opens on doesn't pay for it.
+    const ST = { load: 70, preload: 85, from: 110, to: 240, maxPpd: 93000, flatMaxPpd: 1600, detailPpd: 2400 };
     const LABEL_LAYERS = ['water-name', 'street-name', 'neighbourhood', 'suburb', 'town'];
     const streets = { el: $('#streets'), map: null, state: 'off', t: 0, labels: true };
     const streetsOn = () => S.layers.streets && streets.state !== 'failed';
@@ -1703,6 +1789,7 @@
       const a = act.dataset.act;
       if (a === 'close') return closeDrawer();
       if (a === 'copy') return copyDetails();
+      if (a === 'share') return shareEvent();
       if (a === 'route') { setRoute(act.dataset.artist); return; }
       if (a === 'route-clear') return setRoute(null);
       if (a === 'label-clear') return setLabel(null);
@@ -1749,6 +1836,20 @@
       selectTab(ids[(cur + (ev.key === 'ArrowRight' ? 1 : ids.length - 1)) % ids.length], true);
     });
     $('#win').addEventListener('click', ev => { const b = ev.target.closest('button[data-win]'); if (b) { track('set_filter', { filter: 'time', value: b.dataset.win }); setWindow(b.dataset.win); } });
+    $('#win-select').addEventListener('change', ev => { track('set_filter', { filter: 'time', value: ev.target.value }); setWindow(ev.target.value); });
+    // Phones: the map key folds away.
+    $('#lg-toggle').addEventListener('click', () => { const lg = $('#legend'), open = !lg.classList.contains('open'); lg.classList.toggle('open', open); $('#lg-toggle').setAttribute('aria-expanded', String(open)); $('#lg-toggle').textContent = open ? 'Hide key' : 'Key'; });
+    // Phones: a Map button appears once the map has scrolled out of view.
+    const fab = $('#mapfab');
+    if ('IntersectionObserver' in window) {
+      let mapGone = false;
+      const showFab = () => { fab.hidden = !(S.mode === 'narrow' && mapGone && !S.sel); };
+      new IntersectionObserver(es => { mapGone = !es[es.length - 1].isIntersecting; showFab(); }, { threshold: 0, rootMargin: '-35% 0px 0px 0px' }).observe($('#stage'));
+      S.showFab = showFab;
+    }
+    fab.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); fab.hidden = true; });
+    document.addEventListener('toggle', ev => { if (ev.target.classList && ev.target.classList.contains('brief-more')) S.briefOpen = ev.target.open; }, true);
+    sheetDrag();
     $('#gchips').addEventListener('click', ev => { const b = ev.target.closest('button[data-genre]'); if (b) { track('set_filter', { filter: 'genre', value: b.dataset.genre }); setGenre(b.dataset.genre, false); } });
     $('#viewtoggle').addEventListener('click', ev => { const b = ev.target.closest('button[data-view]'); if (b) { track('set_view', { view: b.dataset.view }); MapView.setView(b.dataset.view); } });
     // Outbound links that say what to report (tickets, streams): data-track names the event, data-p-* are its details.

@@ -34,15 +34,16 @@ form { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); b
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 label { display: grid; gap: 5px; font-size: 13px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; min-width: 0; }
 label small { font-weight: 500; letter-spacing: 0; }
-input, select, textarea { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: 15px; }
-input, select { height: 42px; }
+/* 16px stops iOS zooming in when a field is focused. */
+input, select, textarea { width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: 16px; }
+input, select { height: 46px; }
 textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--now); outline-offset: 1px; border-color: transparent; }
 input:user-invalid, textarea:user-invalid { border-color: var(--bad); }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .check { min-height: 65px; }
 .actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-button { height: 42px; padding: 0 20px; border: 0; border-radius: 21px; background: var(--now); color: var(--now-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+button { height: 46px; padding: 0 22px; border: 0; border-radius: 21px; background: var(--now); color: var(--now-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
 button[disabled] { opacity: .6; cursor: progress; }
 .status { margin: 0; font-size: 14px; }
 .status.bad { color: var(--bad); }
@@ -50,7 +51,12 @@ button[disabled] { opacity: .6; cursor: progress; }
 .fine { font-size: 13px; color: var(--ink-3); margin: 16px 0 0; }
 footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align: center; font-size: 14px; color: var(--ink-3); }
 footer a { color: var(--ink-2); }
-@media (max-width: 560px) { .two { grid-template-columns: 1fr; } form { padding: 14px; } }
+@media (max-width: 560px) {
+  .two { grid-template-columns: 1fr; } form { padding: 14px; }
+  main { padding: 24px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); }
+  .actions button { flex: 1 1 100%; }
+  footer { line-height: 2.2; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+}
 </style>
 </head>
 <body>
@@ -64,7 +70,7 @@ footer a { color: var(--ink-2); }
   <form id="contact" novalidate>
     <div class="two">
       <label><span>Name <small>(optional)</small></span><input name="name" type="text" autocomplete="name" maxlength="100"></label>
-      <label>Email<input name="email" type="email" autocomplete="email" maxlength="200" required></label>
+      <label>Email<input name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="200" required></label>
     </div>
     <label>Topic
       <select name="topic">

@@ -31,6 +31,12 @@ main h2, main h3, main h4 { color: var(--ink); line-height: 1.3; }
 main table { border-collapse: collapse; width: 100%; font-size: 14px; }
 main th, main td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align: center; font-size: 14px; color: var(--ink-3); }
+/* Phones: long policy tables scroll sideways instead of widening the page; links get room for thumbs. */
+@media (max-width: 640px) {
+  main table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  main { overflow-wrap: anywhere; }
+  footer { line-height: 2.2; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+}
 footer a { color: var(--ink-2); }
 </style>
 </head>

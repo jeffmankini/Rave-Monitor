@@ -14,7 +14,8 @@ let html = read('site/index.html');
 const labelNames = JSON.parse(read('config/labels.json')).labels.map(l => l.name);
 const tzTable = read('site/tz.json').trim();
 const parts = {
-  __GEO_JSON__: read('site/geo.json'), __DATA_JS__: read('site/demo-data.js'),
+  // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).
+  __GEO_JSON__: JSON.stringify((({ lo, lakes }) => ({ lo, lakes }))(JSON.parse(read('site/geo.json')))), __DATA_JS__: read('site/demo-data.js'),
   __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_TZ = ${tzTable};\n` + read('site/app.js')
 };
 // Link previews need absolute URLs; set SITE_URL when deploying somewhere else.
@@ -59,6 +60,7 @@ for (const [k, v] of Object.entries(parts)) {
 const dist = path.join(ROOT, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'index.html'), html);
+fs.writeFileSync(path.join(dist, 'geo-hi.json'), JSON.stringify(JSON.parse(read('site/geo.json')).hi));
 const pageTpl = read('site/page.html').split('__SITE_URL__').join(SITE_URL).replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => footerLinks);
 // The archive page; its data (archive/data/) is written by pipeline/archive-export.js after this.
 fs.mkdirSync(path.join(dist, 'archive'), { recursive: true });

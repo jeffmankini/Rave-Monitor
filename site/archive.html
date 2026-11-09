@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 __HEAD_START__
 <title>The rave archive · Rave Monitor</title>
 <meta name="description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, record label, venue, city and month. A living archive of electronic music nights around the world.">
@@ -75,11 +75,30 @@ h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 80
 .downloads a { color: var(--ink-2); }
 footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align: center; font-size: 14px; color: var(--ink-3); }
 footer a { color: var(--ink-2); }
+/* Wider screens: the extra filters sit in the grid with the search. */
+.more-filters { display: contents; }
+.ftoggle { display: none; }
 @media (max-width: 760px) {
-  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filters label:first-child { grid-column: 1 / -1; }
-  .row { grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
+  .top { padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
+  main { padding: 20px max(14px, env(safe-area-inset-right)) 40px max(14px, env(safe-area-inset-left)); }
+  .lede { font-size: 14px; }
+  /* Phones: the search, and a Filters button that opens the rest. */
+  .filters { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 12px; }
+  .filters label:first-child { grid-column: 1; }
+  .ftoggle { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--deck-2); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .ftoggle[aria-expanded="true"] { border-color: var(--now); }
+  .ftoggle b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--now); color: var(--now-ink); font-size: 12px; }
+  .more-filters { display: none; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+  .more-filters.open { display: grid; }
+  /* 16px stops iOS zooming in on focus. */
+  .filters input, .filters select { height: 44px; font-size: 16px; border-radius: 10px; }
+  .bar select { height: 40px; font-size: 16px; }
+  .bar .tools { font-size: 14px; }
+  .row { grid-template-columns: 88px minmax(0, 1fr); gap: 10px; padding: 14px 2px; }
   .when b { font-size: 13.5px; }
+  .pick, .linkbtn { padding: 3px 0; }
+  .more { height: 46px; width: 100%; font-size: 15px; }
+  footer { padding: 18px 16px calc(28px + env(safe-area-inset-bottom)); line-height: 2.2; }
 }
 </style>
 </head>
@@ -92,13 +111,16 @@ footer a { color: var(--ink-2); }
   <h1>The archive</h1>
   <p class="lede">Every listing Rave Monitor has shown, kept after the night is over and merged across platforms. Search by artist, record label, venue, city or month. <span id="stats"></span></p>
   <form class="filters" id="filters" role="search" aria-label="Search the archive">
-    <label class="wide">Search<input id="f-q" type="search" autocomplete="off" placeholder="Event, artist, venue or city"></label>
+    <label class="wide">Search<input id="f-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Event, artist or venue"></label>
+    <button type="button" class="ftoggle" id="ftoggle" aria-expanded="false" aria-controls="more-filters">Filters</button>
+    <div class="more-filters" id="more-filters">
     <label>Artist<input id="f-artist" type="search" list="artists" autocomplete="off" placeholder="Any artist"></label>
     <label>Record label<input id="f-label" type="search" list="labels" autocomplete="off" placeholder="Any label"></label>
     <label>Venue<input id="f-venue" type="search" list="venues" autocomplete="off" placeholder="Any venue"></label>
     <label>City<select id="f-city"><option value="">All cities</option></select></label>
     <label>Month<select id="f-month"><option value="">All months</option><option value="past">Past nights</option><option value="upcoming">Coming up</option></select></label>
     <label>Genre<select id="f-genre"><option value="">All genres</option></select></label>
+    </div>
     <datalist id="artists"></datalist><datalist id="venues"></datalist><datalist id="labels"></datalist>
   </form>
   <div class="bar">
@@ -207,6 +229,7 @@ footer a { color: var(--ink-2); }
     var any = F.q.value || F.artist.value || F.label.value || F.venue.value || ci || mo || ge;
     $('#count').textContent = (any ? nf.format(matches.length) + ' of ' + nf.format(all.length) : nf.format(all.length)) + ' listings';
     $('#clear').hidden = !any;
+    filterCount();
     shown = 0; $('#results').innerHTML = ''; render();
     writeUrl();
     if (!first) report();
@@ -270,6 +293,18 @@ footer a { color: var(--ink-2); }
         month: F.month.value, genre: F.genre.value, has_keyword: !!F.q.value, results: matches.length });
     }, 2000);
   }
+
+  // Phones: the Filters button opens the extra filters and counts the ones in use.
+  function filterCount() {
+    var n = ['artist', 'label', 'venue', 'city', 'month', 'genre'].filter(function (k) { return F[k].value; }).length;
+    $('#ftoggle').innerHTML = 'Filters' + (n ? ' <b>' + n + '</b>' : '');
+    return n;
+  }
+  $('#ftoggle').addEventListener('click', function () {
+    var open = !$('#more-filters').classList.contains('open');
+    $('#more-filters').classList.toggle('open', open);
+    this.setAttribute('aria-expanded', String(open));
+  });
 
   var timer = 0;
   function soon() { clearTimeout(timer); timer = setTimeout(apply, 140); }
