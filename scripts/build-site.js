@@ -27,9 +27,12 @@ html = html.replace('__HEAD_START__', () => head);
 // Policy pages (config/legal.json), linked from the About panel and from each other.
 const legal = JSON.parse(read('config/legal.json'));
 const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const PSL = '<a href="#" id="usercentrics-psl" data-act="privacy-settings">Privacy Settings</a>';
-const legalLinks = legal.pages.map(p => `<a href="/${p.slug}/">${escHtml(p.short || p.title)}</a>`).concat(consent ? [PSL] : []).join(' · ');
-html = html.replace('__LEGAL_LINKS__', () => legalLinks);
+// The footer (every page) has the archive, the policies and the consent tool's Privacy Settings link
+// (with the id Usercentrics looks for); the About panel lists the policies by full name.
+const PSL = id => `<a href="#"${id ? ' id="usercentrics-psl"' : ''} data-act="privacy-settings">Privacy Settings</a>`;
+const footerLinks = ['<a href="/archive/">Archive</a>'].concat(legal.pages.map(p => `<a href="/${p.slug}/">${escHtml(p.footer || p.short || p.title)}</a>`), consent ? [PSL(true)] : []).join(' · ');
+const legalLinks = legal.pages.map(p => `<a href="/${p.slug}/">${escHtml(p.short || p.title)}</a>`).concat(consent ? [PSL(false)] : []).join(' · ');
+html = html.replace('__LEGAL_LINKS__', () => legalLinks).replace('__FOOTER_LINKS__', () => footerLinks);
 function termageddon(id) {
   if (!/^[A-Za-z0-9=]+$/.test(id)) throw new Error(`Termageddon policy id looks wrong: ${id}`);
   return `<div id="${id}" class="policy_embed_div" width="640" height="480" aria-live="polite" aria-busy="true">Please wait while the policy is loaded. If it does not load, please <a rel="nofollow" aria-label="click here to view the policy" href="https://policies.termageddon.com/api/policy/${id}" target="_blank">click here to view the policy</a>.</div>\n<script src="https://policies.termageddon.com/api/embed/c/${id}.js"></script>`;
@@ -41,11 +44,11 @@ for (const [k, v] of Object.entries(parts)) {
 const dist = path.join(ROOT, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'index.html'), html);
-const pageTpl = read('site/page.html').split('__SITE_URL__').join(SITE_URL).replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => legalLinks);
+const pageTpl = read('site/page.html').split('__SITE_URL__').join(SITE_URL).replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => footerLinks);
 // The archive page; its data (archive/data/) is written by pipeline/archive-export.js after this.
 fs.mkdirSync(path.join(dist, 'archive'), { recursive: true });
 fs.writeFileSync(path.join(dist, 'archive', 'index.html'), read('site/archive.html').split('__SITE_URL__').join(SITE_URL).split('__REPO_URL__').join(REPO_URL)
-  .replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => legalLinks));
+  .replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => footerLinks));
 for (const p of legal.pages) {
   if (!/^[a-z0-9-]+$/.test(p.slug)) throw new Error(`policy slug looks wrong: ${p.slug}`);
   const out = pageTpl.split('__TITLE__').join(escHtml(p.title)).split('__SLUG__').join(p.slug).replace('__CONTENT__', () => (p.termageddon ? termageddon(p.termageddon) : p.html));

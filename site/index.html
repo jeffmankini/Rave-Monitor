@@ -61,7 +61,7 @@ body {
   font-family: var(--font-body); font-size: var(--s-14); line-height: 1.4;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
-body.wide, body.mid { overflow: hidden; display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
+body.wide, body.mid { overflow: hidden; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; }
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
@@ -200,6 +200,11 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .lg-fest { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink-2); }
 .lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(246,236,216,.08); }
 .legend .demo-note { color: var(--ink-3); }
+/* One quiet line at the bottom: the archive, policies and privacy settings. */
+.sitefoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; padding: 6px 16px; border-top: 1px solid var(--line); background: var(--void); color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.sitefoot a { color: var(--ink-2); text-decoration: none; }
+.sitefoot a:hover, .sitefoot a:focus-visible { color: var(--now); text-decoration: underline; }
+body.narrow .sitefoot { justify-content: center; text-align: center; padding: 14px 16px 22px; }
 .legend .lg-attrib { color: var(--ink-3); font-size: 10px; white-space: normal; display: inline; }
 .legend .lg-attrib[hidden] { display: none; }
 .legend .lg-attrib a { color: inherit; }
@@ -552,6 +557,10 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <div class="tabpanels tabbed" id="tabpanels"></div>
   </aside>
 </main>
+<footer class="sitefoot">
+  <span>Rave Monitor, by <a href="https://geffbohm.com" target="_blank" rel="noopener">Geff Bohm</a></span>
+  <nav aria-label="Archive and policies">__FOOTER_LINKS__</nav>
+</footer>
 
 <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="dr-title" tabindex="-1"></aside>
 <div class="scrim" id="scrim" hidden></div>
