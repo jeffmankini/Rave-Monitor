@@ -173,7 +173,20 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 /* ---------- map overlay ui ---------- */
 .mapui { position: absolute; inset: 0; pointer-events: none; }
 .mapui > * { pointer-events: auto; }
-.view-toggle { position: absolute; left: 12px; top: 12px; }
+.viewbar { position: absolute; left: 12px; top: 12px; display: flex; align-items: center; gap: 6px; }
+.tool.spin { display: inline-flex; align-items: center; gap: 6px; height: 34px; }
+.tool.spin[hidden] { display: none; }
+.tool.spin svg { width: 15px; height: 15px; flex: none; }
+.tool.spin[aria-pressed="true"] { background: var(--now); border-color: var(--now); color: var(--now-ink); font-weight: 650; }
+.tool.spin[aria-pressed="true"] svg { animation: rm-spin 3s linear infinite; }
+.tool.ly svg { display: none; width: 18px; height: 18px; }
+/* The spinning globe's caption: the city it's passing over. */
+.spincap {
+  pointer-events: none; padding: 7px 14px; border-radius: 18px; background: rgba(7,8,20,.72); border: 1px solid rgba(246,236,216,.16);
+  color: var(--ink-2); font-size: var(--s-13); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(4px);
+}
+.spincap[hidden] { display: none; }
+.spincap b { color: var(--now); font-weight: 650; }
 .tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
 .tool {
   height: 32px; min-width: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line);
@@ -559,9 +572,17 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 
   /* Map: about half the screen (small-viewport units, so it doesn't resize while the address bar moves). */
   body.narrow .stage { height: 50svh; min-height: 300px; max-height: 560px; }
-  .view-toggle { left: 10px; top: 10px; }
-  .view-toggle button { height: 34px; padding: 0 12px; }
-  .tools { right: 10px; top: 10px; gap: 8px; }
+  .viewbar { left: 10px; top: 10px; gap: 6px; }
+  .view-toggle button { height: 34px; padding: 0 10px; }
+  .tool.spin { width: 38px; height: 40px; padding: 0; justify-content: center; }
+  .tool.spin svg { width: 18px; height: 18px; }
+  .tool.spin .tx { display: none; }
+  /* Layers as an icon, so the spin button fits beside Map and Globe. */
+  .tool.ly { display: inline-grid; place-items: center; width: 40px; padding: 0; }
+  .tool.ly svg { display: block; }
+  .tool.ly .tx { display: none; }
+  .spincap { font-size: var(--s-13); padding: 6px 12px; }
+  .tools { right: 10px; top: 10px; gap: 6px; }
   .tool { height: 40px; min-width: 40px; border-radius: 10px; font-size: var(--s-14); }
   .tool.locate, .tool.fs { width: 40px; }
   .tool.locate svg { width: 19px; height: 19px; }
@@ -667,6 +688,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 }
 @media (prefers-reduced-motion: reduce) {
   .drawer { transition: none; }
+  .tool.spin[aria-pressed="true"] svg { animation: none; }
 }
 
 /* ---------- full-screen map ----------
@@ -674,11 +696,17 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
    its scrim and dialogs still open on top. */
 body.mapfull { overflow: hidden; }
 body.mapfull #stage { position: fixed; inset: 0; z-index: 22; width: auto; height: auto; min-height: 0; max-height: none; border: 0; }
-body.mapfull .view-toggle { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
+body.mapfull .viewbar { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
 body.mapfull .tools { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); }
 body.mapfull .layers, body.mapfull .mapchips { top: calc(max(12px, env(safe-area-inset-top)) + 48px); }
 body.mapfull .legend { bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); }
 body.mapfull .mapfab { display: none; }
+
+/* A spinning globe in full screen is a screensaver: the controls fade after a few still seconds and come
+   back with any touch, click or key. The caption stays. */
+.mapui > * { transition: opacity .6s ease; }
+body.ui-idle .mapui > :not(.mapchips) { opacity: 0; pointer-events: none; }
+body.ui-idle #map-over { cursor: none !important; }
 </style>
 </head>
 <body class="wide">
@@ -725,12 +753,15 @@ body.mapfull .mapfab { display: none; }
     <div id="streets" aria-hidden="true"></div>
     <canvas id="map-over" tabindex="0" aria-label="Map of events. Drag to pan, scroll or pinch to zoom, select a city to zoom in. The lists beside the map hold the same events."></canvas>
     <div class="mapui">
-      <div class="seg view-toggle" role="radiogroup" aria-label="Map view" id="viewtoggle">
-        <button type="button" role="radio" data-view="map" aria-checked="true">Map</button>
-        <button type="button" role="radio" data-view="globe" aria-checked="false">Globe</button>
+      <div class="viewbar">
+        <div class="seg view-toggle" role="radiogroup" aria-label="Map view" id="viewtoggle">
+          <button type="button" role="radio" data-view="map" aria-checked="true">Map</button>
+          <button type="button" role="radio" data-view="globe" aria-checked="false">Globe</button>
+        </div>
+        <button class="tool spin" type="button" id="spin" aria-pressed="false" aria-label="Spin the globe" title="Spin the globe (S)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M20.4 3.6v4.6h-4.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tx">Spin</span></button>
       </div>
       <div class="tools">
-        <button class="tool" type="button" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers</button>
+        <button class="tool ly" type="button" id="layers-btn" aria-expanded="false" aria-controls="layers" aria-label="Layers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 8 12 13l9.5-5L12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m2.5 12.5 9.5 5 9.5-5M2.5 16.5l9.5 5 9.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="tx">Layers</span></button>
         <button class="tool locate" type="button" id="locate" aria-label="Near me: show listings around you" title="Near me"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         <button class="tool fs" type="button" id="fullscreen" aria-pressed="false" aria-label="Full-screen map" title="Full-screen map (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fs-in" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path class="fs-out" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="tool" type="button" id="zoom-in" aria-label="Zoom in">+</button>
@@ -750,6 +781,7 @@ body.mapfull .mapfab { display: none; }
         <div class="route-chip" id="route-chip" hidden></div>
         <div class="route-chip label-chip" id="label-chip" hidden></div>
         <div class="maptoast" id="maptoast" role="status" aria-live="polite" hidden></div>
+        <div class="spincap" id="spincap" hidden></div>
       </div>
       <div class="legend" id="legend">
         <span class="count" id="count"></span>

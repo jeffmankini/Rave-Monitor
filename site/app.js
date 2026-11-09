@@ -1237,6 +1237,7 @@
     on = !!on;
     if (on === document.body.classList.contains('mapfull')) return;
     document.body.classList.toggle('mapfull', on);
+    document.body.classList.remove('ui-idle');
     const b = $('#fullscreen');
     b.setAttribute('aria-pressed', String(on));
     b.setAttribute('aria-label', on ? 'Leave the full-screen map' : 'Full-screen map');
@@ -1431,7 +1432,9 @@
           globe.rot[0] += (t.x - gPrev.x) * sens;
           globe.rot[1] = Math.max(-85, Math.min(85, globe.rot[1] - (t.y - gPrev.y) * sens));
         }
-        globe.k = t.k; gPrev = t; if (ev.sourceEvent) userMoved(); changed(true); hideTip();
+        globe.k = t.k; gPrev = t;
+        if (ev.sourceEvent) { userMoved(); spinHeld(); }
+        changed(true); hideTip();
       });
 
     const globeR = () => Math.min(W, H) * 0.43 * globe.k;
@@ -1462,9 +1465,9 @@
       lon0 = (band.mid > 50 || band.mid < -130) ? 150 : 10;
       globe.rot = [-band.mid, -26, 0];
       sel.call(zMap).on('dblclick.zoom', null);
-      co.addEventListener('pointerdown', ev => { lastPointer = ev.pointerType || 'mouse'; });
+      co.addEventListener('pointerdown', ev => { lastPointer = ev.pointerType || 'mouse'; if (spin.on) spin.pauseUntil = performance.now() + SPIN.resumeMs; });
       co.addEventListener('pointermove', ev => {
-        if (ev.pointerType !== 'mouse' || ev.buttons) return;
+        if (ev.pointerType !== 'mouse' || ev.buttons || spinActive()) return;
         const r = co.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, h = hit(x, y);
         co.style.cursor = h ? 'pointer' : 'grab';
         showTip(h, x, y);
@@ -1520,6 +1523,7 @@
     }
     function flyTo(lon, lat, targetPpd, animate) {
       if (animate === undefined) animate = true;
+      if (spin.on) setSpin(false); // going somewhere ends the screensaver
       if (S.view === 'map') {
         const k = Math.max(kMin, Math.min(kMax, targetPpd / (base * Math.PI / 180)));
         const p = baseProj()([lon, lat]);
@@ -1531,6 +1535,7 @@
       }
     }
     function animateGlobe(rot, k, animate) {
+      if (spin.on) setSpin(false);
       const r0 = globe.rot.slice(), k0 = globe.k;
       const dl = ((rot[0] - r0[0]) % 360 + 540) % 360 - 180;
       const target = [r0[0] + dl, rot[1], 0];
@@ -1557,6 +1562,7 @@
     }
     function setView(v) {
       if (v === S.view) return;
+      if (v !== 'globe' && spin.on) setSpin(false);
       const c = proj ? proj.invert([W / 2, H / 2]) : null, cur = ppd;
       S.view = v;
       sel.on('.zoom', null);
@@ -1571,7 +1577,79 @@
         sel.call(zGlobe.transform, d3.zoomIdentity.scale(globe.k));
       }
       $$('#viewtoggle button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === v)));
+      $('#spin').hidden = v !== 'globe';
       changed(true);
+    }
+
+    /* ---------- spinning globe ----------
+       The globe turns on its own like a screensaver, about once every 80 seconds, after easing to a whole-earth
+       view tilted north, where most listings are. Dragging or zooming holds it for a few seconds and keeps
+       the view you chose; zooming right in, going to a place or the flat map stops it. */
+    const SPIN = { degPerSec: 4.5, tilt: -24, k: 1.05, resumeMs: 6000 };
+    const spin = { on: false, t: 0, pauseUntil: 0, tilt: SPIN.tilt, k: SPIN.k, capT: 0 };
+    const spinActive = () => spin.on && S.view === 'globe' && performance.now() >= spin.pauseUntil;
+    function setSpin(on) {
+      on = !!on;
+      if (on === spin.on) return;
+      spin.on = on; spin.t = 0; spin.pauseUntil = 0;
+      if (on) {
+        if (S.view !== 'globe') setView('globe');
+        spin.tilt = SPIN.tilt;
+        spin.k = globe.k > 1.6 || globe.k < 0.85 ? SPIN.k : globe.k;
+        S.areaOn = false;
+        hideTip();
+      } else {
+        co.__zoom = d3.zoomIdentity.scale(globe.k); // drag and zoom carry on from where it turned to
+        $('#spincap').hidden = true;
+        document.body.classList.remove('ui-idle');
+      }
+      const b = $('#spin');
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', on ? 'Stop spinning the globe' : 'Spin the globe');
+      b.title = on ? 'Stop spinning (S)' : 'Spin the globe (S)';
+      document.body.classList.toggle('spinning', on);
+      track('spin_globe', { state: on ? 'on' : 'off' });
+      changed(true);
+    }
+    // A drag or zoom while it spins: hold for a few seconds, keep the tilt and zoom chosen, or stop when zoomed right in.
+    function spinHeld() {
+      if (!spin.on) return;
+      if (globe.k > 2.2) { setSpin(false); return; }
+      spin.pauseUntil = performance.now() + SPIN.resumeMs;
+      spin.tilt = globe.rot[1]; spin.k = Math.max(0.8, globe.k);
+    }
+    function spinStep(time) {
+      const dt = spin.t ? Math.min(250, time - spin.t) : 0;
+      spin.t = time;
+      globe.rot[0] = ((globe.rot[0] + SPIN.degPerSec * dt / 1000) % 360 + 540) % 360 - 180;
+      globe.rot[1] += (spin.tilt - globe.rot[1]) * Math.min(1, dt / 2000);
+      // Out to the whole earth in a second or two, however far in it started (eased on a log scale).
+      if (Math.abs(spin.k - globe.k) > 1e-4) {
+        const lk = Math.log(globe.k);
+        globe.k = Math.exp(lk + (Math.log(spin.k) - lk) * Math.min(1, dt / 1000));
+        co.__zoom = d3.zoomIdentity.scale(globe.k);
+      }
+      baseDirty = true; posDirty = true; overDirty = true;
+      hideTip();
+      // The caption: the city it's passing over, its time and what's on.
+      if (time - spin.capT < 700) return;
+      spin.capT = time;
+      const at = [-globe.rot[0], -globe.rot[1]];
+      let best = null;
+      D.byCity.forEach((list, cid) => {
+        const c = S.ds.cityById[cid];
+        if (!c || !Number.isFinite(c.lat)) return;
+        const d = d3.geoDistance([c.lon, c.lat], at);
+        if (d > 0.5) return;
+        const score = list.length / (1 + d * 6);
+        if (!best || score > best.score) best = { c: c, list: list, score: score };
+      });
+      const el = $('#spincap');
+      if (!best) { el.hidden = true; return; }
+      const live = best.list.filter(e => RM.isLive(e, S.now)).length;
+      const html = '<b>' + esc(best.c.name) + '</b> ' + esc(tTime(S.now, best.c.tz)) + (live ? ' · ' + live + ' live now' : '') + ' · ' + plural(best.list.length, 'event', 'events') + ' ' + WIN_LABEL[S.win];
+      if (el.innerHTML !== html) el.innerHTML = html;
+      el.hidden = false;
     }
     // Choosing a city frames its venues (the middle 90% of them, so one far-off listing can't
     // zoom the map out); with the street map on, that can go down to neighbourhood level.
@@ -1798,7 +1876,10 @@
     }
     function frame(time) {
       rafId = 0;
-      const anim = !reduceMotion && !document.hidden && (liveMarks > 0 || (S.layers.tours && D.tours.length) || S.route || S.me);
+      const spinning = spin.on && S.view === 'globe' && !document.hidden;
+      if (spinning && time >= spin.pauseUntil) { if (time - lastDraw > 33) spinStep(time); } // about 30 frames a second
+      else spin.t = 0; // so it picks up smoothly after a pause
+      const anim = spinning || (!reduceMotion && !document.hidden && (liveMarks > 0 || (S.layers.tours && D.tours.length) || S.route || S.me));
       if (baseDirty || overDirty || posDirty || (anim && time - lastDraw > 33)) {
         if (baseDirty || posDirty) setProj();
         if (baseDirty) { syncStreets(); drawBase(); baseDirty = false; }
@@ -1835,7 +1916,7 @@
       }
       ctx.beginPath(); path(grat); ctx.strokeStyle = C.grat; ctx.lineWidth = 0.6; ctx.stroke();
       if (geo) {
-        ctx.beginPath(); path(ppd > 6 ? geo.landHi : geo.landLo); ctx.fillStyle = C.land; ctx.fill();
+        ctx.beginPath(); path(ppd > 6 && !spinActive() ? geo.landHi : geo.landLo); ctx.fillStyle = C.land; ctx.fill();
         ctx.beginPath(); path(geo.lakes); ctx.fillStyle = S.view === 'globe' ? '#0a0c1d' : C.sea; ctx.fill();
         ctx.beginPath(); path(geo.borders); ctx.strokeStyle = C.border; ctx.lineWidth = 0.6; ctx.stroke();
       }
@@ -2160,7 +2241,7 @@
     }
     function hideTip() { tip.hidden = true; }
 
-    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets, inView: inView, center: center };
+    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets, inView: inView, center: center, setSpin: setSpin, spinning: () => spin.on };
   })();
 
   /* ---------- live feed (events.json written by the pipeline) ---------- */
@@ -2329,6 +2410,7 @@
       if (ev.key === '/') { ev.preventDefault(); $('#q').focus(); }
       else if (ev.key === 'g') MapView.setView(S.view === 'map' ? 'globe' : 'map');
       else if (ev.key === 'f') setMapFull(!mapFull());
+      else if (ev.key === 's') MapView.setSpin(!MapView.spinning());
       else if (/^[1-9]$/.test(ev.key) && S.mode !== 'narrow') { const id = tabIdsFor(S.mode)[+ev.key - 1]; if (id) selectTab(id, true); }
     });
     $('#tabbar').addEventListener('keydown', ev => {
@@ -2366,6 +2448,16 @@
     $('#zoom-home').addEventListener('click', () => MapView.home(true));
     $('#locate').addEventListener('click', () => { movedSinceStart = true; locateMe(); });
     $('#fullscreen').addEventListener('click', () => setMapFull(!mapFull()));
+    $('#spin').addEventListener('click', () => MapView.setSpin(!MapView.spinning()));
+    // Screensaver: in full screen with the globe spinning, the controls fade after three still seconds.
+    let idleTimer = 0;
+    const uiActive = () => {
+      document.body.classList.remove('ui-idle');
+      clearTimeout(idleTimer);
+      if (mapFull() && MapView.spinning()) idleTimer = setTimeout(() => { if (mapFull() && MapView.spinning() && $('#layers').hidden && !S.sel) document.body.classList.add('ui-idle'); }, 3000);
+    };
+    ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(type => document.addEventListener(type, uiActive, { capture: true, passive: true }));
+    ['#spin', '#fullscreen'].forEach(id => $(id).addEventListener('click', uiActive));
     // Leaving the browser's full screen (Esc, a swipe) leaves the full-screen map too.
     document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && realFull) { realFull = false; setMapFull(false); } });
     // Once the visitor moves the map or searches, a late position from startNear() stays out of the way.
