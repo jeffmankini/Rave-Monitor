@@ -14,12 +14,17 @@
     try { if (window.RM_GA && typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (err) { /* analytics must never break the page */ }
   }
   const cut = (str, n) => String(str == null ? '' : str).slice(0, n || 100);
+  // What an event-related hit says about the event (all public listing details, nothing about the visitor).
+  function eventParams(e) {
+    return { event_title: cut(e.title), city: cut(S.ds.cityById[e.cityId].name), listing_source: cut(e.src || ''), genre: (RM.GENRE[e.genre] || RM.OTHER).name,
+      event_type: e.type || 'club', days_ahead: Math.max(0, Math.floor((e.start - Date.now()) / 864e5)) };
+  }
 
   /* ---------- state ---------- */
   const S = {
     now: Date.now(), win: '24h', genres: new Set(), view: 'map',
     layers: { belt: true, heat: true, fest: true, tours: false, labels: true, streets: true },
-    sel: null, route: null, mode: null, tab: { right: 'wire', single: 'live' }, liveAll: false, ds: null,
+    sel: null, route: null, mode: null, tab: { right: 'listings', single: 'live' }, liveAll: false, listAll: false, ds: null,
     // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
     area: null, areaOn: false,
     streams: [], streamFile: null, streamsAt: 0, ntsLive: null, streamsTried: false
@@ -70,7 +75,7 @@
     return e.priceMin === e.priceMax ? money(e.priceMin, e.cur) : money(e.priceMin, e.cur) + ' to ' + money(e.priceMax, e.cur);
   }
   const plural = (n, one, many) => fmtN(n) + ' ' + (n === 1 ? one : many);
-  const WIN_LABEL = { live: 'live now', '24h': 'in the next 24 hours', weekend: 'this weekend', '7d': 'in the next 7 days', '14d': 'in the next 14 days' };
+  const WIN_LABEL = { live: 'live now', '24h': 'in the next 24 hours', weekend: 'this weekend', '7d': 'in the next 7 days', '14d': 'in the next 14 days', '30d': 'in the next 30 days' };
   function lineupNames(e, max) {
     const ids = e.heads.concat(e.support);
     const names = ids.map(id => artist(id)).filter(Boolean).map(a => a.name);
@@ -147,9 +152,23 @@
   }
   /** Called by the map when the area in view changes (null: not zoomed in, so lists show everything). */
   function areaChanged(ids) {
-    S.area = ids;
+    const entering = ids && !S.area;
+    S.area = ids; S.listAll = false;
     deriveLists();
     renderAll();
+    if (entering && D.L.win.length) {
+      const top = RM.cityCounts(D.L.win)[0];
+      track('view_map_area', { city: cut(top ? S.ds.cityById[top.id].name : ''), listings: D.L.win.length });
+    }
+  }
+  // The consent tool's settings (Usercentrics: version 3 API, or version 2's UC_UI).
+  function privacySettings() {
+    const d = $('#about');
+    if (d && d.open) { if (d.close) d.close(); else d.removeAttribute('open'); } // a modal dialog would sit on top of it
+    try {
+      if (window.__ucCmp && typeof window.__ucCmp.showSecondLayer === 'function') window.__ucCmp.showSecondLayer();
+      else if (window.UC_UI && typeof window.UC_UI.showSecondLayer === 'function') window.UC_UI.showSecondLayer();
+    } catch (err) { /* the consent tool isn't loaded */ }
   }
   function routeGigs(aid) {
     return S.ds.events.filter(e => e.end > S.now && (e.heads.indexOf(aid) >= 0 || e.support.indexOf(aid) >= 0)).sort((a, b) => a.start - b.start).slice(0, 12);
@@ -159,8 +178,8 @@
   const PANELS = {
     live: { label: 'Live now', render: renderLive },
     heat: { label: 'Scene heat', render: renderHeat },
+    listings: { label: 'Listings', render: renderListings },
     wire: { label: 'Wire', render: renderWire },
-    ask: { label: 'Ask', render: renderAskMeta },
     genres: { label: 'Genres', render: renderGenres },
     streams: { label: 'Streams', render: renderStreams },
     sellouts: { label: 'Sellouts', render: renderSellouts },
@@ -174,7 +193,6 @@
       sec.innerHTML = '<header class="ph"><h2 id="h-' + id + '">' + PANELS[id].label + '</h2><span class="meta" id="m-' + id + '"></span></header><div class="pb" id="b-' + id + '"></div>';
       PANELS[id].el = sec;
     });
-    buildAsk();
   }
   const body = id => PANELS[id].el.querySelector('.pb');
   const meta = (id, txt) => { const m = PANELS[id].el.querySelector('.meta'); if (m) m.textContent = txt || ''; };
@@ -188,6 +206,74 @@
       '<div class="sub"><span>' + esc(v.name) + ', ' + esc(c.name) + '</span></div>' +
       '<div class="sub2">' + (names ? '<span>' + esc(names) + '</span>' : '') + '<span>' + rel(e) + '</span></div></div>' +
       '<div class="side">' + statusChip(e) + '<i class="gdot" style="--c:' + G.color + '" title="' + esc(G.name) + '"></i></div></li>';
+  }
+
+  /* ---------- listings: every listing in the time window (the map area once zoomed in), by night ---------- */
+  // A night runs 6 am to 6 am local time, so a party starting at 1 am Sunday belongs to Saturday night.
+  const NIGHT_SHIFT = 6 * HOUR;
+  function nightKey(ms, tz) {
+    const p = {};
+    F(tz, { year: 'numeric', month: '2-digit', day: '2-digit', numberingSystem: 'latn' }).formatToParts(ms - NIGHT_SHIFT).forEach(x => { p[x.type] = x.value; });
+    return p.year + '-' + p.month + '-' + p.day;
+  }
+  function nightLabel(ms, tz) {
+    const k = nightKey(ms, tz), now = S.now;
+    const name = F(tz, { weekday: 'long', day: 'numeric', month: 'long' }).format(ms - NIGHT_SHIFT);
+    return k === nightKey(now, tz) ? 'Tonight · ' + name : k === nightKey(now + DAY, tz) ? 'Tomorrow · ' + name : name;
+  }
+  // Lineup entries that aren't artists: 'TBA', 'SECRET DJ LINE UP', 'special guests', 'residents'.
+  const NOT_NAMES = /\b(tba|tbc|tbd|to be announced|line ?-?up|secret|special guests?|surprise|various artists|more acts|and more|residents?|guest djs?)\b|^\+ ?more$|^(guests?|various)$/i;
+  function genreText(e) {
+    const tags = (e.tags || []).filter(x => x && x.length < 24).slice(0, 2);
+    if (tags.length) return tags.join(', ');
+    return [e.genre].concat(e.festGenres || []).filter((g, i, a) => RM.GENRE[g] && a.indexOf(g) === i).slice(0, 2).map(g => RM.GENRE[g].name).join(', ');
+  }
+  function listRow(e) {
+    const c = city(e), v = venue(e), G = gen(e), names = lineupNames(e, 4), gt = genreText(e);
+    const price = e.free ? 'Free' : e.priceMax ? (e.priceMin && e.priceMin !== e.priceMax ? money(e.priceMin, e.cur) + '+' : money(e.priceMax, e.cur)) : '';
+    return '<li class="erow lrow" data-ev="' + esc(e.id) + '" tabindex="0" role="button">' +
+      '<div class="when"><b>' + tTime(e.start, c.tz) + '</b><span>' + tDay(e.start, c.tz) + '</span></div>' +
+      '<div class="what"><span class="title">' + esc(e.title) + '</span>' +
+      '<div class="sub"><span>' + esc(v.name) + ', ' + esc(c.name) + '</span></div>' +
+      (names ? '<div class="sub2 lineup"><span>' + esc(names) + '</span></div>' : '') +
+      '<div class="sub2">' + (gt ? '<span class="gtag" style="--c:' + G.color + '">' + esc(gt) + '</span>' : '') + (price ? '<span>' + esc(price) + '</span>' : '') + '</div></div>' +
+      '<div class="side">' + statusChip(e) + '</div></li>';
+  }
+  function listingsBrief(list) {
+    const nights = {}, fam = {}, who = {};
+    list.forEach(e => {
+      const c = city(e), k = nightKey(e.start, c.tz);
+      (nights[k] || (nights[k] = { n: 0, ms: e.start, tz: c.tz })).n++;
+      fam[e.genre] = (fam[e.genre] || 0) + 1;
+      new Set(e.heads.concat(e.support).map(id => artist(id)).filter(a => a && !NOT_NAMES.test(a.name.trim())).map(a => a.name)).forEach(n => { who[n] = (who[n] || 0) + 1; });
+    });
+    const top = (obj, n) => Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, n);
+    let txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b> ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.';
+    const busiest = top(Object.fromEntries(Object.entries(nights).map(([k, v]) => [k, v.n])), 2);
+    if (Object.keys(nights).length > 2) txt += ' Busiest nights: ' + busiest.map(k => F(nights[k].tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(nights[k].ms - NIGHT_SHIFT) + ' (' + nights[k].n + ')').join(', ') + '.';
+    const artists = top(who, 3).filter(n => who[n] > 1);
+    if (artists.length) txt += ' Playing more than once: ' + artists.map(n => esc(n) + ' (' + who[n] + ')').join(', ') + '.';
+    const genres = top(fam, 4).filter(g => RM.GENRE[g]);
+    return txt + (genres.length ? '<span class="gline">' + genres.map(g => '<span class="gtag" style="--c:' + RM.GENRE[g].color + '">' + esc(RM.GENRE[g].name) + ' ' + fmtN(fam[g]) + '</span>').join('') + '</span>' : '');
+  }
+  function renderListings() {
+    const list = D.L.win.slice().sort((a, b) => {
+      const ka = nightKey(a.start, city(a).tz), kb = nightKey(b.start, city(b).tz);
+      return ka < kb ? -1 : ka > kb ? 1 : a.start - b.start;
+    });
+    if (!list.length) {
+      body('listings').innerHTML = areaBar() + '<p class="fine">No listings ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') + '. Try a longer time window' + (D.L.area ? ' or zoom out' : '') + '.</p>';
+      meta('listings', ''); return;
+    }
+    const n = S.listAll ? list.length : Math.min(list.length, 120);
+    let html = areaBar() + '<p class="brief">' + listingsBrief(list) + '</p>', night = '';
+    list.slice(0, n).forEach(e => {
+      const c = city(e), k = nightKey(e.start, c.tz);
+      if (k !== night) { html += (night ? '</ol>' : '') + '<h3 class="nighthead">' + esc(nightLabel(e.start, c.tz)) + '</h3><ol class="rows">'; night = k; }
+      html += listRow(e);
+    });
+    body('listings').innerHTML = html + '</ol>' + (list.length > n ? '<button class="more" type="button" data-act="list-all">Show all ' + fmtN(list.length) + '</button>' : '');
+    meta('listings', fmtN(list.length) + (D.L.area ? ' in view' : ''));
   }
 
   function briefHTML() {
@@ -503,115 +589,8 @@
     meta('surges', 'this week vs last');
   }
 
-  /* ---------- ask ---------- */
-  let sampleFn = null, askCtl = null;
-  function suggestions() {
-    const head = S.ds.artists.find(a => a.tier === 1);
-    return ['Best techno in Europe right now', head ? 'Where is ' + head.name + ' playing next?' : 'Biggest shows this weekend', 'Anything sold out tonight?', 'Day parties this weekend'];
-  }
-  function buildAsk() {
-    body('ask').innerHTML = '<div class="ask"><form id="ask-form"><label class="sr-only" for="ask-q">Ask about the listings</label>' +
-      '<textarea id="ask-q" rows="2" placeholder="Search the listings: a city, a genre, a DJ, tonight"></textarea><button type="submit" id="ask-go">Search</button></form>' +
-      '<div class="suggest" id="ask-suggest">' + suggestions().map(s => '<button type="button" data-q="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>' +
-      '<div class="answer" id="ask-out" aria-live="polite"></div>' +
-      '<p class="ask-note" id="ask-note">This box searches the listings by city, genre, DJ and time. Inside Claude it can answer in plain language instead.</p></div>';
-    $('#ask-form', body('ask')).addEventListener('submit', ev => { ev.preventDefault(); ask($('#ask-q').value); });
-    $('#ask-q', body('ask')).addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); ask(ev.target.value); } });
-    $('#ask-suggest', body('ask')).addEventListener('click', ev => { const b = ev.target.closest('button[data-q]'); if (!b) return; $('#ask-q').value = b.dataset.q; ask(b.dataset.q); });
-  }
-  function askMode(ai) {
-    $('#ask-q').placeholder = ai ? 'Ask about tonight, a city, a genre or a DJ' : 'Search the listings: a city, a genre, a DJ, tonight';
-    $('#ask-go').textContent = ai ? 'Ask' : 'Search';
-    $('#ask-note').textContent = ai ? 'Claude answers from the listings on this page, which are demo data. Your first question asks for permission.' : 'This box searches the listings by city, genre, DJ and time. Inside Claude it can answer in plain language instead.';
-    renderAskMeta();
-  }
-  function renderAskMeta() { meta('ask', sampleFn ? 'answers by Claude' : 'listing search'); }
-  function askPrompt(q) {
-    const t = S.now;
-    const pool = S.ds.events.filter(e => e.end > t && e.start < t + 7 * DAY).sort((a, b) => RM.importance(b, t) - RM.importance(a, t)).slice(0, 220);
-    const lines = pool.map(e => {
-      const c = city(e), v = venue(e), G = gen(e);
-      return JSON.stringify({ title: e.title, city: c.name, region: RM.REGIONS[c.region], venue: v.name, type: e.type, local_start: tDate(e.start, c.tz) + ' ' + tTime(e.start, c.tz), local_end: tTime(e.end, c.tz), live_now: RM.isLive(e, t), genre: G.name + ' / ' + e.sub, lineup: lineupNames(e, 6), tickets: RM.isLive(e, t) ? 'live' : statusWord(e), price: priceText(e) });
-    });
-    return [
-      'You answer questions inside Rave Monitor, a live map of electronic music events.',
-      'Use only the listings below. They are ' + (S.ds.source === 'demo' ? 'demo listings with fictional events and artists, so never present them as real-world facts' : 'real listings gathered from public event platforms; mention that details can change and to check the source link') + '.',
-      'Answer in at most 5 short bullet points or 3 short sentences, in plain text. For each event you mention, give its exact title, city and local start time as written in the listing.',
-      'If nothing fits, say so plainly and suggest the closest alternative from the listings.',
-      'The current time is ' + new Date(t).toUTCString() + '.',
-      'Listings, one JSON object per line:',
-      lines.join('\n'),
-      'Question: ' + q
-    ].join('\n');
-  }
-  function renderAnswer(text) {
-    const out = $('#ask-out');
-    const lines = String(text || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
-    let html = '', inList = false;
-    lines.forEach(l => {
-      const bullet = /^[-*•]\s+/.test(l);
-      const content = esc(l.replace(/^[-*•]\s+/, '')).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-      if (bullet && !inList) { html += '<ul>'; inList = true; }
-      if (!bullet && inList) { html += '</ul>'; inList = false; }
-      html += bullet ? '<li>' + content + '</li>' : '<p>' + content + '</p>';
-    });
-    if (inList) html += '</ul>';
-    const low = norm(text);
-    const hits = S.ds.events.filter(e => e.end > S.now && low.indexOf(norm(e.title)) >= 0).slice(0, 6);
-    if (hits.length) html += '<div class="mentions">' + hits.map(e => '<button type="button" data-ev="' + esc(e.id) + '">' + esc(e.title) + ', ' + esc(city(e).name) + '</button>').join('') + '</div>';
-    out.classList.add('rich'); out.innerHTML = html;
-  }
-  async function ask(q) {
-    q = (q || '').trim(); if (!q) return;
-    const out = $('#ask-out');
-    if (!sampleFn) { localAnswer(q); return; }
-    if (askCtl) askCtl.abort();
-    const ctl = askCtl = new AbortController();
-    out.classList.remove('rich'); out.innerHTML = '<p class="muted">Reading the listings…</p>';
-    try {
-      const res = await sampleFn(askPrompt(q), { onText: p => { if (ctl === askCtl) { out.classList.remove('rich'); out.textContent = p.text; } }, signal: ctl.signal, cache: false, modelTier: 'quick' });
-      if (ctl === askCtl) renderAnswer(res && res.text);
-    } catch (err) {
-      if (ctl !== askCtl || (err && err.name === 'AbortError')) return;
-      if (err && err.code === 'not_granted') { sampleFn = null; askMode(false); localAnswer(q); return; }
-      if (err && err.code === 'rate_limited') { out.innerHTML = '<p>Too many questions in a row. Wait a minute, then ask again.</p>'; return; }
-      out.innerHTML = '<p>Claude couldn\'t answer just now' + (err && err.message ? ' (' + esc(err.message) + ')' : '') + '. Here are listings that match your words instead.</p>';
-      localAnswer(q, true);
-    }
-  }
-  const REGION_WORDS = [[/europe|european/, ['eu']], [/north america|usa|united states|\bus\b|canada|states/, ['na']], [/latin|south america|mexico|brazil|argentina|colombia/, ['la']], [/americas|america/, ['na', 'la']], [/asia|australia|japan|korea|pacific|india/, ['ap']], [/africa|middle east/, ['af']]];
-  function localAnswer(q, append) {
-    const s = norm(q), ds = S.ds, t = S.now, why = [];
-    let pool = ds.events.filter(e => e.end > t && e.start < t + 7 * DAY);
-    const a = ds.artists.filter(x => x.tier < 3 || ds.source !== 'demo').find(x => s.indexOf(norm(x.name)) >= 0);
-    if (a) { pool = ds.events.filter(e => e.end > t && (e.heads.indexOf(a.id) >= 0 || e.support.indexOf(a.id) >= 0)).sort((x, y) => x.start - y.start); why.push(a.name + "'s dates"); }
-    else {
-      if (/\b(now|right now|live)\b/.test(s)) { pool = pool.filter(e => RM.isLive(e, t)); why.push('live now'); }
-      else if (/tonight|today/.test(s)) { pool = pool.filter(e => e.start < t + 18 * HOUR); why.push('tonight'); }
-      else if (/weekend|saturday|friday|sunday/.test(s)) { pool = pool.filter(e => RM.inWindow(e, ds, t, 'weekend')); why.push('this weekend'); }
-      const g = RM.GENRES.find(g => s.indexOf(norm(g.name).split(' ')[0]) >= 0 || g.subs.some(x => s.indexOf(norm(x)) >= 0));
-      if (g) { pool = pool.filter(e => e.genre === g.id || (e.festGenres && e.festGenres.indexOf(g.id) >= 0)); why.push(g.name.toLowerCase()); }
-      const c = ds.cities.find(c => s.indexOf(norm(c.name)) >= 0);
-      if (c) { pool = pool.filter(e => e.cityId === c.id); why.push('in ' + c.name); }
-      else { const rw = REGION_WORDS.find(r => r[0].test(s)); if (rw) { pool = pool.filter(e => rw[1].indexOf(city(e).region) >= 0); why.push('in ' + rw[1].map(k => RM.REGIONS[k]).join(' and ')); } }
-      if (/sold out|sell out|sellout/.test(s)) { pool = pool.filter(e => RM.statusAt(e, t) === 'soldout'); why.push('sold out'); }
-      if (/day part|open air|daytime|outdoor/.test(s)) { pool = pool.filter(e => e.type === 'day'); why.push('day parties'); }
-      if (/festival/.test(s)) { pool = pool.filter(e => e.type === 'festival'); why.push('festivals'); }
-      if (/after|afters/.test(s)) { pool = pool.filter(e => e.type === 'after'); why.push('after-hours'); }
-      if (/stream/.test(s)) { pool = pool.filter(e => e.streamed); why.push('livestreamed'); }
-      if (/free/.test(s)) { pool = pool.filter(e => e.free); why.push('free entry'); }
-      if (!why.length) { const words = s.split(/\s+/).filter(w => w.length > 2); pool = pool.filter(e => words.some(w => norm(e.title).indexOf(w) >= 0 || norm(venue(e).name).indexOf(w) >= 0)); why.push('matching “' + q + '”'); }
-      pool.sort((x, y) => RM.importance(y, t) - RM.importance(x, t));
-    }
-    const out = $('#ask-out');
-    const html = (pool.length ? '<p>' + plural(pool.length, 'listing', 'listings') + ' ' + esc(why.join(', ')) + '.' + (pool.length > 8 ? ' Top 8:' : '') + '</p>' : '<p>Nothing in the listings fits ' + esc(why.join(', ')) + '. Try a city, a genre or a DJ name.</p>') +
-      (pool.length ? '<ol class="rows">' + pool.slice(0, 8).map(eventRow).join('') + '</ol>' : '');
-    out.classList.add('rich');
-    out.innerHTML = append ? out.innerHTML + html : html;
-  }
-
   /* ---------- layout and tabs ---------- */
-  function tabIdsFor(mode) { return mode === 'wide' ? ['wire', 'ask', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'] : ['live', 'wire', 'heat', 'ask', 'genres', 'streams', 'sellouts', 'peakcon', 'surges']; }
+  function tabIdsFor(mode) { return mode === 'wide' ? ['listings', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'] : ['live', 'listings', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges']; }
   function layout() {
     const w = window.innerWidth;
     const mode = w >= 1100 ? 'wide' : w >= 760 ? 'mid' : 'narrow';
@@ -642,8 +621,17 @@
   }
   function renderAll() {
     renderHeader();
-    Object.keys(PANELS).forEach(id => { if (id === 'ask') renderAskMeta(); else if (!PANELS[id].el.hidden || S.mode === 'wide' && (id === 'live' || id === 'heat')) PANELS[id].render(); });
+    Object.keys(PANELS).forEach(id => { if (!PANELS[id].el.hidden || S.mode === 'wide' && (id === 'live' || id === 'heat')) PANELS[id].render(); });
     $('#count').textContent = plural(D.L.win.length, 'event', 'events') + (D.L.area ? ' in view' : ' in ' + plural(D.L.cities, 'city', 'cities'));
+    // Zoomed in, the legend says which colour is which genre, for what's in view.
+    const lg = $('#lg-genres');
+    if (D.L.area && D.L.win.length) {
+      const fam = {};
+      D.L.win.forEach(e => { if (RM.GENRE[e.genre]) fam[e.genre] = (fam[e.genre] || 0) + 1; });
+      const top = Object.keys(fam).sort((a, b) => fam[b] - fam[a]).slice(0, 5);
+      lg.innerHTML = top.map(g => '<span class="gkey"><i class="gdot" style="--c:' + RM.GENRE[g].color + '"></i>' + esc(RM.GENRE[g].name) + '</span>').join('');
+      lg.hidden = !top.length;
+    } else lg.hidden = true;
     $$('#gchips .gchip').forEach(b => b.setAttribute('aria-pressed', b.dataset.genre === 'all' ? String(!S.genres.size) : String(S.genres.has(b.dataset.genre))));
     $$('#win button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.win === S.win)));
   }
@@ -674,7 +662,7 @@
     refresh();
   }
   function setWindow(w) { S.win = w; refresh(); }
-  function refresh() { derive(); renderAll(); MapView.changed(false); }
+  function refresh() { S.listAll = false; derive(); renderAll(); MapView.changed(false); }
 
   /* ---------- drawer ---------- */
   let lastFocus = null;
@@ -684,7 +672,7 @@
     if (!S.sel) lastFocus = document.activeElement;
     S.sel = id;
     renderDrawer(e);
-    track('open_event', { event_title: cut(e.title), city: cut(city(e).name), listing_source: cut(e.src || '') });
+    track('open_event', eventParams(e));
     const dr = $('#drawer');
     dr.classList.add('open'); dr.setAttribute('aria-hidden', 'false');
     $('#scrim').hidden = S.mode !== 'narrow';
@@ -735,7 +723,7 @@
       (e.tags && e.tags.length ? '<section class="dr-sec"><h3>' + (demo ? 'Door and floor' : 'Tags') + '</h3><div class="tags">' + e.tags.map(x => '<span>' + esc(x) + '</span>').join('') + '</div></section>' : '') +
       '<div class="dr-actions">' + (tourer ? '<button class="btn primary" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
       '<button class="btn" type="button" data-act="copy">Copy details</button>' +
-      (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click" data-p-event_title="' + esc(cut(e.title)) + '" data-p-city="' + esc(cut(c.name)) + '" data-p-listing_source="' + esc(cut(e.src || '')) + '">' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
+      (e.url && !demo ? '<a class="btn" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click"' + Object.entries(eventParams(e)).map(([k, v]) => ' data-p-' + k + '="' + esc(String(v)) + '"').join('') + '>' + esc(ticketLabel(e)) + '</a>' : '<span class="btn" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') + '</div>' +
       '<p class="dr-note" id="dr-note">' + note + '</p>';
   }
   function ticketLabel(e) { return !e.src ? 'Get tickets' : e.src === 'Promoter submission' ? 'Promoter link' : 'Tickets on ' + e.src; }
@@ -1030,7 +1018,7 @@
        canvas and the event canvas. It's loaded the first time you zoom in, fades in from regional
        zoom, and follows the d3 camera: same Web Mercator, so zoom = log2(360 * ppd / 512). */
     const ML = 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl';
-    const ST = { load: 25, preload: 60, from: 110, to: 240, maxPpd: 93000, flatMaxPpd: 1600 };
+    const ST = { load: 25, preload: 60, from: 110, to: 240, maxPpd: 93000, flatMaxPpd: 1600, detailPpd: 2400 };
     const LABEL_LAYERS = ['water-name', 'street-name', 'neighbourhood', 'suburb', 'town'];
     const streets = { el: $('#streets'), map: null, state: 'off', t: 0, labels: true };
     const streetsOn = () => S.layers.streets && streets.state !== 'failed';
@@ -1249,7 +1237,8 @@
             const pv = proj([v.lon, v.lat]); if (!onScreen(pv)) return;
             const sp = r0 * spread;
             evs.forEach((e, i) => { const a = i * 2.39996, rr = sp * Math.sqrt(i), live = RM.isLive(e, t); if (live) liveMarks++; marks.push({ e: e, x: pv[0] + rr * Math.cos(a), y: pv[1] + rr * Math.sin(a), r: r0, live: live, so: RM.statusAt(e, t) === 'soldout', seed: e.seed }); });
-            venueLabels.push({ v: v, x: pv[0], y: pv[1], n: evs.length, R: sp * Math.sqrt(Math.max(0, evs.length - 1)) + r0 });
+            const next = evs.filter(e => e.end > t).sort((a, b) => a.start - b.start)[0] || evs[0];
+            venueLabels.push({ v: v, x: pv[0], y: pv[1], n: evs.length, R: sp * Math.sqrt(Math.max(0, evs.length - 1)) + r0, next: next });
           });
           if (cityIn) cityMarks.push({ c: c, x: pc[0], y: pc[1], R: 0, n: list.length, live: liveN, heat: heatBy[cid] || 0 });
         } else {
@@ -1366,7 +1355,16 @@
         } else {
           cityMarks.forEach(cm => put(cm.c.name, cm.x, cm.y - 22, C.ink, '700 13px ' + FONT, 'center'));
           // Venues without a real position sit near the city center; at street level that would look exact.
-          venueLabels.sort((a, b) => b.n - a.n).forEach(vl => put(vl.v.approx ? vl.v.name + ' (location approximate)' : vl.v.name, vl.x + vl.R + 5, vl.y, vl.v.approx ? C.ink3 : C.ink2));
+          venueLabels.sort((a, b) => b.n - a.n).forEach(vl => {
+            if (!put(vl.v.approx ? vl.v.name + ' (location approximate)' : vl.v.name, vl.x + vl.R + 5, vl.y, vl.v.approx ? C.ink3 : C.ink2)) return;
+            // At street level, for planning: when the next party there is and who's on, in its genre's colour.
+            const e = vl.next;
+            if (ppd < ST.detailPpd || !e) return;
+            const c = city(e), who = lineupNames(e, 2) || e.title;
+            let line = (RM.isLive(e, t) ? 'Now' : tDay(e.start, c.tz) + ' ' + tTime(e.start, c.tz)) + ' · ' + who;
+            if (line.length > 46) line = line.slice(0, 45) + '…';
+            put(line + (vl.n > 1 ? '  +' + (vl.n - 1) : ''), vl.x + vl.R + 5, vl.y + 17, gen(e).color, '500 10.5px ' + FONT);
+          });
         }
         if (ppd >= 2.4) festMarks.forEach(f => put(f.e.series, f.x + f.r * 1.4 + 5, f.y, C.ink, '650 11px ' + FONT));
       }
@@ -1543,6 +1541,8 @@
       if (a === 'route') { setRoute(act.dataset.artist); return; }
       if (a === 'route-clear') return setRoute(null);
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
+      if (a === 'list-all') { S.listAll = true; renderListings(); return; }
+      if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
       if (a === 'area-all') { MapView.home(true); return; }
     }
     const opt = t.closest('#results [role="option"]');
@@ -1638,9 +1638,6 @@
     streamsP.then(() => { S.streamsTried = true; mergeStreams(); renderStreams(); });
     setInterval(() => refreshStreams(true), 15 * 60000);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => MapView.changed(false));
-    if (window.claude && typeof window.claude.use === 'function') {
-      window.claude.use('sample').then(fn => { if (fn) { sampleFn = fn; askMode(true); } }).catch(() => {});
-    }
   }
   boot();
 })();

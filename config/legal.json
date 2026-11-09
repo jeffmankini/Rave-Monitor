@@ -1,0 +1,11 @@
+{
+  "_comment": "Policy pages, each built to /<slug>/ in the site's look. termageddon: the policy ID from Termageddon's embed code (the policy loads from Termageddon, so edits there show up without a rebuild). html: the page's own text. All are linked from the About panel and from every policy page, with the consent tool's Privacy Settings link.",
+  "pages": [
+    { "slug": "privacy-policy", "title": "Privacy Policy", "termageddon": "Y20xdFVsTlhja1p5UjJRcmFVRTlQUT09" },
+    { "slug": "cookie-policy", "title": "Cookie Policy", "termageddon": "TVU5RFVGQlBkSFppWlVJd1ZuYzlQUT09" },
+    { "slug": "terms-of-service", "title": "Terms of Service", "termageddon": "V1U5S01VaFNjVWxKZG1NeVpHYzlQUT09" },
+    { "slug": "eula", "title": "End User License Agreement", "short": "EULA", "termageddon": "UjJsSk9IZGtUMjVOVkVkdWVXYzlQUT09" },
+    { "slug": "disclaimer", "title": "Disclaimer", "termageddon": "VjJsNE5rTlhUblozT0hoU1NuYzlQUT09" },
+    { "slug": "accessibility", "title": "Accessibility", "html": "<p>While we strive to make our website fully accessible, there may still be areas that need improvement or technological solutions that are evolving. We are continuously working to enhance accessibility by refining existing features, implementing updates, and adopting new technologies as they become available.</p>\n<p>Your experience matters to us. If you encounter any accessibility barriers, have specific needs, or require assistance, please don’t hesitate to reach out. You can contact us at <a href=\"mailto:hello@ravemonitor.com\">hello@ravemonitor.com</a>, and we will do our best to address your concerns and improve the accessibility of this site.</p>\n<p>Thank you for being a part of our digital community!</p>" }
+  ]
+}

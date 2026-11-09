@@ -713,6 +713,7 @@ var RMData = (function () {
     if (win === '24h') return e.start < t + DAY;
     if (win === 'weekend') return weekendOk(e, ds, t);
     if (win === '7d') return e.start < t + 7 * DAY;
+    if (win === '30d') return e.start < t + 30 * DAY;
     return e.start < t + 14 * DAY;
   }
   function importance(e, t) {

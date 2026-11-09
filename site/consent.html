@@ -1,6 +1,11 @@
 <!--
-  Paste the consent tool's embed code here (Termageddon + Usercentrics), exactly as they give it.
-  The build puts it at the top of the page head: after the Google Consent Mode defaults and before
-  Google Analytics, so the tool's choice applies to Analytics. Turn on Google Consent Mode in the
-  Usercentrics settings so it reports the visitor's choice. Empty (or only comments) adds nothing.
+  The consent tool (Termageddon + Usercentrics, version 3), exactly as Termageddon gives it, with this
+  site's settings ID. The build puts it at the top of every page's head: after the Google Consent Mode
+  defaults and before Google Analytics, so the visitor's choice applies to Analytics. In the Usercentrics
+  settings, keep Google Consent Mode on so the choice is passed to Analytics.
 -->
+<link rel="preconnect" href="//privacy-proxy.usercentrics.eu">
+<link rel="preload" href="//privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js" as="script">
+<script type="application/javascript" src="https://privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js"></script>
+<script id="usercentrics-cmp" src="https://web.cmp.usercentrics.eu/ui/loader.js" data-settings-id="75G9HvZc79oYZD" async></script>
+<script>uc.setCustomTranslations('https://termageddon.ams3.cdn.digitaloceanspaces.com/translations/');</script>

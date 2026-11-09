@@ -62,7 +62,9 @@ async function main() {
   const cityCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/cities.json'), 'utf8'));
   const srcCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/sources.json'), 'utf8'));
   const now = Date.now();
-  const from = now - 6 * 3600e3, to = now + (srcCfg.windowDays || 14) * 86400e3;
+  // The feed covers feedDays. windowDays stays the scrape setting saved scrapes are matched by, so
+  // widening the feed doesn't throw away (and pay again for) scrapes that already reach that far.
+  const from = now - 6 * 3600e3, to = now + (srcCfg.feedDays || srcCfg.windowDays || 14) * 86400e3;
   const cities = structuredClone(cityCfg.cities);
   const cityById = Object.fromEntries(cities.map(c => [c.id, c]));
   const SAMPLE_ANCHOR = Date.parse('2026-11-12T00:00:00Z');

@@ -12,7 +12,7 @@ __HEAD_START__
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Rave Monitor">
 <meta property="og:title" content="Rave Monitor, by Geff Bohm">
-<meta property="og:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.">
+<meta property="og:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next month.">
 <meta property="og:url" content="__SITE_URL__/">
 <meta property="og:image" content="__SITE_URL__/og-image.jpg">
 <meta property="og:image:type" content="image/jpeg">
@@ -22,10 +22,10 @@ __HEAD_START__
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rave Monitor, by Geff Bohm">
-<meta name="twitter:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.">
+<meta name="twitter:description" content="A live world map of raves, club nights and DJ sets. See what's on tonight and over the next month.">
 <meta name="twitter:image" content="__SITE_URL__/og-image.jpg">
 <meta name="twitter:image:alt" content="Rave Monitor, by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor, by Geff Bohm", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets. See what's on tonight and over the next two weeks.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm", "https://buymeacoffee.com/geffbohm"]}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor, by Geff Bohm", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets. See what's on tonight and over the next month.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm", "https://buymeacoffee.com/geffbohm"]}}</script>
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -368,23 +368,16 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 /* streams */
 .viewers { font-size: var(--s-12); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* ask */
-.ask { padding: 0 16px; }
-.ask form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.ask textarea { resize: none; min-height: 44px; padding: 10px 12px; border-radius: 8px; background: var(--void); border: 1px solid var(--line); color: var(--ink); font-size: var(--s-13); line-height: 1.4; }
-.ask textarea::placeholder { color: var(--ink-3); }
-.ask button[type="submit"] { align-self: stretch; padding: 0 16px; border-radius: 8px; border: 0; background: var(--now); color: var(--now-ink); font-weight: 650; font-size: var(--s-13); }
-.suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.suggest button { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 14px; padding: 5px 10px; font-size: var(--s-12); text-align: left; }
-.answer { margin-top: 14px; font-size: var(--s-13); color: var(--ink); line-height: 1.55; white-space: pre-wrap; }
-.answer.rich { white-space: normal; }
-.answer ul { padding-left: 18px; margin: 6px 0; }
-.answer p { margin: 0 0 8px; }
-.answer .muted { color: var(--ink-3); }
-.mentions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.mentions button { border: 1px solid var(--line); background: var(--deck-2); color: var(--ink); border-radius: 6px; padding: 5px 8px; font-size: var(--s-12); text-align: left; }
-.ask-note { color: var(--ink-3); font-size: var(--s-12); margin: 10px 0 0; }
-.ask .rows { margin: 10px -16px 0; }
+/* listings */
+.nighthead { margin: 16px 16px 4px; font-size: var(--s-12); color: var(--ink-2); font-weight: 650; letter-spacing: .02em; }
+.lrow .lineup span { color: var(--ink-2); }
+.gtag { display: inline-flex; align-items: center; gap: 5px; }
+.gtag::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.brief .gline { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: var(--s-12); color: var(--ink-2); }
+.legend .lg-genres { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.legend .lg-genres[hidden] { display: none; }
+.legend .gkey { display: inline-flex; align-items: center; gap: 5px; }
+.dlg .legal a { color: inherit; }
 
 /* ---------- event drawer ---------- */
 .drawer {
@@ -509,6 +502,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <button type="button" role="radio" data-win="weekend" aria-checked="false">Weekend</button>
     <button type="button" role="radio" data-win="7d" aria-checked="false">7 days</button>
     <button type="button" role="radio" data-win="14d" aria-checked="false">14 days</button>
+    <button type="button" role="radio" data-win="30d" aria-checked="false">30 days</button>
   </div>
   <div class="gchips" id="gchips" role="group" aria-label="Genres"></div>
 </div>
@@ -546,6 +540,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <span><i class="lg-hollow"></i>Sold out</span>
         <span class="lg-extra"><i class="lg-fest"></i>Festival</span>
         <span class="lg-extra"><i class="lg-band"></i>Club hours</span>
+        <span class="lg-genres" id="lg-genres" hidden></span>
         <span class="demo-note">Demo listings, fictional</span>
         <span class="lg-attrib" id="attrib" hidden>Map &copy; <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a>, <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
       </div>
@@ -571,6 +566,8 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
     <h3>The archive</h3>
     <p>Every listing is kept after the night is over, merged across platforms, so this grows into a living archive of the scene. <span id="about-archive-count"></span>Download it as a <a href="archive/archive.sqlite" style="color:inherit">SQLite database</a> or a <a href="archive/events.csv" style="color:inherit">spreadsheet (CSV)</a>, or browse the <a href="__REPO_URL__/tree/archive" target="_blank" rel="noopener" style="color:inherit">monthly files on GitHub</a>.</p>
     <p id="about-analytics" hidden>Visits are counted with Google Analytics, with no ad features.</p>
+    <h3>Policies</h3>
+    <p class="legal">__LEGAL_LINKS__</p>
     <h3>Where listings come from</h3>
     <ul>
       <li><b>Scrapers on a schedule.</b> Ready-made Apify scrapers pull public listings from Resident Advisor, Posh, Partiful and Luma once a month.</li>
@@ -580,6 +577,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
       <li><b>Event details only.</b> Title, time, venue, lineup, price and link. No attendee lists or organizer contact details.</li>
       <li><b>Open source, for fun.</b> A non-commercial proof of concept. The code is public; the scraped data is rebuilt by each deployment rather than stored in the repo.</li>
     </ul>
+    <p>Questions or accessibility needs: <a href="mailto:hello@ravemonitor.com" style="color:inherit">hello@ravemonitor.com</a>.</p>
   </div>
 </dialog>
 
