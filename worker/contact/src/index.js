@@ -33,18 +33,21 @@ async function readBody(request) {
   }
 }
 
+/** Turnstile's verdict: { ok, codes } (codes are Turnstile's error codes, or our own reason). */
 export async function verifyTurnstile(env, token, ip, fetchImpl = fetch) {
-  if (!token || !env.TURNSTILE_SECRET) return false;
+  if (!env.TURNSTILE_SECRET) return { ok: false, codes: ['no-secret-configured'] };
+  if (!token) return { ok: false, codes: ['missing-input-response'] };
   const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: String(token).slice(0, 2048), idempotency_key: crypto.randomUUID() });
   if (ip) form.set('remoteip', ip);
   try {
     const r = await fetchImpl(SITEVERIFY, { method: 'POST', body: form });
     const v = await r.json();
-    if (!v || !v.success) return false;
+    if (!v || !v.success) return { ok: false, codes: (v && v['error-codes']) || ['not-success'] };
     const hosts = list(env.TURNSTILE_HOSTNAMES);
-    return !hosts.length || hosts.includes(v.hostname);
+    if (hosts.length && !hosts.includes(v.hostname)) return { ok: false, codes: ['hostname-' + line(v.hostname, 60)] };
+    return { ok: true, codes: [] };
   } catch (err) {
-    return false;
+    return { ok: false, codes: ['siteverify-unreachable'] };
   }
 }
 
@@ -116,8 +119,16 @@ export async function handle(request, env, deps = {}) {
   if (!EMAIL_RE.test(email)) return json({ ok: false, error: 'invalid_email' }, 400, cors);
   if (message.length < 10) return json({ ok: false, error: 'too_short' }, 400, cors);
 
-  if (!(await verifyTurnstile(env, data['cf-turnstile-response'], ip, deps.fetch))) return json({ ok: false, error: 'challenge' }, 400, cors);
+  const check = await verifyTurnstile(env, data['cf-turnstile-response'], ip, deps.fetch);
+  if (!check.ok) {
+    console.log('turnstile failed', check.codes.join(','));
+    return json({ ok: false, error: 'challenge', detail: check.codes.join(',') }, 400, cors);
+  }
 
+  if (!env.CONTACT_TO || !env.CONTACT_FROM || !env.EMAIL) {
+    console.log('not configured');
+    return json({ ok: false, error: 'send_failed', detail: 'not-configured: ' + ['CONTACT_TO', 'CONTACT_FROM', 'EMAIL'].filter(k => !env[k]).join(',') }, 500, cors);
+  }
   const body = [
     'New message from the Rave Monitor contact form.',
     '',
@@ -137,8 +148,10 @@ export async function handle(request, env, deps = {}) {
       replyTo: email, replyName: name, subject: line('Rave Monitor: ' + topic + ' from ' + (name || email), 140), text: body
     });
   } catch (err) {
-    console.log('send failed', (err && (err.code || err.name)) || 'error');
-    return json({ ok: false, error: 'send_failed' }, 502, cors);
+    // The reason helps fix setup problems (an unverified address, say). Addresses are taken out of it.
+    const detail = line([err && err.code, err && err.message].filter(Boolean).join(': ') || 'error', 200).replace(/[^\s@<>"]+@[^\s@<>"]+/g, '[address]');
+    console.log('send failed', detail);
+    return json({ ok: false, error: 'send_failed', detail }, 502, cors);
   }
   return json({ ok: true }, 200, cors);
 }

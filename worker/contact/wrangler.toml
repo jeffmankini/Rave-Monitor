@@ -20,6 +20,10 @@ name = "LIMITER"
 namespace_id = "1101"
 simple = { limit = 3, period = 60 }
 
+# Workers Logs (Cloudflare dashboard > Workers > ravemonitor-contact > Logs): error codes only.
+[observability]
+enabled = true
+
 [vars]
 CONTACT_FROM = "hello@ravemonitor.com"
 ALLOWED_ORIGINS = "https://ravemonitor.com,https://www.ravemonitor.com"

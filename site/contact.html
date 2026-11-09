@@ -127,7 +127,7 @@ footer a { color: var(--ink-2); }
           say('Thanks, your message is on its way. We\'ll reply by email.', 'good');
           form.reset(); track('sent');
         } else {
-          say(ERRORS[res && res.error] || ERRORS.send_failed, 'bad'); track((res && res.error) || 'error');
+          say((ERRORS[res && res.error] || ERRORS.send_failed) + (res && res.detail ? ' (' + res.detail + ')' : ''), 'bad'); track((res && res.error) || 'error');
         }
       })
       .catch(function () { say(ERRORS.send_failed, 'bad'); track('network'); })

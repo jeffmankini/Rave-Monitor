@@ -58,7 +58,7 @@ test('bad input is refused before anything is sent', async () => {
   const failing = async () => ({ json: async () => ({ success: false }) });
   const r = await handle(post(good), env, { fetch: failing });
   assert.equal(r.status, 400);
-  assert.equal((await r.json()).error, 'challenge');
+  assert.deepEqual(await r.json(), { ok: false, error: 'challenge', detail: 'not-success' });
   const wrongHost = async () => ({ json: async () => ({ success: true, hostname: 'elsewhere.example' }) });
   assert.equal((await handle(post(good), env, { fetch: wrongHost })).status, 400);
   assert.equal((await handle(post({ ...good, 'cf-turnstile-response': '' }), env, { fetch })).status, 400);
@@ -83,11 +83,14 @@ test('names cannot add mail headers, and the rate limit applies', async () => {
   assert.equal((await handle(post(good), limited.env, { fetch: limited.fetch })).status, 429);
 });
 
-test('a failed send is reported, not hidden', async () => {
-  const { env, fetch } = setup({ EMAIL: { send: async () => { const e = new Error('nope'); e.code = 'E_RECIPIENT_NOT_ALLOWED'; throw e; } } });
+test('a failed send is reported with its reason, without addresses', async () => {
+  const { env, fetch } = setup({ EMAIL: { send: async () => { const e = new Error('destination address not verified: inbox@example.com'); e.code = 'E_RECIPIENT_NOT_ALLOWED'; throw e; } } });
   const res = await handle(post(good), env, { fetch });
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error, 'send_failed');
+  assert.deepEqual(await res.json(), { ok: false, error: 'send_failed', detail: 'E_RECIPIENT_NOT_ALLOWED: destination address not verified: [address]' });
+  const bare = setup({ CONTACT_TO: '' });
+  const r2 = await handle(post(good), bare.env, { fetch: bare.fetch });
+  assert.equal((await r2.json()).detail, 'not-configured: CONTACT_TO');
 });
 
 test('raw MIME encodes non-ASCII headers and the body', () => {
