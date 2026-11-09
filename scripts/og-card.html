@@ -40,7 +40,7 @@
     <div class="word">Rave Monitor</div>
   </div>
   <div class="by">by split/shift</div>
-  <div class="tag">Electronic music map &amp; archive:<br>raves, club nights and DJ sets</div>
+  <div class="tag">Electronic music map:<br>raves, club nights and DJ sets</div>
 </div>
 <div class="foot">
   <div>ravemonitor.com</div>
@@ -49,7 +49,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
-const COLORS = { techno: '#3987e5', house: '#d95926', dnb: '#199e70', afro: '#c98500', disco: '#d55181', garage: '#008300', trance: '#9085e9', bass: '#e66767', other: '#8b8fa8' };
+const COLORS = { techno: '#3987e5', house: '#d95926', dnb: '#199e70', afro: '#c98500', disco: '#d55181', garage: '#008300', trance: '#9085e9', bass: '#e66767', electronic: '#22b8cf', misc: '#8b8fa8', other: '#8b8fa8' };
 const NAMES = { techno: 'Techno', house: 'House', dnb: 'Drum & bass', afro: 'Afro', disco: 'Disco' };
 document.getElementById('legend').innerHTML = Object.keys(NAMES).map(k => `<span><i style="background:${COLORS[k]}"></i>${NAMES[k]}</span>`).join('');
 
