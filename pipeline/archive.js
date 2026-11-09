@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isContactLine, positionQuality, jitter } from './lib/normalize.js';
+import { isContactLine, positionQuality, jitter, splitLineup } from './lib/normalize.js';
 import { norm } from './lib/util.js';
 
 const uniq = a => [...new Set(a.filter(x => x !== undefined && x !== null && x !== ''))];
@@ -40,9 +40,9 @@ export function loadArchive(dir) {
   return { records, cities };
 }
 
-/** Clean up records saved before the feed's own checks: contact lines in lineups, venues at 0,0. */
+/** Clean up records saved before the feed's own checks: free-text and contact lines in lineups, venues at 0,0. */
 function tidy(r, cities) {
-  if (Array.isArray(r.lineup)) r.lineup = r.lineup.filter(n => !isContactLine(n));
+  if (Array.isArray(r.lineup)) r.lineup = [...new Set(splitLineup(r.lineup).filter(n => !isContactLine(n)))];
   const v = r.venue, c = cities[r.cityId];
   if (v && c && positionQuality(v.lat, v.lon) === 'none') {
     const [lat, lon] = jitter(`${r.cityId}:${norm(v.name || r.id)}`, c.lat, c.lon);

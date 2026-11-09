@@ -126,6 +126,22 @@ const cleanName = s => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, '
 const CONTACT = /\S+@\S+\.[a-z]{2,}|https?:\/\/|www\.|^\s*(bookings?|contact|instagram|insta|ig|email|e-mail|mgmt|management|press|promo)\s*[:\-–]|\b(co-?founder|founder|initiator)\b[^@]*@|^[\s@._-]*$/i;
 export const isContactLine = s => CONTACT.test(String(s ?? ''));
 
+// Some listings give the lineup as free text, e.g. '【RING】〈OPEN FORMAT〉', 'LIVE：Nia Varan / Marco',
+// '-CRUCIAL SOUND-'. Room headers go, 'DJ：' style labels go, and ' / ' separated names are split.
+const ROOM = /【[^】]*】|〈[^〉]*〉|《[^》]*》|\[[^\]]*\]/g;
+const ROLE = /^[A-Z0-9][A-Z0-9 .&'+-]{0,30}\s*[:：]\s*/;
+const NOT_A_NAME = /^-.*-$|^[\s,，、.:：/|·•\-–—]*$/;
+export function splitLineup(list) {
+  const out = [];
+  for (const raw of list || []) {
+    for (let part of String(raw ?? '').replace(ROOM, '\n').split(/\s+\/\s+|／|、|\n|\s\|\s/)) {
+      part = cleanName(part).replace(/^[,，、\s]+|[,，、\s]+$/g, '').replace(ROLE, '').trim();
+      if (part && !NOT_A_NAME.test(part)) out.push(part);
+    }
+  }
+  return out;
+}
+
 /**
  * Build the shared event shape. Returns null when required fields are missing.
  * Only event-level facts are kept: no descriptions, attendee lists or organizer contact details.
@@ -156,7 +172,7 @@ export function makeEvent(ctx, f) {
   let endMs = Number.isFinite(f.endMs) && f.endMs > f.startMs ? f.endMs : f.startMs + dur * 3600e3;
   if (endMs - f.startMs > 4 * 86400e3) endMs = f.startMs + 4 * 86400e3;
   const genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
-  const lineup = [...new Set((f.lineup || []).map(cleanName).filter(n => n && n.length < 80 && !isContactLine(n)))].slice(0, 24);
+  const lineup = [...new Set(splitLineup(f.lineup).filter(n => n.length < 80 && !isContactLine(n)))].slice(0, 24);
   return {
     id: `${f.source}:${f.id}`,
     title: cleanName(f.title).slice(0, 160),

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { genresFrom, electronicScore, parsePrice, fromMinor, eventType, positionQuality, makeEvent, isContactLine } from '../pipeline/lib/normalize.js';
+import { genresFrom, electronicScore, parsePrice, fromMinor, eventType, positionQuality, makeEvent, isContactLine, splitLineup } from '../pipeline/lib/normalize.js';
 import { localToUtc } from '../pipeline/lib/util.js';
 
 test('genre rules pick the specific family first', () => {
@@ -71,4 +71,11 @@ test('contact and credit lines are dropped from lineups, billed handles are kept
     assert.equal(isContactLine(bad), true, bad);
   for (const ok of ['@veralyn', 'DJ SILK (@SILKSHUTDOWN)', 'Z@p', 'Second Contact', 'Club Nights @ The Jazz Cafe', 'Ben UFO'])
     assert.equal(isContactLine(ok), false, ok);
+});
+
+test('free-text lineups are split into names, without room headers or role labels', () => {
+  assert.deepEqual(
+    splitLineup(['【RING】〈OPEN FORMAT〉', 'LIVE：Nia Varan / Marco / 404ghostboy / HADES', ',', 'DJ：MAGOLLA / KENNY', '-CRUCIAL SOUND-', '【R BAR】〈HOUSE / TECH HOUSE〉', 'BIRTHDAY PICK UP LIVE：CR.GAEL']),
+    ['Nia Varan', 'Marco', '404ghostboy', 'HADES', 'MAGOLLA', 'KENNY', 'CR.GAEL']);
+  assert.deepEqual(splitLineup(['Ben UFO', 'DJ Seinfeld', 'AC/DC', 'Kerri Chandler b2b Dennis Ferrer', 'Âme']), ['Ben UFO', 'DJ Seinfeld', 'AC/DC', 'Kerri Chandler b2b Dennis Ferrer', 'Âme']);
 });

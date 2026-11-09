@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Turns the archive into downloads for the site: archive.sqlite, events.csv and summary.json.
+// Turns the archive into files for the site: the downloads (archive.sqlite, events.csv, summary.json)
+// and the data the archive page searches (data/index.json plus one file per month).
 //
 //   node pipeline/archive-export.js <archive-dir> <out-dir>
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadArchive, summarize } from './archive.js';
+import { loadArchive, summarize, monthOf } from './archive.js';
 
 // Lineup entries that aren't artists, left out of the artists table.
 const PLACEHOLDER = /^(tba|tbc|tbd|tba\.?|more tba|special guests?|secret guests?|guests?|and more|\+ ?more|lineup tba|line-up tba)$/i;
@@ -28,9 +29,37 @@ export function rows(archive) {
   });
 }
 
+/**
+ * The archive page's data: an index (months with counts, city names) and, per month, compact rows:
+ * [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type].
+ */
+export function browseData(archive, now = new Date().toISOString()) {
+  const months = {};
+  for (const r of [...archive.records.values()].sort((a, b) => a.start.localeCompare(b.start))) {
+    const m = monthOf(r);
+    (months[m] ||= []).push([
+      r.id, r.title, r.start, r.tz || null, r.cityId || null, r.venue?.name || null,
+      (r.lineup || []).filter(a => !PLACEHOLDER.test(a.trim())), r.genres || [], (r.tags || []).slice(0, 3),
+      (r.sources || []).map(x => [x.name, x.url || null]), r.status || null, r.type || null
+    ]);
+  }
+  const cities = {};
+  for (const [id, c] of Object.entries(archive.cities)) cities[id] = [c.name || id, c.country || null];
+  const index = {
+    updatedAt: now, total: archive.records.size,
+    months: Object.keys(months).sort().map(id => ({ id, n: months[id].length })), cities
+  };
+  return { index, months };
+}
+
 export async function exportArchive(dir, out) {
   const archive = loadArchive(dir);
   fs.mkdirSync(out, { recursive: true });
+  const browse = browseData(archive);
+  fs.rmSync(path.join(out, 'data'), { recursive: true, force: true });
+  fs.mkdirSync(path.join(out, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(out, 'data', 'index.json'), JSON.stringify(browse.index));
+  for (const [m, list] of Object.entries(browse.months)) fs.writeFileSync(path.join(out, 'data', `${m}.json`), JSON.stringify(list));
   const flat = rows(archive);
   const cols = Object.keys(flat[0] || { id: 1 });
   fs.writeFileSync(path.join(out, 'events.csv'), [cols.join(','), ...flat.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\n') + '\n');
@@ -74,5 +103,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [dir, out] = process.argv.slice(2);
   if (!dir || !out) { console.error('usage: node pipeline/archive-export.js <archive-dir> <out-dir>'); process.exit(2); }
   const r = await exportArchive(dir, out);
-  console.log(`Archive export: ${r.events} events to ${out} (events.csv, summary.json${r.sqlite ? ', archive.sqlite' : ''}).`);
+  console.log(`Archive export: ${r.events} events to ${out} (events.csv, summary.json, data/ for the archive page${r.sqlite ? ', archive.sqlite' : ''}).`);
 }

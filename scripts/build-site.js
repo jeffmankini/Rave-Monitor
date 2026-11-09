@@ -42,6 +42,10 @@ const dist = path.join(ROOT, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'index.html'), html);
 const pageTpl = read('site/page.html').split('__SITE_URL__').join(SITE_URL).replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => legalLinks);
+// The archive page; its data (archive/data/) is written by pipeline/archive-export.js after this.
+fs.mkdirSync(path.join(dist, 'archive'), { recursive: true });
+fs.writeFileSync(path.join(dist, 'archive', 'index.html'), read('site/archive.html').split('__SITE_URL__').join(SITE_URL).split('__REPO_URL__').join(REPO_URL)
+  .replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => legalLinks));
 for (const p of legal.pages) {
   if (!/^[a-z0-9-]+$/.test(p.slug)) throw new Error(`policy slug looks wrong: ${p.slug}`);
   const out = pageTpl.split('__TITLE__').join(escHtml(p.title)).split('__SLUG__').join(p.slug).replace('__CONTENT__', () => (p.termageddon ? termageddon(p.termageddon) : p.html));
@@ -53,6 +57,7 @@ fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\n\nSite
 fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${SITE_URL}/</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod><changefreq>daily</changefreq></url>
+  <url><loc>${SITE_URL}/archive/</loc><changefreq>daily</changefreq></url>
 ${legal.pages.map(p => `  <url><loc>${SITE_URL}/${p.slug}/</loc><changefreq>monthly</changefreq></url>`).join('\n')}
 </urlset>
 `);

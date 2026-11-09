@@ -272,7 +272,8 @@
       if (k !== night) { html += (night ? '</ol>' : '') + '<h3 class="nighthead">' + esc(nightLabel(e.start, c.tz)) + '</h3><ol class="rows">'; night = k; }
       html += listRow(e);
     });
-    body('listings').innerHTML = html + '</ol>' + (list.length > n ? '<button class="more" type="button" data-act="list-all">Show all ' + fmtN(list.length) + '</button>' : '');
+    body('listings').innerHTML = html + '</ol>' + (list.length > n ? '<button class="more" type="button" data-act="list-all">Show all ' + fmtN(list.length) + '</button>' : '') +
+      '<p class="fine">Looking for nights that already happened? <a href="/archive/" style="color:inherit">Search the archive</a>.</p>';
     meta('listings', fmtN(list.length) + (D.L.area ? ' in view' : ''));
   }
 

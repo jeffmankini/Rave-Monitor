@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+__HEAD_START__
+<title>The rave archive · Rave Monitor</title>
+<meta name="description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, venue, city and month. A living archive of electronic music nights around the world.">
+<link rel="canonical" href="__SITE_URL__/archive/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rave Monitor">
+<meta property="og:title" content="The rave archive · Rave Monitor">
+<meta property="og:description" content="Search every rave, club night and DJ set Rave Monitor has listed, by artist, venue, city and month.">
+<meta property="og:url" content="__SITE_URL__/archive/">
+<meta property="og:image" content="__SITE_URL__/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#070814">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root { color-scheme: dark; --void: #070814; --deck: #0c0f22; --deck-2: #13183a; --line: #1f2547; --ink: #eceaf6; --ink-2: #a9abcb; --ink-3: #7c7fa3; --now: #f6ecd8; --now-ink: #15131f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--void); color: var(--ink-2); font: 15px/1.5 "Archivo", "Helvetica Neue", Arial, sans-serif; }
+a { color: var(--ink); }
+a:hover, a:focus-visible { color: var(--now); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.brand svg { width: 22px; height: 22px; color: var(--now); }
+.brand span { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.back { color: var(--ink-3); font-size: 14px; text-decoration: none; }
+main { max-width: 980px; margin: 0 auto; padding: 28px 20px 48px; }
+h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; color: var(--ink); font-size: clamp(24px, 5vw, 34px); line-height: 1.15; margin: 0 0 10px; }
+.lede { margin: 0 0 20px; max-width: 680px; }
+.filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--deck); }
+.filters label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; min-width: 0; }
+.filters input, .filters select { width: 100%; height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: 14px; }
+.filters input::placeholder { color: var(--ink-3); }
+.filters input:focus, .filters select:focus { outline: 2px solid var(--now); outline-offset: 1px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 2px 6px; }
+#count { color: var(--ink); font-weight: 600; }
+.bar .tools { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-3); }
+.bar select { height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck); color: var(--ink); font: inherit; font-size: 13px; padding: 0 8px; }
+.linkbtn { border: 0; padding: 0; background: none; color: var(--ink-2); font: inherit; text-decoration: underline; cursor: pointer; }
+.linkbtn:hover, .linkbtn:focus-visible { color: var(--now); }
+.results { list-style: none; margin: 0; padding: 0; }
+.mhead { margin: 22px 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 12px 2px; border-top: 1px solid var(--line); }
+.when b { display: block; color: var(--ink); font-weight: 650; font-size: 14px; }
+.when span { font-size: 13px; color: var(--ink-3); }
+.title { color: var(--ink); font-weight: 650; font-size: 15px; text-decoration: none; }
+.title:hover, .title:focus-visible { text-decoration: underline; color: var(--now); }
+.chip { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 650; line-height: 18px; vertical-align: 2px; background: var(--deck-2); color: var(--ink-2); }
+.chip.crit { background: rgba(230,103,103,.18); color: #f29a9a; }
+.chip.soon { background: rgba(246,236,216,.14); color: var(--now); }
+.place, .lineup, .meta { margin-top: 3px; font-size: 13.5px; }
+.pick { border: 0; padding: 0; background: none; color: var(--ink-2); font: inherit; cursor: pointer; text-align: left; }
+.pick:hover, .pick:focus-visible { color: var(--now); text-decoration: underline; }
+.lineup .pick { color: var(--ink); }
+.lineup .pick.on, .place .pick.on { color: var(--now); }
+.meta { color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.meta a { color: var(--ink-2); }
+.g { display: inline-flex; align-items: center; gap: 6px; }
+.g::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.more { display: block; margin: 18px auto 0; height: 38px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck-2); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.empty { padding: 24px 2px; color: var(--ink-2); }
+.downloads { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-3); }
+.downloads a { color: var(--ink-2); }
+footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align: center; font-size: 14px; color: var(--ink-3); }
+footer a { color: var(--ink-2); }
+@media (max-width: 760px) {
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filters label:first-child { grid-column: 1 / -1; }
+  .row { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg><span>Rave Monitor</span></a>
+  <a class="back" href="/">Back to the map</a>
+</header>
+<main>
+  <h1>The archive</h1>
+  <p class="lede">Every listing Rave Monitor has shown, kept after the night is over and merged across platforms. <span id="stats"></span></p>
+  <form class="filters" id="filters" role="search" aria-label="Search the archive">
+    <label>Search<input id="f-q" type="search" autocomplete="off" placeholder="Event, artist, venue or city"></label>
+    <label>Artist<input id="f-artist" type="search" list="artists" autocomplete="off" placeholder="Any artist"></label>
+    <label>Venue<input id="f-venue" type="search" list="venues" autocomplete="off" placeholder="Any venue"></label>
+    <label>City<select id="f-city"><option value="">All cities</option></select></label>
+    <label>Month<select id="f-month"><option value="">All months</option><option value="past">Past nights</option><option value="upcoming">Coming up</option></select></label>
+    <label>Genre<select id="f-genre"><option value="">All genres</option></select></label>
+    <datalist id="artists"></datalist><datalist id="venues"></datalist>
+  </form>
+  <div class="bar">
+    <span id="count" aria-live="polite">Loading the archive…</span>
+    <span class="tools"><button type="button" class="linkbtn" id="clear" hidden>Clear search</button><label>Sort <select id="f-sort"><option value="new">Newest first</option><option value="old">Oldest first</option></select></label></span>
+  </div>
+  <ol class="results" id="results"></ol>
+  <button type="button" class="more" id="more" hidden>Show more</button>
+  <p class="downloads">Download all of it: a <a href="archive.sqlite">SQLite database</a> or a <a href="events.csv">spreadsheet (CSV)</a>, or browse the <a href="__REPO_URL__/tree/archive" target="_blank" rel="noopener">monthly files on GitHub</a>. Each listing links back to where it was listed.</p>
+</main>
+<footer>__LEGAL_LINKS__</footer>
+<script>
+(function () {
+  'use strict';
+  // Same genre colours as the map.
+  var GENRES = { techno: ['Techno', '#3987e5'], house: ['House', '#d95926'], dnb: ['Drum & bass', '#199e70'], afro: ['Afro & amapiano', '#c98500'],
+    disco: ['Disco & edits', '#d55181'], garage: ['Garage & breaks', '#008300'], trance: ['Trance & psy', '#9085e9'], bass: ['Bass & dubstep', '#e66767'], other: ['Mixed', '#8b8fa8'] };
+  var PAGE = 100, LINEUP = 10;
+  var $ = function (s) { return document.querySelector(s); };
+  var norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+  // Matching is by word start, so "ben" finds Ben Klock and Benny Rodrigues but not Treibende Kraft.
+  var words = function (s) { return ' ' + norm(s).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' '; };
+  var has = function (hay, q) { return hay.indexOf(' ' + q) >= 0; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var fmts = {};
+  function fmt(tz, o) {
+    var k = tz + JSON.stringify(o);
+    if (!fmts[k]) { try { fmts[k] = new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, o)); } catch (e) { fmts[k] = new Intl.DateTimeFormat(undefined, o); } }
+    return fmts[k];
+  }
+  var nf = new Intl.NumberFormat();
+  var all = [], cities = {}, monthsIdx = [], matches = [], shown = 0, expanded = {};
+  var F = { q: $('#f-q'), artist: $('#f-artist'), venue: $('#f-venue'), city: $('#f-city'), month: $('#f-month'), genre: $('#f-genre'), sort: $('#f-sort') };
+
+  // Row: [id, title, start, tz, cityId, venue, lineup, genres, tags, [[source, url]], status, type]
+  function prep(r, month) {
+    var o = { id: r[0], title: r[1] || '', start: Date.parse(r[2]), tz: r[3] || 'UTC', city: r[4] || '', venue: r[5] || '', lineup: r[6] || [], genres: r[7] || [],
+      tags: r[8] || [], sources: r[9] || [], status: r[10] || '', type: r[11] || '', month: month };
+    o.cityName = (cities[o.city] || [o.city])[0] || '';
+    o.nLineup = o.lineup.map(words); o.nVenue = words(o.venue);
+    o.hay = words([o.title, o.venue, o.cityName].concat(o.lineup).join(' '));
+    return o;
+  }
+  function monthName(id) { var p = id.split('-'); return fmt('UTC', { month: 'long', year: 'numeric' }).format(Date.UTC(+p[0], +p[1] - 1, 15)); }
+
+  function getJson(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  function load() {
+    getJson('data/index.json').then(function (idx) {
+      cities = idx.cities || {};
+      monthsIdx = (idx.months || []).slice().sort(function (a, b) { return b.id < a.id ? -1 : 1; });
+      monthsIdx.forEach(function (m) { F.month.insertAdjacentHTML('beforeend', '<option value="' + esc(m.id) + '">' + esc(monthName(m.id)) + ' (' + nf.format(m.n) + ')</option>'); });
+      var done = 0;
+      return Promise.all(monthsIdx.map(function (m) {
+        return getJson('data/' + m.id + '.json').then(function (rows) {
+          rows.forEach(function (r) { all.push(prep(r, m.id)); });
+          done++; if (done < monthsIdx.length) $('#count').textContent = 'Loading the archive… ' + done + ' of ' + monthsIdx.length + ' months';
+        });
+      }));
+    }).then(function () {
+      pickers(); readUrl(); apply(true);
+    }).catch(function () {
+      $('#count').textContent = 'The archive couldn’t be loaded just now.';
+    });
+  }
+
+  function pickers() {
+    var cc = {}, ac = {}, vc = {}, gc = {};
+    all.forEach(function (o) {
+      cc[o.city] = (cc[o.city] || 0) + 1;
+      if (o.venue) vc[o.venue] = (vc[o.venue] || 0) + 1;
+      o.lineup.forEach(function (a) { ac[a] = (ac[a] || 0) + 1; });
+      (o.genres.length ? o.genres : ['other']).forEach(function (g) { gc[g] = (gc[g] || 0) + 1; });
+    });
+    Object.keys(cc).sort(function (a, b) { return ((cities[a] || [a])[0]).localeCompare((cities[b] || [b])[0]); }).forEach(function (id) {
+      F.city.insertAdjacentHTML('beforeend', '<option value="' + esc(id) + '">' + esc((cities[id] || [id])[0]) + ' (' + nf.format(cc[id]) + ')</option>');
+    });
+    Object.keys(gc).filter(function (g) { return GENRES[g]; }).sort(function (a, b) { return gc[b] - gc[a]; }).forEach(function (g) {
+      F.genre.insertAdjacentHTML('beforeend', '<option value="' + g + '">' + esc(GENRES[g][0]) + ' (' + nf.format(gc[g]) + ')</option>');
+    });
+    var top = function (obj, n) { return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a] || a.localeCompare(b); }).slice(0, n); };
+    $('#artists').innerHTML = top(ac, 3000).map(function (a) { return '<option value="' + esc(a) + '">'; }).join('');
+    $('#venues').innerHTML = top(vc, 2000).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+    $('#stats').textContent = nf.format(all.length) + ' listings, ' + nf.format(Object.keys(ac).length) + ' artists, ' + nf.format(Object.keys(vc).length) + ' venues and ' + nf.format(Object.keys(cc).length) + ' cities so far.';
+  }
+
+  function apply(first) {
+    var q = words(F.q.value).trim().split(' ').filter(Boolean), ar = words(F.artist.value).trim(), ve = words(F.venue.value).trim();
+    var ci = F.city.value, mo = F.month.value, ge = F.genre.value, now = Date.now();
+    matches = all.filter(function (o) {
+      if (ci && o.city !== ci) return false;
+      if (mo === 'past' ? o.start >= now : mo === 'upcoming' ? o.start < now : mo && o.month !== mo) return false;
+      if (ge && (o.genres.length ? o.genres : ['other']).indexOf(ge) < 0) return false;
+      if (ve && !has(o.nVenue, ve)) return false;
+      if (ar && !o.nLineup.some(function (a) { return has(a, ar); })) return false;
+      for (var i = 0; i < q.length; i++) if (!has(o.hay, q[i])) return false;
+      return true;
+    });
+    var dir = F.sort.value === 'old' ? 1 : -1;
+    matches.sort(function (a, b) { return (a.start - b.start) * dir; });
+    var any = F.q.value || F.artist.value || F.venue.value || ci || mo || ge;
+    $('#count').textContent = (any ? nf.format(matches.length) + ' of ' + nf.format(all.length) : nf.format(all.length)) + ' listings';
+    $('#clear').hidden = !any;
+    shown = 0; $('#results').innerHTML = ''; render();
+    writeUrl();
+    if (!first) report();
+  }
+
+  function render() {
+    var out = '', prevMonth = shown ? matches[shown - 1].month : null;
+    var ar = words(F.artist.value).trim(), ve = words(F.venue.value).trim();
+    matches.slice(shown, shown + PAGE).forEach(function (o) {
+      if (o.month !== prevMonth) { out += '<li class="mhead">' + esc(monthName(o.month)) + '</li>'; prevMonth = o.month; }
+      out += row(o, ar, ve);
+    });
+    if (!matches.length) out = '<li class="empty">No listings match. Try fewer filters, or a different spelling.</li>';
+    $('#results').insertAdjacentHTML('beforeend', out);
+    shown = Math.min(matches.length, shown + PAGE);
+    $('#more').hidden = shown >= matches.length;
+    $('#more').textContent = 'Show more (' + nf.format(matches.length - shown) + ' left)';
+  }
+
+  function row(o, ar, ve) {
+    var now = Date.now(), url = (o.sources[0] || [])[1];
+    var chip = o.status === 'cancelled' ? '<span class="chip crit">Cancelled</span>' : o.status === 'postponed' ? '<span class="chip crit">Postponed</span>'
+      : o.start > now ? '<span class="chip soon">Coming up</span>' : o.status === 'soldout' ? '<span class="chip">Sold out</span>' : '';
+    var names = expanded[o.id] ? o.lineup : o.lineup.slice(0, LINEUP);
+    var lineup = names.map(function (a, i) { return '<button type="button" class="pick' + (ar && has(o.nLineup[i], ar) ? ' on' : '') + '" data-f="artist" data-v="' + esc(a) + '">' + esc(a) + '</button>'; }).join(', ') +
+      (o.lineup.length > names.length ? ', <button type="button" class="linkbtn" data-expand="' + esc(o.id) + '">+' + (o.lineup.length - names.length) + ' more</button>' : '');
+    var g = (o.genres.length ? o.genres : ['other']).filter(function (x) { return GENRES[x]; })[0] || 'other';
+    var genreText = o.tags.length ? o.tags.slice(0, 2).join(', ') : GENRES[g][0];
+    var listed = o.sources.map(function (s) { return s[1] ? '<a href="' + esc(s[1]) + '" target="_blank" rel="noopener nofollow">' + esc(s[0]) + '</a>' : esc(s[0]); }).join(', ');
+    return '<li class="row"><div class="when"><b>' + esc(fmt(o.tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(o.start)) + '</b><span>' +
+      esc(fmt(o.tz, { hour: 'numeric', minute: '2-digit' }).format(o.start)) + '</span></div><div>' +
+      (url ? '<a class="title" href="' + esc(url) + '" target="_blank" rel="noopener nofollow">' + esc(o.title) + '</a>' : '<span class="title">' + esc(o.title) + '</span>') + chip +
+      '<div class="place">' + (o.venue ? '<button type="button" class="pick' + (ve && has(o.nVenue, ve) ? ' on' : '') + '" data-f="venue" data-v="' + esc(o.venue) + '">' + esc(o.venue) + '</button>, ' : '') +
+      '<button type="button" class="pick" data-f="city" data-v="' + esc(o.city) + '">' + esc(o.cityName) + '</button></div>' +
+      (lineup ? '<div class="lineup">' + lineup + '</div>' : '') +
+      '<div class="meta"><span class="g" style="--c:' + GENRES[g][1] + '">' + esc(genreText) + '</span>' + (listed ? '<span>Listed on ' + listed + '</span>' : '') + '</div></div></li>';
+  }
+
+  // Shareable searches: the filters live in the address (?artist=…&city=…&month=…).
+  var KEYS = ['q', 'artist', 'venue', 'city', 'month', 'genre', 'sort'];
+  function readUrl() {
+    var p = new URLSearchParams(location.search);
+    KEYS.forEach(function (k) { var v = p.get(k); if (v != null) F[k].value = v; });
+  }
+  function writeUrl() {
+    var p = new URLSearchParams();
+    KEYS.forEach(function (k) { var v = F[k].value; if (v && !(k === 'sort' && v === 'new')) p.set(k, v); });
+    var qs = p.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+  }
+  // Analytics (only when the site's tag is present): which filters were used, never the free text.
+  var reportTimer = 0;
+  function report() {
+    clearTimeout(reportTimer);
+    reportTimer = setTimeout(function () {
+      if (typeof window.gtag !== 'function' || !window.RM_GA) return;
+      window.gtag('event', 'archive_search', { artist: F.artist.value.slice(0, 100), venue: F.venue.value.slice(0, 100), city: F.city.value ? (cities[F.city.value] || [F.city.value])[0] : '',
+        month: F.month.value, genre: F.genre.value, has_keyword: !!F.q.value, results: matches.length });
+    }, 2000);
+  }
+
+  var timer = 0;
+  function soon() { clearTimeout(timer); timer = setTimeout(apply, 140); }
+  ['q', 'artist', 'venue'].forEach(function (k) { F[k].addEventListener('input', soon); });
+  ['city', 'month', 'genre', 'sort'].forEach(function (k) { F[k].addEventListener('change', function () { apply(); }); });
+  $('#filters').addEventListener('submit', function (e) { e.preventDefault(); apply(); });
+  $('#more').addEventListener('click', render);
+  $('#clear').addEventListener('click', function () { KEYS.forEach(function (k) { F[k].value = k === 'sort' ? F.sort.value : ''; }); apply(); });
+  $('#results').addEventListener('click', function (e) {
+    var ex = e.target.closest('[data-expand]');
+    if (ex) { expanded[ex.dataset.expand] = true; var li = ex.closest('.row'), o = all.filter(function (x) { return x.id === ex.dataset.expand; })[0]; if (li && o) li.outerHTML = row(o, words(F.artist.value).trim(), words(F.venue.value).trim()); return; }
+    var b = e.target.closest('.pick');
+    if (!b) return;
+    F[b.dataset.f].value = b.dataset.v;
+    apply();
+    window.scrollTo({ top: $('#filters').getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
+  });
+  // Privacy Settings opens the consent tool (Usercentrics version 3, or version 2's UC_UI).
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('[data-act="privacy-settings"]');
+    if (!a) return;
+    e.preventDefault();
+    try {
+      if (window.__ucCmp && typeof window.__ucCmp.showSecondLayer === 'function') window.__ucCmp.showSecondLayer();
+      else if (window.UC_UI && typeof window.UC_UI.showSecondLayer === 'function') window.UC_UI.showSecondLayer();
+    } catch (err) { /* the consent tool isn't loaded */ }
+  });
+  load();
+})();
+</script>
+</body>
+</html>
