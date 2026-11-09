@@ -4,7 +4,7 @@ name: Deploy the contact form Worker
 # Runs when the Worker changes, or by hand from the Actions tab.
 #
 # GitHub Actions secrets it needs:
-#   CLOUDFLARE_API_TOKEN   "Edit Cloudflare Workers" template, plus Zone > DNS > Edit for ravemonitor.com
+#   CLOUDFLARE_API_TOKEN   Account > Workers Scripts > Edit, Account Settings > Read, Zone > Workers Routes > Edit
 #   CLOUDFLARE_ACCOUNT_ID  from the Cloudflare dashboard
 #   CONTACT_TO             the verified Email Routing destination address messages go to
 #   TURNSTILE_SECRET       the Turnstile widget's secret key
@@ -62,7 +62,8 @@ jobs:
           if [ -z "$zone" ]; then echo "::error::The token can't see the ravemonitor.com zone. Add the zone to the token's Zone Resources."; else
             say "Workers Routes (ravemonitor.com)" "$(api "/zones/$zone/workers/routes")"
             say "DNS (ravemonitor.com)" "$(api "/zones/$zone/dns_records?per_page=1")"
-            api "/zones/$zone/dns_records?per_page=1" | jq -e .success > /dev/null || echo "::error::The token needs Zone > DNS > Edit for ravemonitor.com, so the Worker can have api.ravemonitor.com."
+            # Not needed so far: the custom domain was created without it.
+            api "/zones/$zone/dns_records?per_page=1" | jq -e .success > /dev/null || echo "::notice::The token can't read DNS records. That's fine unless api.ravemonitor.com stops resolving; then add Zone > DNS > Edit."
           fi
       - name: Deploy to Cloudflare
         working-directory: worker/contact
