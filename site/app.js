@@ -23,11 +23,12 @@
   /* ---------- state ---------- */
   const S = {
     now: Date.now(), win: '24h', genres: new Set(), view: 'map',
-    layers: { belt: true, heat: true, fest: true, tours: false, labels: true, streets: true },
-    sel: null, route: null, mode: null, tab: { right: 'listings', single: 'listings' }, liveAll: false, listAll: false, ds: null,
+    layers: { belt: true, heat: true, fest: true, tours: false, venues: true, labels: true, streets: true },
+    sel: null, route: null, mode: null, tab: { right: 'listings', single: 'listings' }, liveAll: false, listAll: false, venAll: false, ds: null,
     // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
     area: null, areaOn: false,
-    // A record label or promoter to filter by: { key, name, kind: 'label' | 'promoter' }, or null.
+    // A record label, promoter or venue to filter by: { key, name, kind: 'label' | 'promoter' | 'venue' }, or null.
+    // A venue also carries its directory entry (venue) and the feed's venue ids that are it (vids).
     label: null,
     // The visitor's position, only after they press Near me (or allowed it before): { lat, lon }. Never sent anywhere.
     me: null,
@@ -42,7 +43,7 @@
   // Label and promoter names compare without case, accents, apostrophes or punctuation, & as 'and'.
   const lkey = s => norm(s).replace(/['’‘`´]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
   const labelsOf = e => (e.labels || []).concat(e.promoters || []);
-  const hasLabel = e => labelsOf(e).some(n => lkey(n) === S.label.key);
+  const hasLabel = e => S.label.kind === 'venue' ? S.label.vids.has(e.venueId) : labelsOf(e).some(n => lkey(n) === S.label.key);
 
   /* ---------- formatting ---------- */
   const fmtCache = {};
@@ -112,7 +113,7 @@
 
   /* ---------- derived data ---------- */
   function derive() {
-    // A label filter narrows everything to that label's nights; Peakcon stays the whole scene's.
+    // A label or venue filter narrows everything to its nights; Peakcon stays the whole scene's.
     const ds = S.label ? Object.assign({}, S.ds, { events: S.ds.events.filter(hasLabel) }) : S.ds, t = S.now, g = S.genres;
     D.ds = ds;
     D.win = ds.events.filter(e => RM.inWindow(e, ds, t, S.win) && RM.inGenres(e, g));
@@ -189,6 +190,7 @@
     live: { label: 'Live now', render: renderLive },
     heat: { label: 'Scene heat', render: renderHeat },
     listings: { label: 'Listings', render: renderListings },
+    venues: { label: 'Venues', render: renderVenues },
     wire: { label: 'Wire', render: renderWire },
     genres: { label: 'Genres', render: renderGenres },
     streams: { label: 'Streams', render: renderStreams },
@@ -258,8 +260,9 @@
       new Set(e.heads.concat(e.support).map(id => artist(id)).filter(a => a && !NOT_NAMES.test(a.name.trim())).map(a => a.name)).forEach(n => { who[n] = (who[n] || 0) + 1; });
     });
     const top = (obj, n) => Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, n);
-    const txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b>' + (S.label ? ' for ' + esc(S.label.name) : '') + ' ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.' +
-      (D.L.area && S.mode === 'narrow' ? ' <button type="button" class="linkish" data-act="area-all">Show everywhere</button>' : '');
+    const area = D.L.area && !(S.label && S.label.kind === 'venue'); // a venue's nights are all in one place
+    const txt = '<b>' + plural(list.length, 'listing', 'listings') + '</b>' + (S.label ? ' for ' + esc(S.label.name) : '') + ' ' + WIN_LABEL[S.win] + (area ? ' in this area' : '') + '.' +
+      (area && S.mode === 'narrow' ? ' <button type="button" class="linkish" data-act="area-all">Show everywhere</button>' : '');
     let more = '';
     const busiest = top(Object.fromEntries(Object.entries(nights).map(([k, v]) => [k, v.n])), 2);
     if (Object.keys(nights).length > 2) more += ' Busiest nights: ' + busiest.map(k => F(nights[k].tz, { weekday: 'short', day: 'numeric', month: 'short' }).format(nights[k].ms - NIGHT_SHIFT) + ' (' + nights[k].n + ')').join(', ') + '.';
@@ -276,13 +279,15 @@
       const ka = nightKey(a.start, city(a).tz), kb = nightKey(b.start, city(b).tz);
       return ka < kb ? -1 : ka > kb ? 1 : a.start - b.start;
     });
+    // A venue focus: the venue itself first.
+    const card = S.label && S.label.kind === 'venue' ? venueCard(S.label.venue, null, false) : '';
     if (!list.length) {
-      body('listings').innerHTML = areaBar() + '<p class="fine">No listings ' + (S.label ? 'for ' + esc(S.label.name) + ' ' : '') + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') + '. Try a longer time window' + (D.L.area ? ' or zoom out' : '') + '.' +
-        (S.label ? ' Past nights may be in the <a href="' + archiveLabelUrl(S.label.name) + '" style="color:inherit">archive</a>.' : '') + '</p>';
+      body('listings').innerHTML = card + (card ? '' : areaBar()) + '<p class="fine">No listings ' + (S.label ? 'for ' + esc(S.label.name) + ' ' : '') + WIN_LABEL[S.win] + (D.L.area && !card ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') + '. Try a longer time window' + (D.L.area && !card ? ' or zoom out' : '') + '.' +
+        (S.label ? ' Past nights may be in the <a href="' + esc(S.label.kind === 'venue' ? venueArchiveUrl(S.label.venue) : archiveLabelUrl(S.label.name)) + '" style="color:inherit">archive</a>.' : '') + '</p>';
       meta('listings', ''); return;
     }
     const n = S.listAll ? list.length : Math.min(list.length, 120);
-    let html = (S.mode === 'narrow' ? '' : areaBar()) + '<div class="brief">' + listingsBrief(list) + '</div>', night = '';
+    let html = card + (S.mode === 'narrow' || card ? '' : areaBar()) + '<div class="brief">' + listingsBrief(list) + '</div>', night = '';
     list.slice(0, n).forEach(e => {
       const c = city(e), k = nightKey(e.start, c.tz);
       if (k !== night) { html += (night ? '</ol>' : '') + '<h3 class="nighthead">' + esc(nightLabel(e.start, c.tz)) + '</h3><ol class="rows">'; night = k; }
@@ -608,10 +613,10 @@
 
   /* ---------- layout and tabs ---------- */
   function tabIdsFor(mode) {
-    if (mode === 'wide') return ['listings', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+    if (mode === 'wide') return ['listings', 'venues', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
     // Phones: planning first, then what's on now.
-    if (mode === 'narrow') return ['listings', 'live', 'streams', 'genres', 'wire', 'heat', 'sellouts', 'peakcon', 'surges'];
-    return ['live', 'listings', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+    if (mode === 'narrow') return ['listings', 'venues', 'live', 'streams', 'genres', 'wire', 'heat', 'sellouts', 'peakcon', 'surges'];
+    return ['live', 'listings', 'venues', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
   }
   function layout() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -790,7 +795,7 @@
     $('#drawer').innerHTML = '<div class="dr-grip" aria-hidden="true"></div><div class="dr-head">' +
       '<button class="dr-close" type="button" data-act="close" aria-label="Close event details">&times;</button>' +
       '<div class="dr-kicker"><i class="gdot" style="--c:' + G.color + '"></i><span>' + esc(G.name) + (e.sub && e.sub.toLowerCase() !== G.name.toLowerCase() ? ', ' + esc(e.sub) : '') + '</span>' + (G.bpm && G.bpm !== 'varies' ? '<span>' + G.bpm + ' BPM</span>' : '') + statusChip(e) + '</div>' +
-      '<h2 id="dr-title">' + esc(e.title) + '</h2><p class="dr-venue">' + esc(v.name) + ', ' + esc(c.name) + '</p></div>' +
+      '<h2 id="dr-title">' + esc(e.title) + '</h2><p class="dr-venue">' + (vdir().byVenue[v.id] ? '<button type="button" class="linkish" data-act="venue" data-vid="' + esc(v.id) + '" aria-label="' + esc('Venue: ' + v.name + '. Show its nights') + '">' + esc(v.name) + '</button>' : esc(v.name)) + ', ' + esc(c.name) + '</p></div>' +
       '<div class="dr-when"><div class="big">' + tTime(e.start, c.tz) + '<small>to ' + tTime(e.end, c.tz) + ', ' + esc(c.name) + ' time</small></div>' +
       '<p>' + tDate(e.start, c.tz).replace(/\.$/, '') + '. ' + when + '</p><p>Your time: ' + tDate(e.start) + ', ' + tTime(e.start) + '</p></div>' +
       (sets ? '<section class="dr-sec"><h3>' + (timed ? 'Set times' : 'Lineup') + '</h3><ol class="sets' + (timed ? '' : ' untimed') + '">' + sets + '</ol></section>' : '') +
@@ -864,26 +869,241 @@
   }
   const archiveLabelUrl = name => '/archive/?label=' + encodeURIComponent(name);
   function setLabel(x) {
-    S.label = x ? { key: x.key, name: x.name, kind: x.kind } : null;
-    S.listAll = false;
+    S.label = x ? { key: x.key, name: x.name, kind: x.kind, venue: x.venue || null, vids: x.vids || null } : null;
+    S.listAll = false; S.venAll = false;
+    const isVenue = S.label && S.label.kind === 'venue';
     if (S.label) {
-      // Widen the time window when the label's next night is further out than it shows.
-      const t = S.now, next = S.ds.events.filter(e => e.end > t && hasLabel(e)).sort((a, b) => a.start - b.start);
-      if (next.length && !next.some(e => RM.inWindow(e, S.ds, t, S.win))) S.win = next.some(e => RM.inWindow(e, S.ds, t, '7d')) ? '7d' : next.some(e => RM.inWindow(e, S.ds, t, '14d')) ? '14d' : '30d';
+      const t = S.now, next = S.ds.events.filter(e => e.end > t && hasLabel(e));
+      // A venue's nights show whatever their sound: a genre filter none of them fit comes off.
+      if (isVenue && S.genres.size && next.length && !next.some(e => RM.inGenres(e, S.genres))) S.genres.clear();
+      // Widen the time window when the next night is further out than it shows.
+      const want = next.filter(e => RM.inGenres(e, S.genres)), within = w => want.some(e => RM.inWindow(e, S.ds, t, w));
+      if (want.length && !within(S.win)) S.win = within('7d') ? '7d' : within('14d') ? '14d' : '30d';
       track('set_filter', { filter: S.label.kind, value: cut(S.label.name) });
     }
     derive(); renderAll();
     renderLabelChip();
-    if (S.label && D.win.length) { if (S.sel && S.mode === 'narrow') closeDrawer(); MapView.fitEvents(D.win); }
+    if (S.label && S.sel && S.mode === 'narrow' && (isVenue || D.win.length)) closeDrawer();
+    if (isVenue) MapView.flyToVenue(S.label.venue);
+    else if (S.label && D.win.length) MapView.fitEvents(D.win);
     MapView.changed(false);
   }
   function renderLabelChip() {
     const chip = $('#label-chip');
     if (!S.label) { chip.hidden = true; return; }
     const n = D.win.length;
-    chip.innerHTML = '<span>' + (S.label.kind === 'promoter' ? 'Promoter: ' : 'Label: ') + esc(S.label.name) + ' · ' + (n ? plural(n, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing coming up') + '</span>' +
-      (n ? '' : '<a href="' + archiveLabelUrl(S.label.name) + '">Archive</a>') + '<button type="button" data-act="label-clear">Clear</button>';
+    if (S.label.kind === 'venue') {
+      const k = new Set(D.win.map(e => nightKey(e.start, city(e).tz))).size;
+      chip.innerHTML = '<span>' + esc(S.label.name) + ' · ' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing ' + WIN_LABEL[S.win]) + '</span>' +
+        '<button type="button" data-act="venue-more">Details</button><button type="button" data-act="label-clear">Clear</button>';
+    } else {
+      chip.innerHTML = '<span>' + (S.label.kind === 'promoter' ? 'Promoter: ' : 'Label: ') + esc(S.label.name) + ' · ' + (n ? plural(n, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing coming up') + '</span>' +
+        (n ? '' : '<a href="' + archiveLabelUrl(S.label.name) + '">Archive</a>') + '<button type="button" data-act="label-clear">Clear</button>';
+    }
     chip.hidden = false;
+  }
+
+  /* ---------- venues ---------- */
+  // The venue directory (archive/data/venues.json, written by pipeline/venues.js) has every place that has
+  // hosted a night since the archive began, each platform's spelling merged into one venue. The feed's
+  // venues are matched to it by name within their city. Without it (demo data, a site with no archive
+  // yet, or before it has loaded) the directory is the feed's own venues.
+  // A venue's name as a matching key, as in pipeline/venues.js: no case, accents, rooms in brackets or
+  // punctuation, & as 'and', without the city's name at either end or a leading 'the'.
+  function vkey(name, cityName) {
+    let s = norm(String(name || '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')).replace(/&/g, ' and ').replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const c = norm(cityName).replace(/[^a-z0-9]+/g, ' ').trim();
+    if (c && s !== c) {
+      if (s.endsWith(' ' + c)) s = s.slice(0, -c.length - 1);
+      if (s.startsWith(c + ' ')) s = s.slice(c.length + 1);
+    }
+    return s.replace(/^the /, '').trim();
+  }
+  const slugify = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // Arenas, theatres and the like (also in pipeline/venues.js); a club in a casino is still a club.
+  const CONCERT_RE = /\b(arena|stadium|stadion|amphitheat(?:er|re)|autodromo|raceway|racetrack|speedway|fairgrounds?|showgrounds?|expo|exhibition cent(?:er|re)|convention cent(?:er|re)|casino|theat(?:er|re)|hippodrome|velodrome|o2 academy|o2|forum|bowl)\b/i;
+  const CLUB_RE = /\b(night ?club|day ?club|beach club|club|lounge|bar|discoth[eè]que|disco|warehouse|basement)\b/i;
+  const isConcert = n => CONCERT_RE.test(n) && !CLUB_RE.test(n);
+  // Not places, by name key: "TBA", "Secret location", "Venue to be announced" (also in pipeline/venues.js).
+  const NOT_A_VENUE = /^(?:(?:venue|location|address|place)\s+)?(?:tba|tbc|tbd|to be (?:announced|confirmed|revealed))(?:\s|$)|^(?:secret|undisclosed|private|hidden)\s+(?:location|venue|address|spot)(?:\s|$)|^(?:secret|undisclosed)$|^(?:various|multiple|several)\s+(?:venues|locations)(?:\s|$)|^(?:online|livestream|live stream|virtual|streaming)$/;
+  const V = { rows: null, state: 'off', built: null };
+  function loadVenues() {
+    if (V.state !== 'off' || !S.ds) return;
+    if (S.ds.source === 'demo') { V.state = 'none'; return; } // demo venues are fictional; the real directory isn't theirs
+    V.state = 'loading';
+    fetch('archive/data/venues.json').then(r => r.ok ? r.json() : null).then(j => { V.rows = j && Array.isArray(j.venues) ? j.venues : null; }, () => { V.rows = null; })
+      .then(() => { V.state = V.rows ? 'ready' : 'none'; venuesArrived(); });
+  }
+  function venuesArrived() {
+    if (!V.rows) return;
+    V.built = null;
+    vdir();
+    if (S.label && S.label.kind === 'venue') derive(); // the focus may now cover more of the feed's venues
+    renderAll(); MapView.changed(false);
+    if (!$('#results').hidden) renderResults($('#q').value);
+  }
+  // Built once per feed and directory, and again every 15 minutes so what's "coming up" stays current.
+  function vdir() {
+    const ds = S.ds;
+    if (V.built && V.built.ds === ds && V.built.rows === V.rows && S.now - V.built.t < 15 * 60000) return V.built;
+    const list = [], byId = {}, byKey = new Map(), byVenue = {};
+    const cname = id => (ds.cityById[id] || {}).name || '';
+    const add = x => { if (byId[x.id]) x.id += '-' + list.length; list.push(x); byId[x.id] = x; };
+    (V.rows || []).forEach(r => {
+      const c = Array.isArray(r) && r[0] && ds.cityById[r[2]];
+      if (!c || NOT_A_VENUE.test(vkey(r[1], c.name))) return; // a city the page doesn't know, or not a place
+      const has = Number.isFinite(r[3]) && Number.isFinite(r[4]);
+      const x = {
+        id: String(r[0]), name: String(r[1]), cityId: r[2], city: c, lat: has ? r[3] : c.lat, lon: has ? r[4] : c.lon, approx: !has || !!(r[5] & 1), concert: !!(r[5] & 2),
+        address: r[6] || '', nights: r[7] || 0, first: r[9] || null, last: r[10] || null, genres: r[12] || {}, regulars: r[13] || [], vids: new Set(), evs: []
+      };
+      add(x);
+      [vkey(x.name, c.name)].concat(r[14] || []).forEach(k => { const kk = x.cityId + '|' + k; if (k && !byKey.has(kk)) byKey.set(kk, x); });
+    });
+    ds.venues.forEach(v => {
+      const c = ds.cityById[v.cityId]; if (!c) return;
+      const k = vkey(v.name, c.name) || norm(v.name).trim(), kk = v.cityId + '|' + k;
+      if (NOT_A_VENUE.test(k)) return;
+      let x = byKey.get(kk);
+      if (!x) {
+        x = { id: v.cityId + '-' + (slugify(k) || 'venue'), name: v.name, cityId: v.cityId, city: c, lat: v.lat, lon: v.lon, approx: !!v.approx, concert: isConcert(v.name),
+          address: '', nights: 0, first: null, last: null, genres: null, regulars: [], vids: new Set(), evs: [], feedOnly: true };
+        add(x); byKey.set(kk, x);
+      }
+      x.vids.add(v.id); byVenue[v.id] = x;
+    });
+    const t = S.now;
+    ds.events.forEach(e => { if (e.end > t) { const x = byVenue[e.venueId]; if (x) x.evs.push(e); } });
+    list.forEach(x => {
+      x.soon = new Set(x.evs.map(e => nightKey(e.start, x.city.tz))).size; // nights coming up in the feed
+      if (x.feedOnly) { const g = {}; x.evs.forEach(e => { g[e.genre] = (g[e.genre] || 0) + 1; }); x.genres = g; x.nights = x.soon; }
+      x.main = mainGenre(x.genres);
+    });
+    V.built = { ds: ds, rows: V.rows, t: S.now, list: list, byId: byId, byVenue: byVenue };
+    // A venue in focus moves to its entry in the new directory (from the feed's venue to the merged one).
+    if (S.label && S.label.kind === 'venue') {
+      const old = S.label.venue, nx = byId[old.id] || Array.from(old.vids).map(id => byVenue[id]).find(Boolean);
+      if (nx && nx !== old) Object.assign(S.label, { key: nx.id, name: nx.name, venue: nx, vids: nx.vids });
+    }
+    return V.built;
+  }
+  // "Studio Warehouse, 100 Eastvale Place, Glasgow" beside "Glasgow" needs no second Glasgow.
+  const shortAddress = (a, cityName) => String(a || '').replace(/\s*;\s*/g, ', ').replace(new RegExp('[\\s,]+' + String(cityName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.?$', 'i'), '').trim();
+  // The sound a venue is known for: its most common family, passing over the catch-alls (Dance/electronic,
+  // Misc) when a real family has at least a quarter of its nights.
+  function mainGenre(g) {
+    const ids = Object.keys(g || {}).filter(id => RM.GENRE[id]).sort((a, b) => g[b] - g[a]);
+    if (!ids.length) return null;
+    const total = ids.reduce((s, id) => s + g[id], 0), real = ids.find(id => id !== 'electronic' && id !== 'misc');
+    return real && g[real] >= total * 0.25 ? real : ids[0];
+  }
+  function genreShares(g) {
+    const ids = Object.keys(g || {}).filter(id => RM.GENRE[id]).sort((a, b) => g[b] - g[a]);
+    const total = ids.reduce((s, id) => s + g[id], 0);
+    return ids.map(id => ({ id: id, n: g[id], p: total ? g[id] / total : 0 }));
+  }
+  function genreBar(g, cls) {
+    const sh = genreShares(g);
+    if (!sh.length) return '<span class="vbar' + (cls ? ' ' + cls : '') + '" aria-hidden="true"></span>';
+    const label = sh.slice(0, 3).map(s => RM.GENRE[s.id].name + ' ' + Math.round(s.p * 100) + '%').join(', ');
+    return '<span class="vbar' + (cls ? ' ' + cls : '') + '" role="img" aria-label="' + esc('Sound: ' + label) + '" title="' + esc(label) + '">' +
+      sh.slice(0, 6).map(s => '<i style="--c:' + RM.GENRE[s.id].color + ';flex-grow:' + s.n + '"></i>').join('') + '</span>';
+  }
+  // Nights in the time window at each venue: { id: { nights, evs } }. A label or promoter in focus
+  // counts only its nights; a venue in focus doesn't narrow it (the tab shows the venues around it).
+  function venueWindow(dir) {
+    const t = S.now, out = new Map(), lab = S.label && S.label.kind !== 'venue';
+    S.ds.events.forEach(e => {
+      if (!RM.inWindow(e, S.ds, t, S.win) || !RM.inGenres(e, S.genres) || (lab && !hasLabel(e))) return;
+      const x = dir.byVenue[e.venueId]; if (!x) return;
+      let w = out.get(x.id);
+      if (!w) out.set(x.id, w = { nights: new Set(), evs: [] });
+      w.nights.add(nightKey(e.start, x.city.tz)); w.evs.push(e);
+    });
+    return out;
+  }
+  const WIN_SHORT = { live: 'live now', '24h': 'next 24h', weekend: 'this weekend', '7d': 'next 7 days', '14d': 'next 14 days', '30d': 'next 30 days' };
+  // A YYYY-MM-DD night as "Sat 1 Nov" (the date itself, so no time zone shifts it).
+  const fmtNight = (d, year) => d ? F('UTC', year ? { day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' }).format(Date.parse(d + 'T12:00:00Z')) : '';
+  const venueArchiveUrl = x => '/archive/?venue=' + encodeURIComponent(x.name.replace(/^the\s+/i, '')) + '&city=' + encodeURIComponent(x.cityId);
+  const nextOf = (x, w) => (w && w.evs.length ? w.evs : x.evs.filter(e => e.end > S.now)).slice().sort((a, b) => a.start - b.start)[0];
+  function venueRow(x, w) {
+    const c = x.city, k = w ? w.nights.size : 0, next = nextOf(x, w);
+    const line = next ? 'Next: ' + (RM.isLive(next, S.now) ? 'live now' : tDay(next.start, c.tz) + ' ' + tTime(next.start, c.tz)) + ' · ' + (lineupNames(next, 2) || next.title)
+      : x.last ? 'Last listed ' + fmtNight(x.last) : '';
+    return '<li class="vrow' + (k ? '' : ' quiet') + '" data-venue="' + esc(x.id) + '" tabindex="0" role="button">' +
+      '<div class="what"><span class="title">' + esc(x.name) + '</span>' +
+      '<div class="sub"><span>' + esc(c.name) + '</span>' + (x.concert ? '<span class="vtag">Concert venue</span>' : '') + '</div>' +
+      (line ? '<div class="sub2">' + esc(line) + '</div>' : '') + '</div>' +
+      '<div class="vside"><b' + (k ? '' : ' class="none"') + '>' + (k ? fmtN(k) : '0') + '</b>' + genreBar(x.genres) + '</div></li>';
+  }
+  // The venue a focus is on: where it is, its sound, how often it's listed, its regulars, and links.
+  function venueCard(x, w, full) {
+    const c = x.city, k = w ? w.nights.size : 0, demo = S.ds.source === 'demo', sh = genreShares(x.genres);
+    // Regulars with dates coming up open their route; each name keeps its comma on its line.
+    const reg = full && x.regulars.length ? '<p class="vc-reg"><span>Regulars</span>' + x.regulars.map((n, i, all) => {
+      const aid = 'n:' + norm(n), comma = i < all.length - 1 ? ',' : '';
+      return '<span class="nw">' + (artist(aid) && routeGigs(aid).length ? '<button type="button" class="linkish" data-act="route" data-artist="' + esc(aid) + '">' + esc(n) + '</button>' : esc(n)) + comma + '</span>';
+    }).join(' ') + '</p>' : '';
+    const stats = full ? '<dl class="vc-stats"><div><dt>Coming up</dt><dd>' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_SHORT[S.win] : 'Nothing ' + WIN_SHORT[S.win]) + '</dd></div>' +
+      '<div><dt>Nights listed</dt><dd>' + (x.nights ? fmtN(x.nights) + (x.first ? ' since ' + fmtNight(x.first, true) : '') : 'None yet') + '</dd></div></dl>' : '';
+    const q = x.name + ', ' + (x.address || c.name), addr = shortAddress(x.address, c.name);
+    return '<div class="vcard"><div class="vc-head"><div><h3>' + esc(x.name) + '</h3><p>' + esc(c.name) + (addr ? ' · ' + esc(addr) : '') + '</p></div>' +
+      (x.concert ? '<span class="vtag">Concert venue</span>' : '') + '</div>' +
+      (sh.length ? genreBar(x.genres, 'big') + '<p class="vc-mix">' + sh.slice(0, 4).map(s => '<span class="gtag" style="--c:' + RM.GENRE[s.id].color + '">' + esc(RM.GENRE[s.id].name) + ' ' + Math.round(s.p * 100) + '%</span>').join('') + '</p>' : '') +
+      stats + reg +
+      '<div class="vc-actions">' +
+      (demo ? '' : '<a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=' + encodeURIComponent(q) + '" target="_blank" rel="noopener">Directions</a><a class="btn" href="' + esc(venueArchiveUrl(x)) + '">Past nights</a>') +
+      (full ? '' : '<button class="btn" type="button" data-act="venue-more">About the venue</button>') +
+      '<button class="btn" type="button" data-act="label-clear">' + (full ? 'All venues' : 'Show all listings') + '</button></div>' +
+      (x.approx ? '<p class="fine">The listings give no exact address, so the map shows it near the city center.</p>' : '') + '</div>';
+  }
+  function renderVenues() {
+    loadVenues();
+    const dir = vdir(), win = venueWindow(dir), focus = S.label && S.label.kind === 'venue' ? S.label.venue : null;
+    const k = x => { const w = win.get(x.id); return w ? w.nights.size : 0; };
+    let pool, html = '';
+    if (focus) {
+      html += venueCard(focus, win.get(focus.id), true);
+      pool = dir.list.filter(x => x !== focus && x.cityId === focus.cityId);
+    } else if (D.L.area) pool = dir.list.filter(x => MapView.inView(x.lon, x.lat) || Array.from(x.vids).some(id => S.area.has(id)));
+    else pool = dir.list;
+    // A label or promoter keeps the venues with its nights; a genre filter, those with nights of that
+    // sound coming up or known for it.
+    const lab = S.label && S.label.kind !== 'venue';
+    if (lab) pool = pool.filter(x => k(x) > 0);
+    else if (S.genres.size) pool = pool.filter(x => k(x) > 0 || (x.main && S.genres.has(x.main)));
+    pool.sort((a, b) => k(b) - k(a) || b.soon - a.soon || b.nights - a.nights || a.name.localeCompare(b.name));
+    const clubs = pool.filter(x => !x.concert), big = pool.filter(x => x.concert), active = pool.filter(x => k(x) > 0).length;
+    const cap = S.venAll ? Infinity : 60, capBig = S.venAll ? Infinity : 12;
+    const rows = list => '<ol class="rows">' + list.map(x => venueRow(x, win.get(x.id))).join('') + '</ol>';
+    if (!focus) {
+      html += (S.mode === 'narrow' ? '' : areaBar()) + '<div class="brief"><b>' + plural(pool.length, 'venue', 'venues') + '</b>' +
+        (lab ? ' with ' + esc(S.label.name) + ' nights ' + WIN_LABEL[S.win] + (D.L.area ? ' in this area' : '') + '.' :
+          (D.L.area ? ' in this area' : ' in the listings so far') + (S.genres.size ? ' for this genre filter' : '') + ', ' + fmtN(active) + ' with nights ' + WIN_LABEL[S.win] + '.') +
+        (D.L.area ? (S.mode === 'narrow' ? ' <button type="button" class="linkish" data-act="area-all">Show everywhere</button>' : '') : ' Zoom the map in to see the venues in an area.') + '</div>';
+    }
+    if (!pool.length) html += '<p class="fine">' + (focus ? 'No other venues in ' + esc(focus.city.name) + ' yet.' : 'No venues ' + (D.L.area ? 'in this area' : 'yet') + (lab ? ' with ' + esc(S.label.name) + ' nights ' + WIN_LABEL[S.win] : S.genres.size ? ' for this genre filter' : '') + '.') + '</p>';
+    else {
+      if (focus) html += '<h3 class="subhead">More venues in ' + esc(focus.city.name) + '</h3>';
+      html += '<div class="vhead" aria-hidden="true"><span>Venue</span><span>Nights ' + WIN_SHORT[S.win] + '</span></div>';
+      if (clubs.length) html += rows(clubs.slice(0, cap));
+      if (big.length) html += '<h3 class="subhead">Concert venues and theatres</h3>' + rows(big.slice(0, capBig));
+      if (clubs.length > cap || big.length > capBig) html += '<button class="more" type="button" data-act="ven-all">Show all ' + fmtN(pool.length) + ' venues</button>';
+    }
+    html += '<p class="fine">' + (S.ds.source === 'demo' ? 'Demo venues, fictional. ' : '') + 'Venues come from the listings: ' + (V.rows ? 'every place that has hosted a night since the archive began, with each platform\'s spelling merged' : 'every place with a night coming up') + '. Select one to see it on the map with its nights.' +
+      (V.state === 'none' && S.ds.source !== 'demo' ? ' The venue history didn\'t load, so this shows venues with listings coming up.' : '') + '</p>';
+    body('venues').innerHTML = html;
+    meta('venues', focus ? '' : fmtN(pool.length) + (D.L.area ? ' in view' : ''));
+  }
+  function focusVenue(x) {
+    if (!x) return;
+    setLabel({ key: x.id, name: x.name, kind: 'venue', venue: x, vids: x.vids });
+  }
+  // The chip's Details: the venue card in the Venues tab, scrolled into view on phones.
+  function venueDetails() {
+    selectTab('venues');
+    if (S.mode !== 'wide') { const bar = $('#tabbar'); window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - 4, behavior: reduceMotion ? 'auto' : 'smooth' }); }
   }
 
   /* ---------- near me ---------- */
@@ -961,7 +1181,14 @@
       hits.filter(x => x.kind === 'promoter' && x.n).slice(0, 3).forEach(x => out.push({ g: 'Promoters', kind: 'label', id: x.key, label: x.name, hint: plural(x.n, 'upcoming night', 'upcoming nights') }));
     }
     ds.events.filter(e => e.end > t && norm(e.title).indexOf(s) >= 0).slice(0, 6).forEach(e => out.push({ g: 'Events', kind: 'event', id: e.id, label: e.title, hint: city(e).name + ', ' + tDate(e.start, city(e).tz) }));
-    ds.venues.filter(v => norm(v.name).indexOf(s) >= 0).slice(0, 4).forEach(v => out.push({ g: 'Venues', kind: 'venue', id: v.id, label: v.name, hint: ds.cityById[v.cityId].name }));
+    // Venues: the directory (with places that have nothing coming up), matched from the start of a word.
+    if (ls.length >= 2) {
+      loadVenues();
+      const word = k => (' ' + k).indexOf(' ' + ls) >= 0;
+      vdir().list.filter(x => word(lkey(x.name)))
+        .sort((a, b) => (b.soon > 0) - (a.soon > 0) || b.nights - a.nights || a.name.length - b.name.length).slice(0, 5)
+        .forEach(x => out.push({ g: 'Venues', kind: 'venue', id: x.id, label: x.name, hint: x.city.name + ' · ' + (x.soon ? plural(x.soon, 'night', 'nights') + ' coming up' : 'nothing coming up') }));
+    }
     return out;
   }
   function renderResults(q) {
@@ -997,7 +1224,7 @@
     else if (r.kind === 'label') setLabel(labelIndex().find(x => x.key === r.id));
     else if (r.kind === 'label-archive') location.href = archiveLabelUrl(r.label);
     else if (r.kind === 'event') openEvent(r.id);
-    else if (r.kind === 'venue') MapView.flyToVenue(ds.venueById[r.id]);
+    else if (r.kind === 'venue') focusVenue(vdir().byId[r.id]);
   }
 
   /* ---------- map ---------- */
@@ -1030,7 +1257,7 @@
     const globe = { rot: [0, -26, 0], k: 1 };
     let proj = null, ppd = 1, inited = false, venueMode = false;
     let baseDirty = true, posDirty = true, overDirty = true, rafId = 0, lastDraw = 0, lastPointer = 'mouse';
-    let marks = [], cityMarks = [], festMarks = [], stopMarks = [], venueLabels = [], liveMarks = 0;
+    let marks = [], cityMarks = [], festMarks = [], stopMarks = [], venueLabels = [], ringMarks = [], labelHits = [], liveMarks = 0;
     let areaTimer = 0, areaSig = 'all';
     const sel = d3.select(co);
     const zMap = d3.zoom().on('zoom', ev => { mapT = ev.transform; if (ev.sourceEvent) userMoved(); changed(true); hideTip(); });
@@ -1087,6 +1314,7 @@
         const r = co.getBoundingClientRect(), h = hit(ev.clientX - r.left, ev.clientY - r.top);
         if (!h) return;
         if (h.kind === 'event') openEvent(h.e.id, { fly: ppd < 60 });
+        else if (h.kind === 'venue') focusVenue(h.ve);
         else if (h.kind === 'city') flyToCity(h.c);
       });
       co.addEventListener('keydown', ev => {
@@ -1198,7 +1426,13 @@
       const box = vs.length ? [[q(lons, trim), q(lats, trim)], [q(lons, 1 - trim), q(lats, 1 - trim)]] : [[c.lon, c.lat], [c.lon, c.lat]];
       fitBox(box, 260, 1500);
     }
-    function flyToVenue(v) { S.areaOn = true; flyTo(v.lon, v.lat, streetsOn() ? 2900 : 360); }
+    // A venue with no exact position gets a view of the city around it rather than a street-level one.
+    function flyToVenue(v) { S.areaOn = true; flyTo(v.lon, v.lat, v.approx ? 300 : streetsOn() ? 2900 : 360); }
+    function inView(lon, lat) {
+      if (!proj || !Number.isFinite(lon) || !Number.isFinite(lat) || !vis(lon, lat)) return false;
+      const p = proj([lon, lat]);
+      return !!p && p[0] >= 0 && p[0] <= W && p[1] >= 0 && p[1] <= H;
+    }
     function flyToEvent(e) { const v = venue(e); flyTo(v.lon, v.lat, Math.max(ppd, streetsOn() ? 1400 : 300)); }
     function fitBox(box, minPpd, maxPpd) {
       const p0 = baseProj(), a = p0(box[0]), b = p0(box[1]);
@@ -1450,9 +1684,12 @@
     }
 
     function computeMarks() {
-      marks = []; cityMarks = []; festMarks = []; stopMarks = []; venueLabels = []; liveMarks = 0;
+      marks = []; cityMarks = []; festMarks = []; stopMarks = []; venueLabels = []; ringMarks = []; liveMarks = 0;
       const t = S.now, ds = S.ds;
       venueMode = ppd >= 150;
+      // The venue directory loads as the view nears street level, like the street map.
+      if (S.layers.venues && ppd >= ST.preload) loadVenues();
+      const dir = venueMode ? vdir() : null;
       const r0 = venueMode ? Math.min(5.2, 3 + Math.log2(ppd / 150) * 0.7) : Math.min(3.4, 2.1 + Math.max(0, Math.log2(ppd / 2.2)) * 0.3);
       const spread = venueMode ? 1.6 : 1.32 * (1 + Math.min(1.4, Math.max(0, Math.log2(ppd / 4)) * 0.3));
       const heatBy = {};
@@ -1468,16 +1705,22 @@
         const regular = list.filter(e => e.type !== 'festival');
         const liveN = list.filter(e => RM.isLive(e, t)).length;
         if (venueMode) {
+          // One cluster per venue in the directory, so a venue's rooms and spellings share one spot and name.
           const byV = new Map();
-          regular.forEach(e => { if (!byV.has(e.venueId)) byV.set(e.venueId, []); byV.get(e.venueId).push(e); });
-          byV.forEach((evs, vid) => {
-            const v = ds.venueById[vid];
-            if (!vis(v.lon, v.lat)) return;
-            const pv = proj([v.lon, v.lat]); if (!onScreen(pv)) return;
+          regular.forEach(e => {
+            const x = dir.byVenue[e.venueId], k = x ? x.id : e.venueId;
+            let g = byV.get(k);
+            if (!g) byV.set(k, g = { ve: x || null, v: ds.venueById[e.venueId], evs: [] });
+            g.evs.push(e);
+          });
+          byV.forEach(g => {
+            const at = g.ve && !g.ve.approx ? g.ve : g.v, evs = g.evs;
+            if (!vis(at.lon, at.lat)) return;
+            const pv = proj([at.lon, at.lat]); if (!onScreen(pv)) return;
             const sp = r0 * spread;
             evs.forEach((e, i) => { const a = i * 2.39996, rr = sp * Math.sqrt(i), live = RM.isLive(e, t); if (live) liveMarks++; marks.push({ e: e, x: pv[0] + rr * Math.cos(a), y: pv[1] + rr * Math.sin(a), r: r0, live: live, so: RM.statusAt(e, t) === 'soldout', seed: e.seed }); });
             const next = evs.filter(e => e.end > t).sort((a, b) => a.start - b.start)[0] || evs[0];
-            venueLabels.push({ v: v, x: pv[0], y: pv[1], n: evs.length, R: sp * Math.sqrt(Math.max(0, evs.length - 1)) + r0, next: next });
+            venueLabels.push({ v: g.v, ve: g.ve, name: g.ve ? g.ve.name : g.v.name, approx: g.ve ? g.ve.approx : g.v.approx, x: pv[0], y: pv[1], n: evs.length, R: sp * Math.sqrt(Math.max(0, evs.length - 1)) + r0, next: next });
           });
           if (cityIn) cityMarks.push({ c: c, x: pc[0], y: pc[1], R: 0, n: list.length, live: liveN, heat: heatBy[cid] || 0 });
         } else {
@@ -1501,6 +1744,29 @@
         });
       }
       if (S.route) routeGigs(S.route).forEach((e, i) => { const v = venue(e); if (!vis(v.lon, v.lat)) return; const p = proj([v.lon, v.lat]); if (p) stopMarks.push({ e: e, i: i, x: p[0], y: p[1] }); });
+      // The venues layer: every venue with a real position as a pool in the colour of its main sound,
+      // sized by how many nights it has been listed. With nights in the window it sits under their dots.
+      if (venueMode && S.layers.venues) {
+        const active = new Map();
+        venueLabels.forEach(vl => { if (vl.ve) active.set(vl.ve.id, vl); });
+        const k = Math.max(0.45, Math.min(1.25, Math.sqrt(ppd / 600)));
+        dir.list.forEach(x => {
+          if (x.approx) return;
+          const vl = active.get(x.id);
+          let px, py;
+          if (vl) { px = vl.x; py = vl.y; }
+          else { if (!vis(x.lon, x.lat)) return; const p = proj([x.lon, x.lat]); if (!onScreen(p)) return; px = p[0]; py = p[1]; }
+          const r = (2.6 + Math.sqrt(Math.max(1, x.nights)) * 0.85) * k;
+          ringMarks.push({ ve: x, x: px, y: py, r: vl ? Math.max(vl.R + 3.5, r) : r, active: !!vl, col: x.main ? RM.GENRE[x.main].color : '#8b8fa8' });
+        });
+      }
+    }
+    // '#rrggbb' at an opacity.
+    const rgbaCache = {};
+    function rgba(hex, a) {
+      const k = hex + a;
+      if (!rgbaCache[k]) { const n = parseInt(hex.slice(1), 16); rgbaCache[k] = 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+      return rgbaCache[k];
     }
 
     function drawOver(time) {
@@ -1533,6 +1799,13 @@
           ctx.restore();
         }
       }
+      const fvId = S.label && S.label.kind === 'venue' ? S.label.venue.id : null, isF = ve => !!ve && ve.id === fvId;
+      ringMarks.forEach(rm => {
+        const on = isF(rm.ve);
+        ctx.beginPath(); ctx.arc(rm.x, rm.y, rm.r, 0, Math.PI * 2);
+        ctx.fillStyle = rgba(rm.col, rm.active ? 0.12 : 0.18); ctx.fill();
+        ctx.lineWidth = on ? 2 : 1; ctx.strokeStyle = on ? C.now : rgba(rm.col, rm.active ? 0.42 : 0.75); ctx.stroke();
+      });
       marks.forEach(m => {
         const col = gen(m.e).color;
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
@@ -1580,8 +1853,9 @@
         boxes.push(box);
         ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(7,8,20,0.92)';
         ctx.strokeText(text, x0, y); ctx.fillStyle = color; ctx.fillText(text, x0, y);
-        return true;
+        return box;
       };
+      labelHits = [];
       boxes.push([0, 0, 260, 50], [W - 220, 0, W, 50]);
       if (meP) put('You are here', meP[0] + 11, meP[1], '#9fd8ff', '650 11px ' + FONT);
       if (S.layers.belt && streets.t < 1) { // the band itself is under the street map
@@ -1605,8 +1879,12 @@
         } else {
           cityMarks.forEach(cm => put(cm.c.name, cm.x, cm.y - 22, C.ink, '700 13px ' + FONT, 'center'));
           // Venues without a real position sit near the city center; at street level that would look exact.
-          venueLabels.sort((a, b) => b.n - a.n).forEach(vl => {
-            if (!put(vl.v.approx ? vl.v.name + ' (location approximate)' : vl.v.name, vl.x + vl.R + 5, vl.y, vl.v.approx ? C.ink3 : C.ink2)) return;
+          // The venue in focus gets its name placed first. Names are tappable: they open the venue.
+          venueLabels.sort((a, b) => isF(b.ve) - isF(a.ve) || b.n - a.n).forEach(vl => {
+            const on = isF(vl.ve);
+            const box = put(vl.approx ? vl.name + ' (location approximate)' : vl.name, vl.x + vl.R + 5, vl.y, on ? C.now : vl.approx ? C.ink3 : C.ink2, on ? '700 12px ' + FONT : undefined);
+            if (!box) return;
+            if (vl.ve) labelHits.push({ box: box, ve: vl.ve });
             // At street level, for planning: when the next party there is and who's on, in its genre's colour.
             const e = vl.next;
             if (ppd < ST.detailPpd || !e) return;
@@ -1614,6 +1892,11 @@
             let line = (RM.isLive(e, t) ? 'Now' : tDay(e.start, c.tz) + ' ' + tTime(e.start, c.tz)) + ' · ' + who;
             if (line.length > 46) line = line.slice(0, 45) + '…';
             put(line + (vl.n > 1 ? '  +' + (vl.n - 1) : ''), vl.x + vl.R + 5, vl.y + 17, gen(e).color, '500 10.5px ' + FONT);
+          });
+          // Closer in, the quiet venues' names too, where there's room.
+          if (ppd >= 420) ringMarks.filter(rm => !rm.active).sort((a, b) => isF(b.ve) - isF(a.ve) || b.ve.nights - a.ve.nights).forEach(rm => {
+            const on = isF(rm.ve), box = put(rm.ve.name, rm.x + rm.r + 4, rm.y, on ? C.now : C.ink3, on ? '700 12px ' + FONT : '500 10.5px ' + FONT);
+            if (box) labelHits.push({ box: box, ve: rm.ve });
           });
         }
         if (ppd >= 2.4) festMarks.forEach(f => put(f.e.series, f.x + f.r * 1.4 + 5, f.y, C.ink, '650 11px ' + FONT));
@@ -1644,6 +1927,13 @@
       stopMarks.forEach(s => near(s.x, s.y, 12 * grow, { kind: 'event', e: s.e }));
       if (best) return best;
       if (ppd >= 25) { marks.forEach(m => near(m.x, m.y, Math.max(m.r + 4, 8) * grow, { kind: 'event', e: m.e })); if (best) return best; }
+      const pad = touch ? 7 : 2;
+      for (let i = 0; i < labelHits.length; i++) {
+        const b = labelHits[i].box;
+        if (x >= b[0] - pad && x <= b[2] + pad && y >= b[1] - pad && y <= b[3] + pad) return { kind: 'venue', ve: labelHits[i].ve };
+      }
+      ringMarks.forEach(rm => near(rm.x, rm.y, (rm.r + 5) * grow, { kind: 'venue', ve: rm.ve }));
+      if (best) return best;
       cityMarks.forEach(cm => near(cm.x, cm.y, (Math.max(cm.R, 6) + 6) * grow, { kind: 'city', c: cm.c, cm: cm }));
       return best;
     }
@@ -1652,6 +1942,12 @@
       let html;
       if (h.kind === 'city') {
         html = '<b>' + esc(h.c.name) + '</b>' + plural(h.cm.n, 'event', 'events') + ' ' + WIN_LABEL[S.win] + (h.cm.live && S.win !== 'live' ? ', ' + h.cm.live + ' live now' : '') + '<div class="tline">Select to zoom in</div>';
+      } else if (h.kind === 'venue') {
+        const x = h.ve, k = new Set(x.evs.filter(e => RM.inWindow(e, S.ds, S.now, S.win) && RM.inGenres(e, S.genres)).map(e => nightKey(e.start, x.city.tz))).size;
+        html = '<b>' + esc(x.name) + '</b>' + esc(x.city.name) + (x.concert ? ', concert venue' : '') +
+          '<div class="tline">' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'Nothing ' + WIN_LABEL[S.win]) + '</div>' +
+          (x.nights ? '<div class="tline">' + (x.main ? '<i class="gdot" style="--c:' + RM.GENRE[x.main].color + '"></i>' : '') + plural(x.nights, 'night', 'nights') + ' listed' + (x.main ? ', mostly ' + esc(RM.GENRE[x.main].name.toLowerCase()) : '') + '</div>' : '') +
+          '<div class="tline">Select to see the venue</div>';
       } else {
         const e = h.e, c = city(e), v = venue(e), G = gen(e);
         html = '<b>' + esc(e.title) + '</b>' + esc(v.name) + ', ' + esc(c.name) +
@@ -1667,7 +1963,7 @@
     }
     function hideTip() { tip.hidden = true; }
 
-    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets };
+    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets, inView: inView };
   })();
 
   /* ---------- live feed (events.json written by the pipeline) ---------- */
@@ -1794,6 +2090,9 @@
       if (a === 'route-clear') return setRoute(null);
       if (a === 'label-clear') return setLabel(null);
       if (a === 'label') return setLabel({ key: lkey(act.dataset.name), name: act.dataset.name, kind: act.dataset.kind === 'promoter' ? 'promoter' : 'label' });
+      if (a === 'venue') return focusVenue(vdir().byVenue[act.dataset.vid]);
+      if (a === 'venue-more') return venueDetails();
+      if (a === 'ven-all') { S.venAll = true; renderVenues(); return; }
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
       if (a === 'list-all') { S.listAll = true; renderListings(); return; }
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
@@ -1805,6 +2104,8 @@
     if (tab) { track('open_tab', { tab: tab.dataset.tab }); return selectTab(tab.dataset.tab); }
     const evRow = t.closest('[data-ev]');
     if (evRow) return openEvent(evRow.dataset.ev);
+    const vRow = t.closest('[data-venue]');
+    if (vRow) return focusVenue(vdir().byId[vRow.dataset.venue]);
     const sg = t.closest('[data-sgenre]');
     if (sg) { setGenre(sg.dataset.sgenre, true); MapView.flyToCity(S.ds.cityById[sg.dataset.city]); return; }
     const cityEl = t.closest('[data-city]');
@@ -1866,10 +2167,10 @@
     $('#locate').addEventListener('click', () => { movedSinceStart = true; locateMe(); });
     // Once the visitor moves the map or searches, a late position from startNear() stays out of the way.
     ['pointerdown', 'wheel', 'keydown'].forEach(type => $('#stage').addEventListener(type, () => { movedSinceStart = true; }, { capture: true, passive: true }));
-    $('#q').addEventListener('focus', () => { movedSinceStart = true; });
+    $('#q').addEventListener('focus', () => { movedSinceStart = true; loadVenues(); });
     $('#brand').addEventListener('click', ev => { ev.preventDefault(); setRoute(null); if (S.label) setLabel(null); if (S.sel) closeDrawer(); MapView.home(true); });
     $('#layers-btn').addEventListener('click', () => toggleLayers($('#layers').hidden));
-    const lyMap = { 'ly-belt': 'belt', 'ly-heat': 'heat', 'ly-fest': 'fest', 'ly-tours': 'tours', 'ly-labels': 'labels' };
+    const lyMap = { 'ly-belt': 'belt', 'ly-heat': 'heat', 'ly-fest': 'fest', 'ly-tours': 'tours', 'ly-venues': 'venues', 'ly-labels': 'labels' };
     Object.keys(lyMap).forEach(id => $('#' + id).addEventListener('change', ev => { S.layers[lyMap[id]] = ev.target.checked; MapView.changed(true); }));
     $('#ly-streets').addEventListener('change', ev => MapView.setStreets(ev.target.checked));
     $('#peak-pill').addEventListener('click', () => selectTab('peakcon', true));

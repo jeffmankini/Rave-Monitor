@@ -219,6 +219,7 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .lg-hollow { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink-2); }
 .lg-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); box-shadow: 0 0 0 2px var(--void), 0 0 0 3.5px var(--now); }
 .lg-fest { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink-2); }
+.lg-ring { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(169,171,203,.8); background: rgba(169,171,203,.18); }
 .lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(246,236,216,.08); }
 .legend .demo-note { color: var(--ink-3); }
 /* One quiet line at the bottom: the archive, policies and privacy settings. */
@@ -405,6 +406,39 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .legend .gkey { display: inline-flex; align-items: center; gap: 5px; }
 .dlg .legal a { color: inherit; }
 
+/* venues */
+.vhead { display: flex; justify-content: space-between; gap: 12px; padding: 2px 16px 6px; color: var(--ink-3); font-size: var(--s-11); }
+.vrow { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 12px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--line); cursor: pointer; }
+.vrow:hover, .vrow:focus-visible { background: var(--deck-2); }
+.vrow .what { min-width: 0; }
+.vrow .title { display: block; font-weight: 620; font-size: var(--s-13); font-stretch: 92%; color: var(--ink); overflow-wrap: anywhere; }
+.vrow.quiet .title { color: var(--ink-2); font-weight: 560; }
+.vrow .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; color: var(--ink-2); font-size: var(--s-12); margin-top: 1px; }
+.vrow .sub2 { color: var(--ink-3); font-size: var(--s-12); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vside { display: grid; justify-items: end; gap: 6px; }
+.vside b { font-size: var(--s-14); font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1; }
+.vside b.none { color: var(--ink-3); font-weight: 500; }
+.vbar { display: flex; gap: 1px; width: 100%; height: 5px; border-radius: 3px; overflow: hidden; background: rgba(169,171,203,.12); }
+.vbar i { display: block; height: 100%; min-width: 2px; background: var(--c); }
+.vbar.big { height: 7px; border-radius: 4px; margin: 12px 0 8px; }
+.vtag { display: inline-block; color: var(--ink-3); font-size: var(--s-11); border: 1px solid var(--line); border-radius: 9px; padding: 0 7px; line-height: 17px; white-space: nowrap; }
+.vcard { margin: 4px 16px 12px; padding: 14px 14px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--deck-2); }
+.vc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.vc-head h3 { margin: 0; font-size: var(--s-16); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.vc-head p { margin: 3px 0 0; color: var(--ink-2); font-size: var(--s-12); line-height: 1.4; }
+.vc-mix { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: var(--s-12); color: var(--ink-2); }
+.vc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 12px 0 0; background: var(--line); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.vc-stats > div { background: var(--deck); padding: 8px 10px; }
+.vc-stats dt { color: var(--ink-3); font-size: var(--s-11); }
+.vc-stats dd { margin: 3px 0 0; font-size: var(--s-13); font-weight: 600; }
+.vc-reg { margin: 10px 0 0; color: var(--ink-2); font-size: var(--s-12); line-height: 1.6; }
+.vc-reg > span:first-child { color: var(--ink-3); margin-right: 6px; }
+.vc-reg .nw { white-space: nowrap; }
+.vc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.vc-actions .btn { height: 34px; padding: 0 12px; }
+.vcard .fine { padding: 10px 0 0; }
+.dr-venue .linkish { text-decoration-color: rgba(169,171,203,.45); }
+
 /* ---------- event drawer ---------- */
 .drawer {
   position: fixed; z-index: 30; background: var(--deck); overflow: auto; overscroll-behavior: contain;
@@ -548,7 +582,14 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .tabbed .ph { padding: 10px 16px 4px; }
 
   /* Lists */
-  .erow, .wrow, .hrow, .grow, .orow, .srow { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .erow, .wrow, .hrow, .grow, .orow, .srow, .vrow, .vhead { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .vrow { padding-top: 12px; padding-bottom: 12px; }
+  .vrow .title { font-size: var(--s-14); }
+  .vrow .sub, .vrow .sub2 { font-size: var(--s-13); }
+  .vcard { margin: 6px 14px 12px; }
+  .vc-head h3 { font-size: 18px; }
+  .vc-head p { font-size: var(--s-13); }
+  .vc-actions .btn { flex: 1 1 auto; justify-content: center; height: 44px; font-size: var(--s-14); border-radius: 10px; }
   .erow { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; padding-top: 12px; padding-bottom: 12px; }
   .erow .title { font-size: var(--s-14); }
   .erow .sub, .erow .sub2 { font-size: var(--s-13); }
@@ -681,6 +722,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <label><input type="checkbox" id="ly-belt" checked> <span>Night and club hours<small>Where it's roughly 11 pm to 4 am</small></span></label>
         <label><input type="checkbox" id="ly-heat" checked> <span>Scene heat<small>Glow by activity, next 72 hours</small></span></label>
         <label><input type="checkbox" id="ly-fest" checked> <span>Festivals</span></label>
+        <label><input type="checkbox" id="ly-venues" checked> <span>Venues<small>Every club and venue in the listings, as you zoom in</small></span></label>
         <label><input type="checkbox" id="ly-tours"> <span>Headliner tour routes<small>Next gig to next gig</small></span></label>
         <label><input type="checkbox" id="ly-streets" checked> <span>Street map<small>Streets and neighbourhoods as you zoom in</small></span></label>
         <label><input type="checkbox" id="ly-labels" checked> <span>Place names</span></label>
@@ -697,6 +739,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
         <span><i class="lg-live"></i>Live now</span>
         <span><i class="lg-hollow"></i>Sold out</span>
         <span class="lg-extra"><i class="lg-fest"></i>Festival</span>
+        <span class="lg-extra"><i class="lg-ring"></i>Venue</span>
         <span class="lg-extra"><i class="lg-band"></i>Club hours</span>
         <span class="lg-genres" id="lg-genres" hidden></span>
         <span class="demo-note">Demo listings, fictional</span>
