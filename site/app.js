@@ -283,7 +283,7 @@
     });
     // A venue, promoter or label in focus: its card first.
     const card = !S.label ? '' : S.label.kind === 'venue' ? venueCard(S.label.venue, null, false) : crewCard(crewOf(S.label.kind === 'label' ? 'label' : 'promoter', S.label.key, S.label.name), null, false);
-    if (!list.length && card && S.label.kind === 'venue' && S.label.venue.osmOnly) {
+    if (!list.length && card && S.label.kind === 'venue' && S.label.venue.unlisted) {
       body('listings').innerHTML = card + '<p class="fine">No listings for ' + esc(S.label.name) + ' yet. When a night there is listed, it shows up here and on the map.</p>';
       meta('listings', ''); return;
     }
@@ -908,7 +908,7 @@
     const n = D.win.length;
     if (S.label.kind === 'venue') {
       const k = new Set(D.win.map(e => nightKey(e.start, city(e).tz))).size;
-      chip.innerHTML = '<span>' + esc(S.label.name) + ' · ' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : S.label.venue.osmOnly ? 'no listings yet' : 'nothing ' + WIN_LABEL[S.win]) + '</span>' +
+      chip.innerHTML = '<span>' + esc(S.label.name) + ' · ' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : S.label.venue.unlisted ? 'no listings yet' : 'nothing ' + WIN_LABEL[S.win]) + '</span>' +
         '<button type="button" data-act="venue-more">Details</button><button type="button" data-act="label-clear">Clear</button>';
     } else {
       chip.innerHTML = '<span>' + (S.label.kind === 'promoter' ? 'Promoter: ' : 'Label: ') + esc(S.label.name) + ' · ' + (n ? plural(n, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing coming up') + '</span>' +
@@ -982,6 +982,7 @@
     });
   }
   const osmUrl = id => 'https://www.openstreetmap.org/' + ({ n: 'node', w: 'way', r: 'relation' }[String(id)[0]] || 'node') + '/' + String(id).slice(1);
+  const OSM_LINK = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit">OpenStreetMap</a> (© OpenStreetMap contributors)';
   // Words that don't tell venues apart, left out when one name has to contain the other.
   const GENERIC_WORD = /^(club|bar|nightclub|lounge|room|hall|and|disco|discotheque|music|live|venue|house|de|la|le|el|der|die|das)$/;
   const distinctWords = k => new Set(k.split(' ').filter(w => w && !GENERIC_WORD.test(w)));
@@ -1013,11 +1014,36 @@
       add(x);
       [vkey(x.name, c.name)].concat(r[14] || []).forEach(k => { const kk = x.cityId + '|' + k; if (k && !byKey.has(kk)) byKey.set(kk, x); });
     });
+    // Curated venues (config/venues.json): their exact spot, address and website, even before a listing
+    // names them. A venue in the directory or the feed joins one when it has one of its names, or has one
+    // inside its own name (spaces aside) at the same spot.
+    const curated = [];
+    const curOf = (cityId, k, lat, lon, approx) => {
+      const t = k.replace(/ /g, '');
+      return curated.find(y => y.cityId === cityId && (approx || !Number.isFinite(lat) || kmBetween(lat, lon, y.lat, y.lon) < 0.15) && y.cur.tight.some(c => t.indexOf(c) >= 0)) || null;
+    };
+    (window.RM_VENUES || []).forEach(cv => {
+      const c = cv && ds.cityById[cv.city];
+      if (!c || !cv.name || !Number.isFinite(cv.lat) || !Number.isFinite(cv.lon)) return;
+      const keys = [cv.name].concat(cv.match || []).map(n => vkey(n, c.name)).filter(Boolean);
+      if (!keys.length) return;
+      const tight = keys.map(k => k.replace(/ /g, ''));
+      let x = keys.map(k => byKey.get(c.id + '|' + k)).find(Boolean) ||
+        list.find(y => y.cityId === c.id && !y.cur && (y.approx || kmBetween(y.lat, y.lon, cv.lat, cv.lon) < 0.15) && tight.some(t => vkey(y.name, c.name).replace(/ /g, '').indexOf(t) >= 0));
+      if (!x) {
+        x = { id: c.id + '-' + (slugify(keys[0]) || 'venue'), name: cv.name, cityId: c.id, city: c, lat: cv.lat, lon: cv.lon, approx: false, concert: false,
+          address: '', nights: 0, first: null, last: null, genres: null, regulars: [], vids: new Set(), evs: [], feedOnly: true };
+        add(x);
+      }
+      Object.assign(x, { name: cv.name, lat: cv.lat, lon: cv.lon, approx: false, osmPos: false, address: cv.address || x.address, cur: { url: cv.url || '', tight: tight } });
+      keys.forEach(k => byKey.set(c.id + '|' + k, x));
+      curated.push(x);
+    });
     ds.venues.forEach(v => {
       const c = ds.cityById[v.cityId]; if (!c) return;
       const k = vkey(v.name, c.name) || norm(v.name).trim(), kk = v.cityId + '|' + k;
       if (NOT_A_VENUE.test(k)) return;
-      let x = byKey.get(kk);
+      let x = byKey.get(kk) || curOf(v.cityId, k, v.lat, v.lon, v.approx);
       if (!x) {
         x = { id: v.cityId + '-' + (slugify(k) || 'venue'), name: v.name, cityId: v.cityId, city: c, lat: v.lat, lon: v.lon, approx: !!v.approx, concert: isConcert(v.name),
           address: '', nights: 0, first: null, last: null, genres: null, regulars: [], vids: new Set(), evs: [], feedOnly: true };
@@ -1073,6 +1099,7 @@
       x.soon = new Set(x.evs.map(e => nightKey(e.start, x.city.tz))).size; // nights coming up in the feed
       if (x.feedOnly) { const g = {}; x.evs.forEach(e => { g[e.genre] = (g[e.genre] || 0) + 1; }); x.genres = g; x.nights = x.soon; }
       x.main = mainGenre(x.genres);
+      x.unlisted = !!x.osmOnly || (!!x.cur && !x.nights && !x.evs.length); // no listings yet
     });
     V.built = { ds: ds, rows: V.rows, ov: O.ver, t: S.now, list: list, byId: byId, byVenue: byVenue, byKey: byKey };
     // A venue in focus moves to its entry in the new directory (from the feed's venue to the merged one).
@@ -1135,9 +1162,9 @@
   const venueArchiveUrl = x => '/archive/?venue=' + encodeURIComponent(x.name.replace(/^the\s+/i, '')) + '&city=' + encodeURIComponent(x.cityId);
   const nextOf = (x, w) => (w && w.evs.length ? w.evs : x.evs.filter(e => e.end > S.now)).slice().sort((a, b) => a.start - b.start)[0];
   function venueRow(x, w) {
-    if (x.osmOnly) {
+    if (x.unlisted) {
       return '<li class="vrow quiet" data-venue="' + esc(x.id) + '" tabindex="0" role="button"><div class="what"><span class="title">' + esc(x.name) + '</span>' +
-        '<div class="sub"><span>' + esc(x.city.name) + '</span>' + (x.osm.kind === 1 ? '<span class="vtag">Music venue</span>' : '') + '</div>' +
+        '<div class="sub"><span>' + esc(x.city.name) + '</span>' + (x.osm && x.osm.kind === 1 ? '<span class="vtag">Music venue</span>' : '') + '</div>' +
         (x.address ? '<div class="sub2">' + esc(shortAddress(x.address, x.city.name)) + '</div>' : '') + '</div>' +
         '<div class="vside"><b class="none">–</b><span class="vbar" aria-hidden="true"></span></div></li>';
     }
@@ -1160,7 +1187,7 @@
     }).join(' ') + '</p>' : '';
     const stats = full ? '<dl class="vc-stats"><div><dt>Coming up</dt><dd>' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'Nothing ' + WIN_LABEL[S.win]) + '</dd></div>' +
       '<div><dt>Nights listed</dt><dd>' + (x.nights ? fmtN(x.nights) + (x.first ? ' since ' + fmtNight(x.first, true) : '') : 'None yet') + '</dd></div></dl>' : '';
-    const q = x.name + ', ' + (x.address || c.name), addr = shortAddress(x.address, c.name, x.name), web = x.osm && x.osm.website;
+    const q = x.name + ', ' + (x.address || c.name), addr = shortAddress(x.address, c.name, x.name), web = (x.cur && x.cur.url) || (x.osm && x.osm.website);
     return '<div class="vcard"><div class="vc-head"><div><h3>' + esc(x.name) + '</h3><p>' + esc(c.name) + (addr ? ' · ' + esc(addr) : '') + '</p></div>' +
       (x.concert ? '<span class="vtag">Concert venue</span>' : x.osmOnly && x.osm.kind === 1 ? '<span class="vtag">Music venue</span>' : '') + '</div>' +
       (sh.length ? genreBar(x.genres, 'big') + '<p class="vc-mix">' + sh.slice(0, 4).map(s => '<span class="gtag" style="--c:' + RM.GENRE[s.id].color + '">' + esc(RM.GENRE[s.id].name) + ' ' + Math.round(s.p * 100) + '%</span>').join('') + '</p>' : '') +
@@ -1184,7 +1211,7 @@
       html += venueCard(focus, win.get(focus.id), true);
       pool = dir.list.filter(x => x !== focus && x.cityId === focus.cityId);
     } else if (D.L.area) pool = dir.list.filter(x => MapView.inView(x.lon, x.lat) || Array.from(x.vids).some(id => S.area.has(id)));
-    else pool = dir.list.filter(x => !x.osmOnly);
+    else pool = dir.list.filter(x => !x.unlisted);
     // A label or promoter keeps the venues with its nights; a genre filter, those with nights of that
     // sound coming up or known for it.
     const lab = S.label && S.label.kind !== 'venue';
@@ -1192,8 +1219,8 @@
     else if (S.genres.size) pool = pool.filter(x => k(x) > 0 || (x.main && S.genres.has(x.main)));
     // Places with no listings yet (from OpenStreetMap), for a venue's city or the area in view: their
     // cities' lists load here when the area holds four cities or fewer.
-    const unlisted = pool.filter(x => x.osmOnly).sort((a, b) => a.name.localeCompare(b.name));
-    pool = pool.filter(x => !x.osmOnly);
+    const unlisted = pool.filter(x => x.unlisted).sort((a, b) => !!a.osmOnly - !!b.osmOnly || a.name.localeCompare(b.name));
+    pool = pool.filter(x => !x.unlisted);
     if (S.ds.source !== 'demo' && !lab && !S.genres.size && (focus || D.L.area)) {
       const ids = new Set(focus ? [focus.cityId] : pool.map(x => x.cityId));
       const mid = !focus && MapView.center(), near = mid && S.ds.cities.filter(c => Number.isFinite(c.lat)).map(c => ({ c: c, d: kmBetween(mid[1], mid[0], c.lat, c.lon) })).sort((a, b) => a.d - b.d)[0];
@@ -1222,7 +1249,8 @@
     if (clubs.length > cap || big.length > capBig || unlisted.length > capOsm) html += '<button class="more" type="button" data-act="ven-all">Show all ' + fmtN(pool.length + unlisted.length) + ' venues</button>';
     html += '<p class="fine">' + (S.ds.source === 'demo' ? 'Demo venues, fictional. ' : '') + 'Venues come from the listings: ' + (V.rows ? 'every place that has hosted a night since the archive began, with each platform\'s spelling merged' : 'every place with a night coming up') + '. Select one to see it on the map with its nights.' +
       (V.state === 'none' && S.ds.source !== 'demo' ? ' The venue history didn\'t load, so this shows venues with listings coming up.' : '') +
-      (unlisted.length || dir.list.some(x => x.osm) ? ' Places with no listings yet, and some addresses and websites, come from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit">OpenStreetMap</a> (© OpenStreetMap contributors).' : '') + '</p>';
+      (unlisted.some(x => x.osmOnly) ? ' ' + (unlisted.every(x => x.osmOnly) ? 'Places' : 'Most places') + ' with no listings yet, and some addresses and websites, come from ' + OSM_LINK + '.'
+        : dir.list.some(x => x.osm) ? ' Some addresses and websites come from ' + OSM_LINK + '.' : '') + '</p>';
     body('venues').innerHTML = html;
     meta('venues', focus ? '' : fmtN(pool.length + unlisted.length) + (D.L.area ? ' in view' : ''));
   }
@@ -1528,7 +1556,7 @@
       const word = k => (' ' + k).indexOf(' ' + ls) >= 0;
       const d = vdir(), hits = d.list.filter(x => word(lkey(x.name)))
         .sort((a, b) => !!a.osmOnly - !!b.osmOnly || (b.soon > 0) - (a.soon > 0) || b.nights - a.nights || a.name.length - b.name.length).slice(0, 5);
-      hits.forEach(x => out.push({ g: 'Venues', kind: 'venue', id: x.id, label: x.name, hint: x.city.name + ' · ' + (x.osmOnly ? 'no listings yet' : x.soon ? plural(x.soon, 'night', 'nights') + ' coming up' : 'nothing coming up') }));
+      hits.forEach(x => out.push({ g: 'Venues', kind: 'venue', id: x.id, label: x.name, hint: x.city.name + ' · ' + (x.unlisted ? 'no listings yet' : x.soon ? plural(x.soon, 'night', 'nights') + ' coming up' : 'nothing coming up') }));
       // OpenStreetMap's clubs in cities whose lists haven't loaded yet, by name.
       loadOsmNames();
       if (O.names && hits.length < 5) {
@@ -2209,7 +2237,7 @@
           let px, py;
           if (vl) { px = vl.x; py = vl.y; }
           else { if (!vis(x.lon, x.lat)) return; const p = proj([x.lon, x.lat]); if (!onScreen(p)) return; px = p[0]; py = p[1]; }
-          if (x.osmOnly) { ringMarks.push({ ve: x, x: px, y: py, r: 2.2 * k + 0.8, active: false, osm: true, col: '#a9abcb' }); return; }
+          if (x.unlisted) { ringMarks.push({ ve: x, x: px, y: py, r: 2.2 * k + 0.8, active: false, quiet: true, osm: !!x.osmOnly, col: '#a9abcb' }); return; }
           const r = (2.6 + Math.sqrt(Math.max(1, x.nights)) * 0.85) * k;
           ringMarks.push({ ve: x, x: px, y: py, r: vl ? Math.max(vl.R + 3.5, r) : r, active: !!vl, col: x.main ? RM.GENRE[x.main].color : '#8b8fa8' });
         });
@@ -2259,7 +2287,7 @@
       ringMarks.forEach(rm => {
         const on = isF(rm.ve);
         ctx.beginPath(); ctx.arc(rm.x, rm.y, rm.r, 0, Math.PI * 2);
-        if (rm.osm) {
+        if (rm.quiet) {
           // No listings yet: a faint dashed ring.
           ctx.fillStyle = rgba(rm.col, 0.06); ctx.fill();
           ctx.setLineDash(on ? [] : [2, 2]); ctx.lineWidth = on ? 2 : 1; ctx.strokeStyle = on ? C.now : rgba(rm.col, 0.6); ctx.stroke(); ctx.setLineDash([]);
@@ -2341,7 +2369,10 @@
         } else {
           cityMarks.forEach(cm => put(cm.c.name, cm.x, cm.y - 22, C.ink, '700 13px ' + FONT, 'center'));
           // Venues without a real position sit near the city center; at street level that would look exact.
-          // The venue in focus gets its name placed first. Names are tappable: they open the venue.
+          // The venue in focus gets its name placed first, even with nothing coming up. Names are tappable:
+          // they open the venue.
+          const fr = fvId ? ringMarks.find(rm => isF(rm.ve) && !rm.active) : null;
+          if (fr) { const box = put(fr.ve.name, fr.x + fr.r + 4, fr.y, C.now, '700 12px ' + FONT); if (box) labelHits.push({ box: box, ve: fr.ve }); }
           venueLabels.sort((a, b) => isF(b.ve) - isF(a.ve) || b.n - a.n).forEach(vl => {
             const on = isF(vl.ve);
             const box = put(vl.approx ? vl.name + ' (location approximate)' : vl.name, vl.x + vl.R + 5, vl.y, on ? C.now : vl.approx ? C.ink3 : C.ink2, on ? '700 12px ' + FONT : undefined);
@@ -2356,12 +2387,12 @@
             put(line + (vl.n > 1 ? '  +' + (vl.n - 1) : ''), vl.x + vl.R + 5, vl.y + 17, gen(e).color, '500 10.5px ' + FONT);
           });
           // Closer in, the quiet venues' names too, where there's room.
-          if (ppd >= 420) ringMarks.filter(rm => !rm.active && !rm.osm).sort((a, b) => isF(b.ve) - isF(a.ve) || b.ve.nights - a.ve.nights).forEach(rm => {
+          if (ppd >= 420) ringMarks.filter(rm => !rm.active && !rm.quiet && rm !== fr).sort((a, b) => isF(b.ve) - isF(a.ve) || b.ve.nights - a.ve.nights).forEach(rm => {
             const on = isF(rm.ve), box = put(rm.ve.name, rm.x + rm.r + 4, rm.y, on ? C.now : C.ink3, on ? '700 12px ' + FONT : '500 10.5px ' + FONT);
             if (box) labelHits.push({ box: box, ve: rm.ve });
           });
           // Closer still, the places with no listings yet.
-          ringMarks.filter(rm => rm.osm && (ppd >= 900 || isF(rm.ve))).sort((a, b) => isF(b.ve) - isF(a.ve)).forEach(rm => {
+          ringMarks.filter(rm => rm.quiet && rm !== fr && ppd >= 900).sort((a, b) => isF(b.ve) - isF(a.ve)).forEach(rm => {
             const on = isF(rm.ve), box = put(rm.ve.name, rm.x + rm.r + 4, rm.y, on ? C.now : '#6f7398', on ? '700 12px ' + FONT : '500 10px ' + FONT);
             if (box) labelHits.push({ box: box, ve: rm.ve });
           });
@@ -2409,10 +2440,10 @@
       let html;
       if (h.kind === 'city') {
         html = '<b>' + esc(h.c.name) + '</b>' + plural(h.cm.n, 'event', 'events') + ' ' + WIN_LABEL[S.win] + (h.cm.live && S.win !== 'live' ? ', ' + h.cm.live + ' live now' : '') + '<div class="tline">Select to zoom in</div>';
-      } else if (h.kind === 'venue' && h.ve.osmOnly) {
+      } else if (h.kind === 'venue' && h.ve.unlisted) {
         const x = h.ve;
-        html = '<b>' + esc(x.name) + '</b>' + esc(x.city.name) + (x.osm.kind === 1 ? ', music venue' : '') +
-          '<div class="tline">No listings yet</div><div class="tline">From OpenStreetMap · select to see it</div>';
+        html = '<b>' + esc(x.name) + '</b>' + esc(x.city.name) + (x.osm && x.osm.kind === 1 ? ', music venue' : '') +
+          '<div class="tline">No listings yet</div><div class="tline">' + (x.osmOnly ? 'From OpenStreetMap · select to see it' : 'Select to see it') + '</div>';
       } else if (h.kind === 'venue') {
         const x = h.ve, k = new Set(x.evs.filter(e => RM.inWindow(e, S.ds, S.now, S.win) && RM.inGenres(e, S.genres)).map(e => nightKey(e.start, x.city.tz))).size;
         html = '<b>' + esc(x.name) + '</b>' + esc(x.city.name) + (x.concert ? ', concert venue' : '') +

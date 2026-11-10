@@ -1,0 +1,14 @@
+{
+  "_note": "Venues to show before a listing names them, with details listings may lack. name is how the site shows it; match lists other names listings may use (compared the way venue names are). city is an id from cities.json; lat and lon are the exact spot (looked up on OpenStreetMap); url is the venue's own site. A listing whose venue matches joins the entry, so its nights count here.",
+  "venues": [
+    {
+      "name": "split/shift",
+      "match": ["splitshift", "split shift"],
+      "city": "milwaukee",
+      "address": "231 E Buffalo St, Milwaukee, WI 53202",
+      "lat": 43.03351,
+      "lon": -87.90801,
+      "url": "https://splitshift.fm"
+    }
+  ]
+}
