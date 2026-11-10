@@ -1,10 +1,10 @@
 {
  "updatedAt": "2026-11-10",
- "events": 1936,
+ "events": 1948,
  "firstEvent": "2026-11-05T00:30:00.000Z",
  "lastEvent": "2026-12-11T02:00:00.000Z",
  "months": {
-  "2026-11": 1669,
+  "2026-11": 1681,
   "2026-12": 267
  },
  "cities": {
@@ -37,15 +37,15 @@
   "tbilisi": 16,
   "dublin": 16,
   "copenhagen": 15,
+  "tampa": 13,
   "warsaw": 12,
   "austin": 11,
   "dubai": 10,
   "milwaukee": 9,
   "madrid": 8,
+  "stpete": 8,
   "zurich": 6,
-  "stpete": 5,
   "istanbul": 4,
-  "tampa": 4,
   "munich": 3,
   "brussels": 3,
   "cologne": 3,
@@ -55,11 +55,11 @@
   "auckland": 2
  },
  "genres": {
-  "electronic": 617,
-  "house": 512,
-  "misc": 422,
-  "techno": 293,
-  "afro": 246,
+  "electronic": 623,
+  "house": 513,
+  "misc": 423,
+  "techno": 294,
+  "afro": 249,
   "garage": 169,
   "disco": 104,
   "dnb": 97,
@@ -70,7 +70,7 @@
   "Ticketmaster": 826,
   "Resident Advisor": 637,
   "Skiddle": 459,
-  "Posh": 56,
+  "Posh": 68,
   "Luma": 24,
   "Partiful": 19
  }
