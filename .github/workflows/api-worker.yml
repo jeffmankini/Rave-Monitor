@@ -1,24 +1,27 @@
-name: Deploy the contact form Worker
+name: Deploy the API Worker
 
-# The contact form's back end (worker/contact) on Cloudflare, at https://api.ravemonitor.com/contact.
-# Runs when the Worker changes, or by hand from the Actions tab.
+# The Worker behind https://api.ravemonitor.com (worker/api): the contact form (/contact) and
+# accounts (/v1/...). Runs when the Worker changes, or by hand from the Actions tab.
 #
 # GitHub Actions secrets it needs:
-#   CLOUDFLARE_API_TOKEN   Account > Workers Scripts > Edit, Account Settings > Read, Zone > Workers Routes > Edit
+#   CLOUDFLARE_API_TOKEN   Account > Workers Scripts > Edit, Account Settings > Read, Zone > Workers Routes > Edit,
+#                          and for accounts Account > D1 > Edit
 #   CLOUDFLARE_ACCOUNT_ID  from the Cloudflare dashboard
 #   CONTACT_TO             the verified Email Routing destination address messages go to
 #   TURNSTILE_SECRET       the Turnstile widget's secret key
+#   POSTMARK_TOKEN         for accounts: the Postmark server's API token (sign-in links and alerts)
+# Without D1 access it deploys the contact form alone; without POSTMARK_TOKEN sign-in stays off.
 on:
   push:
     branches: [main]
-    paths: ['worker/contact/**', '.github/workflows/contact-worker.yml']
+    paths: ['worker/api/**', 'test/api-*.test.js', '.github/workflows/api-worker.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: contact-worker
+  group: api-worker
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +33,7 @@ jobs:
         with:
           node-version: 22
       - name: Test the Worker
-        run: node --test test/contact-worker.test.js
+        run: node --test test/api-contact.test.js test/api-accounts.test.js test/keys.test.js
       - name: Check the secrets are set
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -89,29 +92,68 @@ jobs:
           else
             echo "Can't read Email Routing destination addresses with this token (optional: Account > Email Routing Addresses > Read)."
           fi
+      - name: Set up the accounts database
+        id: db
+        working-directory: worker/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          api() { curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database"
+          list=$(api "$base?name=ravemonitor-accounts")
+          if [ "$(echo "$list" | jq -r .success)" != "true" ]; then
+            echo "::notice::The Cloudflare token can't use D1 ($(echo "$list" | jq -r '[.errors[]? | "\(.code) \(.message)"] | join("; ")')). Deploying the contact form alone. To switch on accounts, edit the token and add Account > D1 > Edit."
+            # No database binding, so the deploy doesn't need one.
+            node -e "const fs=require('fs');const f='wrangler.toml';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/\n# Accounts\.[\s\S]*?migrations_dir = \"migrations\"\n/,'\n'))"
+            echo "on=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          id=$(echo "$list" | jq -r '[.result[]? | select(.name == "ravemonitor-accounts")][0].uuid // empty')
+          if [ -z "$id" ]; then
+            made=$(api -X POST "$base" -d '{"name":"ravemonitor-accounts"}')
+            id=$(echo "$made" | jq -r '.result.uuid // empty')
+            [ -n "$id" ] || { echo "::error::Couldn't create the accounts database: $(echo "$made" | jq -c .errors)"; exit 1; }
+            echo "Created the ravemonitor-accounts database."
+          fi
+          sed -i "s/00000000-0000-0000-0000-000000000000/$id/" wrangler.toml
+          npx --yes wrangler@4 d1 migrations apply ravemonitor-accounts --remote
+          echo "on=true" >> "$GITHUB_OUTPUT"
       - name: Deploy to Cloudflare
-        working-directory: worker/contact
+        working-directory: worker/api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4 deploy
       - name: Set the Worker's secrets
-        working-directory: worker/contact
+        working-directory: worker/api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CONTACT_TO: ${{ secrets.CONTACT_TO }}
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+          POSTMARK_TOKEN: ${{ secrets.POSTMARK_TOKEN }}
         run: |
-          jq -n '{CONTACT_TO: env.CONTACT_TO, TURNSTILE_SECRET: env.TURNSTILE_SECRET}' > "$RUNNER_TEMP/secrets.json"
+          jq -n '{CONTACT_TO: env.CONTACT_TO, TURNSTILE_SECRET: env.TURNSTILE_SECRET} + (if (env.POSTMARK_TOKEN // "") != "" then {POSTMARK_TOKEN: env.POSTMARK_TOKEN} else {} end)' > "$RUNNER_TEMP/secrets.json"
           npx --yes wrangler@4 secret bulk "$RUNNER_TEMP/secrets.json"
           rm -f "$RUNNER_TEMP/secrets.json"
+          [ -n "$POSTMARK_TOKEN" ] || echo "::notice::POSTMARK_TOKEN isn't set, so sign-in stays off. Add the Postmark server's API token as a secret to switch it on."
+      - name: Check Postmark
+        env:
+          POSTMARK_TOKEN: ${{ secrets.POSTMARK_TOKEN }}
+        run: |
+          [ -n "$POSTMARK_TOKEN" ] || { echo "No POSTMARK_TOKEN; skipping."; exit 0; }
+          server=$(curl -s -H "Accept: application/json" -H "X-Postmark-Server-Token: $POSTMARK_TOKEN" https://api.postmarkapp.com/server)
+          if echo "$server" | jq -e .ID > /dev/null; then echo "Postmark server: $(echo "$server" | jq -r .Name)"
+          else echo "::error::POSTMARK_TOKEN isn't a working Postmark server token: $(echo "$server" | jq -r '.Message // "no answer"'). Copy it from your server's API Tokens tab in Postmark."; fi
       - name: Check it answers
         run: |
           for i in 1 2 3 4 5 6; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS -H 'Origin: https://ravemonitor.com' https://api.ravemonitor.com/contact || true)
             echo "OPTIONS /contact: $code"
-            [ "$code" = "204" ] && exit 0
+            if [ "$code" = "204" ]; then
+              echo "GET /v1/health: $(curl -s -H 'Origin: https://ravemonitor.com' https://api.ravemonitor.com/v1/health)"
+              exit 0
+            fi
             sleep 20
           done
           echo "::warning::api.ravemonitor.com isn't answering yet. A new custom domain's certificate can take a few minutes."

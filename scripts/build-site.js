@@ -42,7 +42,7 @@ const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').repl
 // The footer (every page) has the archive, the policies and the consent tool's Privacy Settings link
 // (with the id Usercentrics looks for); the About panel lists the policies by full name.
 const PSL = id => `<a href="#"${id ? ' id="usercentrics-psl"' : ''} data-act="privacy-settings">Privacy Settings</a>`;
-// The contact form (site/contact.html, worker/contact) needs its Worker address and a Turnstile site key.
+// The contact form (site/contact.html, worker/api) needs its Worker address and a Turnstile site key.
 const contactEndpoint = process.env.CONTACT_ENDPOINT || site.contactEndpoint || '';
 const turnstileKey = process.env.TURNSTILE_SITE_KEY || site.turnstileSiteKey || '';
 const contact = !!(contactEndpoint && turnstileKey);
@@ -56,6 +56,15 @@ function termageddon(id) {
 }
 // The event drawer links to the contact form for listing fixes and removals, when there is one.
 parts.__APP_JS__ = `window.RM_CONTACT = ${contact ? "'/contact/'" : "''"};\n` + parts.__APP_JS__;
+// Accounts (site/account.js, with the API Worker in worker/api): on when config/site.json has
+// accountsApi, the Worker's /v1 address. ACCOUNTS_API overrides it (an empty one turns accounts off).
+const accountsApi = String(process.env.ACCOUNTS_API !== undefined ? process.env.ACCOUNTS_API : (site.accountsApi || '')).trim().replace(/\/+$/, '');
+if (accountsApi && !/^(https:\/\/|http:\/\/localhost[:/])[^\s'"<>]+$/.test(accountsApi)) throw new Error(`accountsApi should be an https URL, not "${accountsApi}"`);
+// Sign-in uses the contact form's Turnstile widget; ACCOUNTS_TURNSTILE overrides it (empty for local testing).
+const accountsTs = process.env.ACCOUNTS_TURNSTILE !== undefined ? process.env.ACCOUNTS_TURNSTILE : turnstileKey;
+parts.__APP_JS__ = `window.RM_ACCOUNTS = ${accountsApi ? JSON.stringify({ api: accountsApi, turnstile: accountsTs }) : 'null'};\n` + parts.__APP_JS__;
+parts.__ACCOUNT_JS__ = accountsApi ? read('site/account.js') : '';
+html = html.replace('__ACCOUNTS_ABOUT__', () => accountsApi ? '    <p>If you make an account, we keep your email address, what you follow and save, your settings and your alerts, to show them to you here and to email the alerts you ask for (sent through Postmark). There\'s no password: each sign-in is a link we email you. You can download or delete everything from your account\'s settings.</p>' : '');
 for (const [k, v] of Object.entries(parts)) {
   if (v.includes('</script')) throw new Error(`${k} contains a closing script tag`);
   html = html.replace(k, () => v);
@@ -104,4 +113,4 @@ else if (fs.existsSync(path.join(dist, 'events.json'))) fs.rmSync(path.join(dist
 const streams = path.join(ROOT, 'public', 'streams.json');
 if (fs.existsSync(streams)) fs.copyFileSync(streams, path.join(dist, 'streams.json'));
 else if (fs.existsSync(path.join(dist, 'streams.json'))) fs.rmSync(path.join(dist, 'streams.json'));
-console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB${fs.existsSync(feed) ? ', dist/events.json copied' : ', no feed (the page will show demo data)'}${GA_ID ? `, Google Analytics ${GA_ID}` : ''}${consent ? ', consent tool' : ''}, ${legal.pages.length} policy pages${contact ? ', contact page' : ''}`);
+console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB${fs.existsSync(feed) ? ', dist/events.json copied' : ', no feed (the page will show demo data)'}${GA_ID ? `, Google Analytics ${GA_ID}` : ''}${consent ? ', consent tool' : ''}, ${legal.pages.length} policy pages${contact ? ', contact page' : ''}${accountsApi ? ', accounts' : ''}`);

@@ -108,3 +108,22 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Alerts for people with accounts (pipeline/notify.js), once the new listings are live: new shows
+  # from who they follow, reminders and changes for saved shows, weekly picks, and the emails.
+  # Does nothing until accounts are set up (see the README).
+  alerts:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Write and email alerts
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          POSTMARK_TOKEN: ${{ secrets.POSTMARK_TOKEN }}
+        run: node pipeline/notify.js --feed https://ravemonitor.com/events.json --venues https://ravemonitor.com/archive/data/venues.json

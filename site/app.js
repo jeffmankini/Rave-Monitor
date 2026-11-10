@@ -43,6 +43,8 @@
   const artist = id => S.ds.artistById[id];
   // Label and promoter names compare without case, accents, apostrophes or punctuation, & as 'and'.
   const lkey = s => norm(s).replace(/['’‘`´]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  // Artists compare the same way, except that letters in any script count (as worker/api/src/keys.js).
+  const akey = s => norm(s).replace(/['’‘`´]/g, '').replace(/&/g, ' and ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const labelsOf = e => (e.labels || []).concat(e.promoters || []);
   const hasLabel = e => S.label.kind === 'venue' ? S.label.vids.has(e.venueId) : labelsOf(e).some(n => lkey(n) === S.label.key);
 
@@ -236,6 +238,19 @@
     return k === nightKey(now, tz) ? 'Tonight · ' + name : k === nightKey(now + DAY, tz) ? 'Tomorrow · ' + name : name;
   }
   // Lineup entries that aren't artists: 'TBA', 'SECRET DJ LINE UP', 'special guests', 'residents'.
+  // Follow and Save buttons, when the site has accounts (window.RM_ACCOUNTS). site/account.js keeps them
+  // in step with what the visitor follows and has saved; there are none for demo data.
+  const ACCOUNTS = !!(window.RM_ACCOUNTS && window.RM_ACCOUNTS.api);
+  const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg>';
+  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>';
+  function followBtn(kind, key, name, cityId, mini) {
+    if (!ACCOUNTS || !key || S.ds.source === 'demo') return '';
+    return '<button type="button" class="fbtn' + (mini ? ' mini' : ' btn') + '" data-follow="' + kind + '" data-key="' + esc(key) + '" data-name="' + esc(name) + '"' + (cityId ? ' data-city="' + esc(cityId) + '"' : '') +
+      ' aria-pressed="false" aria-label="' + esc('Follow ' + name) + '">' + (mini ? STAR : 'Follow') + '</button>';
+  }
+  const saveBtn = e => ACCOUNTS && S.ds.source !== 'demo' ? '<button class="btn sbtn" type="button" data-save="' + esc(e.id) + '" aria-pressed="false">' + HEART + '<span>Save</span></button>' : '';
+  // A venue nobody has listed yet (from OpenStreetMap) is followed by the id it will have once listed.
+  const venueFollowKey = x => x.osmOnly ? x.cityId + '-' + (slugify(vkey(x.name, x.city.name)) || 'venue') : x.id;
   const NOT_NAMES = /\b(tba|tbc|tbd|to be announced|line ?-?up|secret|special guests?|surprise|various artists|more acts|and more|residents?|guest djs?)\b|^\+ ?more$|^(guests?|various)$/i;
   function genreText(e) {
     const tags = (e.tags || []).filter(x => x && x.length < 24).slice(0, 2);
@@ -779,7 +794,7 @@
     const timed = e.setsTimed !== false;
     const sets = (e.sets || []).map(s => {
       const on = timed && t >= s.start && t < s.end;
-      return '<li class="' + (on ? 'now' : '') + '">' + (timed ? '<time>' + tTime(s.start, c.tz) + '–' + tTime(s.end, c.tz) + '</time>' : '<time></time>') + '<span><b>' + esc(s.who) + '</b>' + (on ? '<span class="tag">Playing now</span>' : '') + '</span></li>';
+      return '<li class="' + (on ? 'now' : '') + '">' + (timed ? '<time>' + tTime(s.start, c.tz) + '–' + tTime(s.end, c.tz) + '</time>' : '<time></time>') + '<span><b>' + esc(s.who) + '</b>' + (on ? '<span class="tag">Playing now</span>' : '') + (NOT_NAMES.test(s.who) ? '' : followBtn('artist', akey(s.who), s.who, null, true)) + '</span></li>';
     }).join('');
     const tourer = e.heads.map(artist).filter(a => a && a.tier <= 2)[0];
     const when = live ? 'Started ' + dur(t - e.start) + ' ago, ends in ' + dur(e.end - t) + '.' : e.start > t ? 'Doors in ' + dur(e.start - t) + '.' : 'This event has ended.';
@@ -815,6 +830,7 @@
       (tourer ? '<div class="dr-route"><button class="btn" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates on the map</button></div>' : '') +
       '<div class="dr-actions">' +
       (e.url && !demo ? '<a class="btn primary" href="' + esc(e.url) + '" target="_blank" rel="noopener" data-track="ticket_click"' + Object.entries(eventParams(e)).map(([k, v]) => ' data-p-' + k + '="' + esc(String(v)) + '"').join('') + '>' + esc(ticketLabel(e)) + '</a>' : '<span class="btn primary" aria-disabled="true">' + esc(ticketLabel(e)) + '</span>') +
+      saveBtn(e) +
       (tourer ? '<button class="btn route" type="button" data-act="route" data-artist="' + tourer.id + '">Show ' + esc(tourer.name) + '\'s dates</button>' : '') +
       (canShare ? '<button class="btn" type="button" data-act="share">Share</button>' : '<button class="btn" type="button" data-act="copy">Copy details</button>') + '</div>' +
       '<p class="dr-note" id="dr-note">' + note + '</p>' +
@@ -851,7 +867,7 @@
     const chip = $('#route-chip');
     if (!aid) { chip.hidden = true; MapView.changed(false); return; }
     const a = artist(aid), gigs = routeGigs(aid);
-    chip.innerHTML = '<span>' + esc(a.name) + ': ' + plural(gigs.length, 'upcoming date', 'upcoming dates') + '</span><button type="button" data-act="route-clear">Clear</button>';
+    chip.innerHTML = '<span>' + esc(a.name) + ': ' + plural(gigs.length, 'upcoming date', 'upcoming dates') + '</span>' + followBtn('artist', akey(a.name), a.name) + '<button type="button" data-act="route-clear">Clear</button>';
     chip.hidden = false;
     if (S.sel && S.mode === 'narrow') closeDrawer();
     MapView.fitEvents(gigs);
@@ -1192,7 +1208,7 @@
       (x.concert ? '<span class="vtag">Concert venue</span>' : x.osmOnly && x.osm.kind === 1 ? '<span class="vtag">Music venue</span>' : '') + '</div>' +
       (sh.length ? genreBar(x.genres, 'big') + '<p class="vc-mix">' + sh.slice(0, 4).map(s => '<span class="gtag" style="--c:' + RM.GENRE[s.id].color + '">' + esc(RM.GENRE[s.id].name) + ' ' + Math.round(s.p * 100) + '%</span>').join('') + '</p>' : '') +
       stats + reg +
-      '<div class="vc-actions">' +
+      '<div class="vc-actions">' + followBtn('venue', venueFollowKey(x), x.name, x.cityId) +
       (web ? '<a class="btn" href="' + esc(web) + '" target="_blank" rel="noopener nofollow">Website</a>' : '') +
       (demo ? '' : '<a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=' + encodeURIComponent(q) + '" target="_blank" rel="noopener">Directions</a>' +
         (x.osmOnly ? '<a class="btn" href="' + esc(osmUrl(x.osm.id)) + '" target="_blank" rel="noopener">OpenStreetMap</a>' : '<a class="btn" href="' + esc(venueArchiveUrl(x)) + '">Past nights</a>')) +
@@ -1387,7 +1403,7 @@
       '<span class="vtag">' + esc(x.cur && x.cur.kind ? x.cur.kind : x.kind === 'label' ? 'Record label' : 'Promoter') + '</span></div>' +
       (sh.length ? genreBar(x.genres, 'big') + '<p class="vc-mix">' + sh.slice(0, 4).map(s => '<span class="gtag" style="--c:' + RM.GENRE[s.id].color + '">' + esc(RM.GENRE[s.id].name) + ' ' + Math.round(s.p * 100) + '%</span>').join('') + '</p>' : '') +
       stats + venues +
-      '<div class="vc-actions">' +
+      '<div class="vc-actions">' + followBtn(x.kind === 'label' ? 'label' : 'promoter', x.key, x.name) +
       (x.cur && x.cur.url ? '<a class="btn" href="' + esc(x.cur.url) + '" target="_blank" rel="noopener">Website</a>' : '') +
       (demo ? '' : '<a class="btn" href="' + esc(archiveLabelUrl(x.name)) + '">Past nights</a>') +
       (full ? '' : '<button class="btn" type="button" data-act="crew-more">About ' + (x.kind === 'label' ? 'the label' : 'them') + '</button>') +
@@ -2735,6 +2751,27 @@
     setInterval(updateClock, 10000);
     setInterval(() => { S.now = Date.now(); derive(); renderAll(); MapView.changed(true); }, 30000);
     streamsP.then(() => { S.streamsTried = true; mergeStreams(); renderStreams(); });
+    window.RM_APP = {
+      events: () => S.ds.source === 'demo' ? [] : S.ds.events,
+      event: id => S.ds.source === 'demo' ? null : S.ds.eventById[id] || null,
+      cities: () => S.ds.cities.map(c => ({ id: c.id, name: c.name })),
+      city: id => S.ds.cityById[id] || null,
+      cityName: id => (S.ds.cityById[id] || {}).name || id,
+      genres: () => RM.GENRES.map(g => ({ id: g.id, name: g.name, color: g.color })),
+      venueOf: e => { const v = vdir().byVenue[e.venueId]; return v ? { id: v.id, name: v.name, cityId: v.cityId } : null; },
+      venueName: e => (venue(e) || {}).name || '',
+      artistNames: e => e.heads.concat(e.support).map(artist).filter(Boolean).map(a => a.name).filter(n => !NOT_NAMES.test(n)),
+      lkey, akey, track,
+      when: (ms, tz) => tDate(ms, tz) + ', ' + tTime(ms, tz),
+      openEvent: id => { if (!S.ds.eventById[id] || S.ds.source === 'demo') return false; openEvent(id); return true; }
+    };
+    document.dispatchEvent(new CustomEvent('rm:ready'));
+    const link = new URL(location.href), want = link.searchParams.get('event');
+    if (want) {
+      link.searchParams.delete('event');
+      history.replaceState(history.state, '', link.pathname + link.search + link.hash);
+      if (!window.RM_APP.openEvent(want)) toast('That listing has ended or isn\'t listed any more.');
+    }
     setInterval(() => refreshStreams(true), 15 * 60000);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => MapView.changed(false));
   }

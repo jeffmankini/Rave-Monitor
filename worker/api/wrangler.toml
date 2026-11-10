@@ -1,0 +1,46 @@
+# The Worker behind api.ravemonitor.com: the contact form (/contact) and accounts (/v1/...).
+# Its name predates accounts and stays, since the custom domain is attached to it.
+name = "ravemonitor-contact"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+routes = [{ pattern = "api.ravemonitor.com", custom_domain = true }]
+
+send_email = [{ name = "EMAIL" }]
+
+# Accounts. The deploy workflow finds (or creates) the database by name and puts its real id here
+# before deploying; without database access it deploys the contact form alone.
+[[d1_databases]]
+binding = "DB"
+database_name = "ravemonitor-accounts"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1101"
+simple = { limit = 3, period = 60 }
+
+# Sign-in links asked for, per IP address.
+[[ratelimits]]
+name = "AUTH_LIMITER"
+namespace_id = "1102"
+simple = { limit = 5, period = 60 }
+
+# Everything else under /v1, per IP address.
+[[ratelimits]]
+name = "API_LIMITER"
+namespace_id = "1103"
+simple = { limit = 120, period = 60 }
+
+[observability]
+enabled = true
+
+[vars]
+CONTACT_FROM = "hello@ravemonitor.com"
+ALLOWED_ORIGINS = "https://ravemonitor.com,https://www.ravemonitor.com"
+TURNSTILE_HOSTNAMES = "ravemonitor.com,www.ravemonitor.com"
+SITE_URL = "https://ravemonitor.com"
+MAIL_FROM = "hello@ravemonitor.com"
+MAIL_FROM_NAME = "Rave Monitor"
+POSTMARK_STREAM = "outbound"

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handle, mime, TOPICS } from '../worker/contact/src/handler.js';
+import { handle, mime, TOPICS } from '../worker/api/src/handler.js';
 
 const ORIGIN = 'https://ravemonitor.com';
 function setup(over = {}) {

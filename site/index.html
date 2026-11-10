@@ -498,6 +498,7 @@ body.narrow .dr-grip { display: block; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { border: 1px solid var(--line); border-radius: 12px; padding: 3px 9px; font-size: var(--s-12); color: var(--ink-2); }
 .dr-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px; }
+.dr-route { display: none; }
 .btn { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck-2); color: var(--ink); font-size: var(--s-13); font-weight: 600; display: inline-flex; align-items: center; text-decoration: none; }
 .btn.primary { background: var(--now); border-color: var(--now); color: var(--now-ink); }
 .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
@@ -529,6 +530,72 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 .srctable .n { text-align: right; font-variant-numeric: tabular-nums; }
 .sets.untimed li { grid-template-columns: 0 minmax(0, 1fr); gap: 0; }
 
+/* ---------- accounts (site/account.js): header buttons, Follow and Save, the account dialog ---------- */
+.top-acct { display: flex; align-items: center; gap: 10px; margin-left: -4px; flex: none; }
+.top-acct:not(:has(.hbtn:not([hidden]))) { display: none; }
+.hbtn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; min-width: 32px; padding: 0 10px 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck); color: var(--ink); font-size: var(--s-13); white-space: nowrap; }
+.hbtn[hidden] { display: none; }
+.hbtn:hover, .hbtn:focus-visible { border-color: var(--now); color: var(--now); }
+.hbtn svg { width: 18px; height: 18px; flex: none; }
+.hbtn.bell, .hbtn.in { padding: 0; width: 32px; }
+.acct-i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--now); color: var(--now-ink); font-weight: 700; font-size: 12px; }
+.hbtn.acct .badge { display: none; }
+.hbtn .badge { position: absolute; top: -6px; right: -7px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--crit); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--void); }
+.fbtn.btn[aria-pressed="true"], .sbtn[aria-pressed="true"] { background: var(--now); border-color: var(--now); color: var(--now-ink); }
+.sbtn { gap: 6px; }
+.sbtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; flex: none; }
+.sbtn[aria-pressed="true"] svg { fill: currentColor; }
+.fbtn.mini { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -5px 0 -5px 4px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); vertical-align: middle; cursor: pointer; }
+.fbtn.mini svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.fbtn.mini:hover, .fbtn.mini:focus-visible { color: var(--now); background: var(--deck-2); }
+.fbtn.mini[aria-pressed="true"] { color: var(--now); }
+.fbtn.mini[aria-pressed="true"] svg { fill: currentColor; }
+.route-chip .fbtn[aria-pressed="true"] { background: transparent; color: var(--now-ink); box-shadow: inset 0 0 0 1.5px var(--now-ink); }
+#account { width: min(600px, calc(100vw - 32px)); }
+.acct { gap: 12px; }
+.dlg .acct-sub { margin-top: -6px; color: var(--ink-3); font-size: var(--s-12); overflow-wrap: anywhere; }
+.dlg .acct-note { background: var(--deck-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--ink); }
+.acct-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--void); border: 1px solid var(--line); overflow-x: auto; }
+.acct-tabs button { flex: 1 0 auto; height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--ink-2); font-size: var(--s-13); font-weight: 600; white-space: nowrap; }
+.acct-tabs button[aria-selected="true"] { background: var(--deck-2); color: var(--ink); }
+.acct-tabs .badge { display: inline-block; min-width: 18px; height: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px; background: var(--crit); color: #fff; font-size: 11px; line-height: 18px; }
+.dlg .acct-flash { color: var(--now); font-size: var(--s-12); }
+.acct-flash[hidden], .acct-err[hidden], .acct-confirm[hidden] { display: none; }
+.acct-pane { display: grid; gap: 10px; min-height: 120px; align-content: start; }
+.acct-list { list-style: none; margin: 0; padding: 0 !important; display: grid; gap: 0 !important; }
+.acct-list > li { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 2px; max-width: none; }
+.acct-list > li:last-child { border-bottom: 0; }
+.dlg .acct-list p { font-size: var(--s-12); }
+.acct-alert.new { position: relative; padding-left: 14px !important; }
+.acct-alert.new::before { content: ""; position: absolute; left: 0; top: 15px; width: 7px; height: 7px; border-radius: 50%; background: var(--now); }
+.aa-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.aa-t { justify-self: start; text-align: left; font-weight: 650; color: var(--ink); font-size: var(--s-14); }
+.dlg .aa-why { color: var(--ink-3); }
+.acct-picks { list-style: none; margin: 6px 0 0; padding: 0 !important; display: grid; gap: 8px !important; }
+.acct-picks li { display: grid; gap: 1px; font-size: var(--s-13); }
+.acct-picks .linkish { justify-self: start; text-align: left; color: var(--ink); }
+.acct-picks span { color: var(--ink-3); font-size: var(--s-12); }
+.acct-chips { list-style: none; margin: 0; padding: 0 !important; display: grid; gap: 6px !important; }
+.dlg .acct-chips li { max-width: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 5px 5px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--void); font-size: var(--s-13); color: var(--ink); }
+.acct-chips li > span { min-width: 0; overflow-wrap: anywhere; }
+.acct-chips small { color: var(--ink-3); }
+.acct-chips .btn { height: 30px; padding: 0 10px; flex: none; }
+.acct-form { display: grid; gap: 8px; }
+.acct-form > label { font-size: var(--s-12); color: var(--ink-2); }
+.acct-form input[type=email], .acct-form select { height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font-size: var(--s-14); max-width: 100%; }
+.acct-form .btn.primary { justify-content: center; height: 40px; }
+.dlg .acct-err { color: #ff9b9b; }
+.acct-genres { display: flex; flex-wrap: wrap; gap: 6px; }
+.acct-chk { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; font-size: var(--s-13); color: var(--ink); cursor: pointer; line-height: 1.4; }
+.acct-chk input { margin: 1px 0 0; width: 18px; height: 18px; accent-color: var(--now); flex: none; }
+.acct-chk small { display: block; color: var(--ink-3); font-size: var(--s-12); margin-top: 1px; }
+.acct-radios { display: grid; }
+.acct-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn.danger { border-color: rgba(208,59,59,.6); color: #ff9b9b; }
+.acct-confirm { border: 1px solid rgba(208,59,59,.6); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.acct-ts { min-height: 65px; }
+.acct .fine { padding: 0; }
+
 /* ---------- narrow screens ---------- */
 /* Phone-only controls, hidden on wider screens. */
 .win-pick, .lg-toggle, .mapfab { display: none; }
@@ -539,6 +606,22 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .byline { font-size: 11px; }
   .clock, .peak-pill, .demo-chip { display: none; }
   .support span { display: none; }
+  /* Accounts: the account button beside the search, carrying the alert count; no separate bell. */
+  .hbtn, .hbtn.in { width: 44px; height: 44px; padding: 0; border-radius: 12px; }
+  .hbtn .acct-l { display: none; }
+  .hbtn.bell { display: none; }
+  .hbtn.acct .badge { display: block; }
+  .top-acct { order: 4; margin-left: 0; }
+  .top:has(.top-acct .hbtn:not([hidden])) .search { flex: 1 1 calc(100% - 56px); }
+  .acct-tabs button { height: 38px; }
+  .acct-chips .btn, .acct-row .btn { height: 40px; }
+  .fbtn.mini { width: 32px; height: 32px; margin: -8px 0 -8px 2px; }
+  /* 16px stops iOS Safari zooming in on the field. */
+  .acct-form input[type=email], .acct-form select { height: 46px; font-size: 16px; border-radius: 12px; }
+  .acct-form .btn.primary { height: 46px; border-radius: 12px; font-size: var(--s-14); }
+  /* The sheet's bar keeps tickets wide: Save is its heart alone. */
+  body.narrow .dr-actions .sbtn { width: 46px; padding: 0; justify-content: center; flex: none; }
+  body.narrow .dr-actions .sbtn span { display: none; }
   .support { width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 10px; }
   .search { order: 3; flex-basis: 100%; max-width: none; }
   .search kbd { display: none; }
@@ -669,7 +752,6 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   body.narrow .dr-actions .btn.primary { flex: 1 1 auto; }
   body.narrow .dr-actions .btn:not(.primary) { flex: 0 1 auto; }
   body.narrow .dr-actions .btn.route { display: none; }
-  .dr-route { display: none; }
   body.narrow .dr-route { display: block; margin: 14px 18px 0; }
   body.narrow .dr-route .btn { width: 100%; justify-content: center; height: 44px; }
   .dr-note { margin-bottom: calc(18px + env(safe-area-inset-bottom)); }
@@ -683,7 +765,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 }
 /* Phones held sideways: the search fits on the brand's row. */
 @media (max-height: 499px) and (min-width: 600px) and (max-width: 1099px) {
-  .search { order: 0; flex: 1 1 auto; flex-basis: auto; max-width: 460px; }
+  .search, .top:has(.top-acct .hbtn:not([hidden])) .search { order: 0; flex: 1 1 auto; flex-basis: auto; max-width: 460px; }
   .top-right { margin-left: 0; }
 }
 /* Touch screens zoom with two fingers, so the + and - buttons give way. */
@@ -731,6 +813,10 @@ body.ui-idle #map-over { cursor: none !important; }
     <button class="peak-pill" id="peak-pill" type="button" aria-label="Peakcon level"><span>Peakcon</span><b id="peak-num">-</b><span class="meter" id="peak-meter" aria-hidden="true"></span></button>
     <button class="demo-chip" id="demo-chip" type="button">Demo data</button>
     <a class="support" href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" aria-label="Buy me a coffee on Buy Me a Coffee"><svg class="cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h12v4.5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9.5z"/><path d="M16 11.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1 .8 1.5.8 2.6M12 3.5c0 1 .8 1.5.8 2.6"/></svg><span>Buy me a coffee</span></a>
+  </div>
+  <div class="top-acct">
+    <button class="hbtn bell" id="bell-btn" type="button" aria-label="Alerts" hidden></button>
+    <button class="hbtn acct" id="acct-btn" type="button" aria-label="Sign in" hidden></button>
   </div>
 </header>
 
@@ -830,6 +916,7 @@ body.ui-idle #map-over { cursor: none !important; }
     <p>Every listing is kept after the night is over, merged across platforms, so this grows into a living archive of the scene. <span id="about-archive-count"></span><a href="/archive/" style="color:inherit"><b>Search the archive</b></a> by artist, record label, venue, city and month, or download it as a <a href="archive/archive.sqlite" style="color:inherit">SQLite database</a> or a <a href="archive/events.csv" style="color:inherit">spreadsheet (CSV)</a>.</p>
     <p id="about-analytics" hidden>Visits are counted with Google Analytics, with no ad features.</p>
     <p>Near me uses your location only inside your browser, to move the map. It's never sent anywhere. Until you press it, the map starts from a guess based on your time zone.</p>
+__ACCOUNTS_ABOUT__
     <h3>Policies</h3>
     <p class="legal">__LEGAL_LINKS__</p>
     <h3>Where listings come from</h3>
@@ -845,6 +932,11 @@ body.ui-idle #map-over { cursor: none !important; }
   </div>
 </dialog>
 
+<dialog id="account" aria-labelledby="acct-title">
+  <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>
+  <div class="dlg acct" id="acct-body"></div>
+</dialog>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script id="geo" type="application/json">__GEO_JSON__</script>
@@ -853,6 +945,9 @@ __DATA_JS__
 </script>
 <script>
 __APP_JS__
+</script>
+<script>
+__ACCOUNT_JS__
 </script>
 </body>
 </html>
