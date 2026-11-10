@@ -1,6 +1,7 @@
 // Record labels and promoters. Listings have no label field, so labels come from a curated list
 // (config/labels.json) found in the title, a promoter name or a lineup credit like
-// 'Ben UFO (Hessle Audio)'. Promoter names come from the listing itself: names only.
+// 'Ben UFO (Hessle Audio)'. Promoter names come from the listing itself (names only), plus the
+// promoters, collectives and event series of config/promoters.json found the same way.
 import fs from 'node:fs';
 import { norm } from './util.js';
 
@@ -13,6 +14,13 @@ export function labelList(raw) {
   if (raw) return compile(raw);
   if (!LIST) LIST = compile(JSON.parse(fs.readFileSync(new URL('../../config/labels.json', import.meta.url), 'utf8')).labels);
   return LIST;
+}
+let PROMOTERS = null;
+/** The curated promoters, collectives and event series, compiled once. Tests can pass their own. */
+export function promoterList(raw) {
+  if (raw) return compile(raw);
+  if (!PROMOTERS) PROMOTERS = compile(JSON.parse(fs.readFileSync(new URL('../../config/promoters.json', import.meta.url), 'utf8')).promoters);
+  return PROMOTERS;
 }
 function compile(labels) {
   return labels.map(l => ({
@@ -39,6 +47,27 @@ const CREDIT = /[([]([^)\]]{2,60})[)\]]/g;
  * or it's in a credit, so 'Groove Armada' doesn't become Armada Music.
  */
 export function detectLabels(f, list = labelList()) {
+  const out = matchList(f, list, 4);
+  // A promoter named like a label ('American Death Records', 'Roam Recordings') is one, even off the list.
+  // Capitalised only: 'public records' is a club.
+  for (const p of f.promoters || []) {
+    if (out.length === 4) break;
+    if (/\s(Records|Recordings)$/.test(p) && !out.some(n => fold(n) === fold(p) || fold(p).startsWith(fold(n).slice(0, -1) + ' records') || fold(p).startsWith(fold(n).slice(0, -1) + ' recordings'))) out.push(p);
+  }
+  return out;
+}
+
+/** Curated promoters, collectives and event series an event names, at most three (same rules as labels). */
+export function detectPromoters(f, list = promoterList()) { return matchList(f, list, 3); }
+
+/** Promoter names from the listing, then the curated ones it names, once each, at most five. */
+export function mergePromoters(listed, found) {
+  const seen = new Map();
+  for (const n of [...(listed || []), ...(found || [])]) if (n && !seen.has(fold(n))) seen.set(fold(n), n);
+  return [...seen.values()].slice(0, 5);
+}
+
+function matchList(f, list, max) {
   const title = fold(f.title || ''), rawTitle = plain(f.title || '').trim();
   const promoters = (f.promoters || []).map(fold);
   const lines = (f.lineup || []).map(String);
@@ -52,13 +81,7 @@ export function detectLabels(f, list = labelList()) {
       whole.some(x => x === p || x.startsWith(p) && /^ (showcase|soundsystem|sound system|label night|takeover|records|recordings) $/.test(x.slice(p.length - 1))))
       || l.lead.some(re => re.test(rawTitle));
     if (hit) out.push(l.name);
-    if (out.length === 4) break;
-  }
-  // A promoter named like a label ('American Death Records', 'Roam Recordings') is one, even off the list.
-  // Capitalised only: 'public records' is a club.
-  for (const p of f.promoters || []) {
-    if (out.length === 4) break;
-    if (/\s(Records|Recordings)$/.test(p) && !out.some(n => fold(n) === fold(p) || fold(p).startsWith(fold(n).slice(0, -1) + ' records') || fold(p).startsWith(fold(n).slice(0, -1) + ' recordings'))) out.push(p);
+    if (out.length === max) break;
   }
   return out;
 }

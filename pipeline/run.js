@@ -153,7 +153,7 @@ async function main() {
   const { events, merged } = dedupe(all);
   events.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   const usedCities = [...new Set(events.map(e => e.cityId))].map(id => cityById[id]).filter(Boolean)
-    .map(({ id, name, country, lat, lon, tz, region, currency }) => ({ id, name, country, lat, lon, tz, region, currency }));
+    .map(({ id, name, aka, country, lat, lon, tz, region, currency }) => ({ id, name, aka, country, lat, lon, tz, region, currency })); // aka: other names, for search
   report.sort((a, b) => SOURCES.findIndex(s => s.id === a.id) - SOURCES.findIndex(s => s.id === b.id));
   // The feed is public: make sure no key ever rides along in an error message.
   const secrets = ['APIFY_TOKEN', 'TICKETMASTER_KEY', 'SKIDDLE_KEY', 'NETLIFY_AUTH_TOKEN'].map(k => env[k]).filter(v => v && v.length >= 6);

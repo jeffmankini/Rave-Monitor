@@ -550,6 +550,35 @@
       }
     },
     {
+      "id": "tampa",
+      "name": "Tampa",
+      "country": "US",
+      "lat": 27.951,
+      "lon": -82.457,
+      "tz": "America/New_York",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "posh": "Tampa, FL, USA",
+        "ticketmaster": true
+      }
+    },
+    {
+      "id": "stpete",
+      "name": "St. Pete",
+      "aka": ["St. Petersburg"],
+      "country": "US",
+      "lat": 27.768,
+      "lon": -82.64,
+      "tz": "America/New_York",
+      "region": "na",
+      "currency": "USD",
+      "sources": {
+        "posh": "St. Petersburg, FL, USA",
+        "ticketmaster": true
+      }
+    },
+    {
       "id": "denver",
       "name": "Denver",
       "country": "US",

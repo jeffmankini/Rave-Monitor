@@ -12,11 +12,13 @@ let html = read('site/index.html');
 // nothing coming up can point to the archive, and rough time-zone positions (site/tz.json, from
 // scripts/make-tz.js) to start the map near a visitor without asking for their location.
 const labelNames = JSON.parse(read('config/labels.json')).labels.map(l => l.name);
+// The curated promoters and groups (config/promoters.json): what their cards show.
+const promoterInfo = JSON.parse(read('config/promoters.json')).promoters.map(({ name, city, url, kind }) => ({ name, city, url, kind }));
 const tzTable = read('site/tz.json').trim();
 const parts = {
   // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).
   __GEO_JSON__: JSON.stringify((({ lo, lakes }) => ({ lo, lakes }))(JSON.parse(read('site/geo.json')))), __DATA_JS__: read('site/demo-data.js'),
-  __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_TZ = ${tzTable};\n` + read('site/app.js')
+  __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_PROMOTERS = ${JSON.stringify(promoterInfo)};\nwindow.RM_TZ = ${tzTable};\n` + read('site/app.js')
 };
 // Link previews need absolute URLs; set SITE_URL when deploying somewhere else.
 const SITE_URL = (process.env.SITE_URL || 'https://ravemonitor.com').replace(/\/+$/, '');

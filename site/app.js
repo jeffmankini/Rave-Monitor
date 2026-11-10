@@ -25,6 +25,7 @@
     now: Date.now(), win: '24h', genres: new Set(), view: 'map',
     layers: { belt: true, heat: true, fest: true, tours: false, venues: true, labels: true, streets: true },
     sel: null, route: null, mode: null, tab: { right: 'listings', single: 'listings' }, liveAll: false, listAll: false, venAll: false, ds: null,
+    crewKind: 'promoter', crewAll: false, // the Promoters tab: promoters and groups, or record labels
     // Lists follow the map once you zoom in: area is the set of venue ids in view, or null.
     area: null, areaOn: false,
     // A record label, promoter or venue to filter by: { key, name, kind: 'label' | 'promoter' | 'venue' }, or null.
@@ -191,6 +192,7 @@
     heat: { label: 'Scene heat', render: renderHeat },
     listings: { label: 'Listings', render: renderListings },
     venues: { label: 'Venues', render: renderVenues },
+    promoters: { label: 'Promoters', render: renderPromoters },
     wire: { label: 'Wire', render: renderWire },
     genres: { label: 'Genres', render: renderGenres },
     streams: { label: 'Streams', render: renderStreams },
@@ -279,9 +281,9 @@
       const ka = nightKey(a.start, city(a).tz), kb = nightKey(b.start, city(b).tz);
       return ka < kb ? -1 : ka > kb ? 1 : a.start - b.start;
     });
-    // A venue focus: the venue itself first.
-    const card = S.label && S.label.kind === 'venue' ? venueCard(S.label.venue, null, false) : '';
-    if (!list.length && card && S.label.venue.osmOnly) {
+    // A venue, promoter or label in focus: its card first.
+    const card = !S.label ? '' : S.label.kind === 'venue' ? venueCard(S.label.venue, null, false) : crewCard(crewOf(S.label.kind === 'label' ? 'label' : 'promoter', S.label.key, S.label.name), null, false);
+    if (!list.length && card && S.label.kind === 'venue' && S.label.venue.osmOnly) {
       body('listings').innerHTML = card + '<p class="fine">No listings for ' + esc(S.label.name) + ' yet. When a night there is listed, it shows up here and on the map.</p>';
       meta('listings', ''); return;
     }
@@ -617,10 +619,10 @@
 
   /* ---------- layout and tabs ---------- */
   function tabIdsFor(mode) {
-    if (mode === 'wide') return ['listings', 'venues', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+    if (mode === 'wide') return ['listings', 'venues', 'promoters', 'wire', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
     // Phones: planning first, then what's on now.
-    if (mode === 'narrow') return ['listings', 'venues', 'live', 'streams', 'genres', 'wire', 'heat', 'sellouts', 'peakcon', 'surges'];
-    return ['live', 'listings', 'venues', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
+    if (mode === 'narrow') return ['listings', 'venues', 'promoters', 'live', 'streams', 'genres', 'wire', 'heat', 'sellouts', 'peakcon', 'surges'];
+    return ['live', 'listings', 'venues', 'promoters', 'wire', 'heat', 'genres', 'streams', 'sellouts', 'peakcon', 'surges'];
   }
   function layout() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -691,9 +693,12 @@
   }
 
   /* ---------- filters ---------- */
+  // Genres with the most events in the next 7 days first (the Genres tab's order); Misc, the catch-all, last.
   function buildGenreChips() {
+    const rank = new Map(D.genres.map((r, i) => [r.genre.id, i]));
+    const order = RM.GENRES.slice().sort((a, b) => (a.id === 'misc') - (b.id === 'misc') || (rank.has(a.id) ? rank.get(a.id) : 99) - (rank.has(b.id) ? rank.get(b.id) : 99));
     $('#gchips').innerHTML = '<button class="gchip all" type="button" data-genre="all" aria-pressed="true">All genres</button>' +
-      RM.GENRES.map(g => '<button class="gchip" type="button" data-genre="' + g.id + '" aria-pressed="false"><i class="gdot" style="--c:' + g.color + '"></i>' + esc(g.name) + '</button>').join('');
+      order.map(g => '<button class="gchip" type="button" data-genre="' + g.id + '" aria-pressed="false"><i class="gdot" style="--c:' + g.color + '"></i>' + esc(g.name) + '</button>').join('');
   }
   function setGenre(id, only) {
     if (id === 'all') S.genres.clear();
@@ -858,7 +863,7 @@
   // (built into the page) so a search for one with nothing coming up can point to the archive.
   let labelIdx = null;
   function labelIndex() {
-    if (labelIdx && labelIdx.ds === S.ds) return labelIdx.list;
+    if (labelIdx && labelIdx.ds === S.ds) return labelIdx.list; // reset when the archive's names arrive
     const m = new Map(), t = S.now;
     const add = (name, kind, e) => {
       const k = lkey(name); if (!k) return;
@@ -869,13 +874,16 @@
     };
     S.ds.events.forEach(e => { (e.labels || []).forEach(n => add(n, 'label', e)); (e.promoters || []).forEach(n => add(n, 'promoter', e)); });
     (window.RM_LABELS || []).forEach(n => add(n, 'label', null));
+    if (CR.rows) { CR.rows.labels.forEach(r => add(r[0], 'label', null)); CR.rows.promoters.forEach(r => add(r[0], 'promoter', null)); }
+    // A curated group is found as a promoter first, even when it's a label too (split/shift).
+    CURATED().forEach(c => { add(c.name, 'promoter', null); const x = m.get(lkey(c.name)); if (x) { x.kind = 'promoter'; x.name = c.name; } });
     labelIdx = { ds: S.ds, list: Array.from(m.values()) };
     return labelIdx.list;
   }
   const archiveLabelUrl = name => '/archive/?label=' + encodeURIComponent(name);
   function setLabel(x) {
     S.label = x ? { key: x.key, name: x.name, kind: x.kind, venue: x.venue || null, vids: x.vids || null } : null;
-    S.listAll = false; S.venAll = false;
+    S.listAll = false; S.venAll = false; S.crewAll = false;
     const isVenue = S.label && S.label.kind === 'venue';
     if (S.label) {
       const t = S.now, next = S.ds.events.filter(e => e.end > t && hasLabel(e));
@@ -891,6 +899,7 @@
     if (S.label && S.sel && S.mode === 'narrow' && (isVenue || D.win.length)) closeDrawer();
     if (isVenue) MapView.flyToVenue(S.label.venue);
     else if (S.label && D.win.length) MapView.fitEvents(D.win);
+    else if (S.label) { const home = crewOf(S.label.kind === 'label' ? 'label' : 'promoter', S.label.key, S.label.name).home; if (home) MapView.flyToCity(home); } // nothing coming up: its home city
     MapView.changed(false);
   }
   function renderLabelChip() {
@@ -903,7 +912,7 @@
         '<button type="button" data-act="venue-more">Details</button><button type="button" data-act="label-clear">Clear</button>';
     } else {
       chip.innerHTML = '<span>' + (S.label.kind === 'promoter' ? 'Promoter: ' : 'Label: ') + esc(S.label.name) + ' · ' + (n ? plural(n, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'nothing coming up') + '</span>' +
-        (n ? '' : '<a href="' + archiveLabelUrl(S.label.name) + '">Archive</a>') + '<button type="button" data-act="label-clear">Clear</button>';
+        '<button type="button" data-act="crew-more">Details</button><button type="button" data-act="label-clear">Clear</button>';
     }
     chip.hidden = false;
   }
@@ -1065,7 +1074,7 @@
       if (x.feedOnly) { const g = {}; x.evs.forEach(e => { g[e.genre] = (g[e.genre] || 0) + 1; }); x.genres = g; x.nights = x.soon; }
       x.main = mainGenre(x.genres);
     });
-    V.built = { ds: ds, rows: V.rows, ov: O.ver, t: S.now, list: list, byId: byId, byVenue: byVenue };
+    V.built = { ds: ds, rows: V.rows, ov: O.ver, t: S.now, list: list, byId: byId, byVenue: byVenue, byKey: byKey };
     // A venue in focus moves to its entry in the new directory (from the feed's venue to the merged one).
     if (S.label && S.label.kind === 'venue') {
       const old = S.label.venue, nx = byId[old.id] || Array.from(old.vids).map(id => byVenue[id]).find(Boolean);
@@ -1149,7 +1158,7 @@
       const aid = 'n:' + norm(n), comma = i < all.length - 1 ? ',' : '';
       return '<span class="nw">' + (artist(aid) && routeGigs(aid).length ? '<button type="button" class="linkish" data-act="route" data-artist="' + esc(aid) + '">' + esc(n) + '</button>' : esc(n)) + comma + '</span>';
     }).join(' ') + '</p>' : '';
-    const stats = full ? '<dl class="vc-stats"><div><dt>Coming up</dt><dd>' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_SHORT[S.win] : 'Nothing ' + WIN_SHORT[S.win]) + '</dd></div>' +
+    const stats = full ? '<dl class="vc-stats"><div><dt>Coming up</dt><dd>' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'Nothing ' + WIN_LABEL[S.win]) + '</dd></div>' +
       '<div><dt>Nights listed</dt><dd>' + (x.nights ? fmtN(x.nights) + (x.first ? ' since ' + fmtNight(x.first, true) : '') : 'None yet') + '</dd></div></dl>' : '';
     const q = x.name + ', ' + (x.address || c.name), addr = shortAddress(x.address, c.name, x.name), web = x.osm && x.osm.website;
     return '<div class="vcard"><div class="vc-head"><div><h3>' + esc(x.name) + '</h3><p>' + esc(c.name) + (addr ? ' · ' + esc(addr) : '') + '</p></div>' +
@@ -1226,6 +1235,190 @@
   function venueDetails() {
     setMapFull(false); // the card is in the lists, under the map
     selectTab('venues');
+    if (S.mode !== 'wide') { const bar = $('#tabbar'); window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - 4, behavior: reduceMotion ? 'auto' : 'smooth' }); }
+  }
+
+  /* ---------- promoters and labels ---------- */
+  // Who throws the nights: promoters, collectives and event series, and record labels. From the feed's
+  // listings, the archive's history (archive/data/promoters.json, from pipeline/promoters.js) and the
+  // curated list (config/promoters.json: home city, website, kind), so split/shift shows even between nights.
+  const CR = { rows: null, state: 'off', built: {} };
+  function loadCrews() {
+    if (CR.state !== 'off' || !S.ds) return;
+    if (S.ds.source === 'demo') { CR.state = 'none'; return; }
+    CR.state = 'loading';
+    fetch('archive/data/promoters.json').then(r => r.ok ? r.json() : null).then(j => j, () => null).then(j => {
+      CR.rows = j && Array.isArray(j.promoters) ? j : null;
+      CR.state = CR.rows ? 'ready' : 'none';
+      if (!CR.rows) return;
+      CR.built = {}; labelIdx = null;
+      renderAll();
+      if (!$('#results').hidden) renderResults($('#q').value);
+    });
+  }
+  const CURATED = () => window.RM_PROMOTERS || [];
+  // A venue's own nights ("fabric" at fabric, "clubspacemiami" across Club Space's rooms) belong to the
+  // Venues tab: one name inside the other (spaces aside), at the venue of at least half its nights.
+  function venueRun(name, venues, nights) {
+    const a = lkey(name).replace(/ /g, '');
+    if (a.length < 3) return false;
+    const sums = new Map();
+    (venues || []).forEach(v => { const ve = venueNamed(v[0], v[1]), nm = ve ? ve.name : v[0]; sums.set(nm, (sums.get(nm) || 0) + v[2]); });
+    for (const [nm, n] of sums) {
+      const b = lkey(nm).replace(/ /g, '');
+      if (n * 2 >= nights && b.length >= 3 && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0)) return true;
+    }
+    return false;
+  }
+  function crewDir(kind) {
+    const memo = CR.built[kind];
+    if (memo && memo.ds === S.ds && memo.rows === CR.rows && memo.vrows === V.rows && S.now - memo.t < 15 * 60000) return memo; // the venue list decides which are a venue's own
+    const byKey = new Map(), t = S.now;
+    const get = name => {
+      const k = lkey(name); if (!k) return null;
+      let x = byKey.get(k);
+      if (!x) byKey.set(k, x = { key: k, name: name, kind: kind, evs: [], nights: 0, first: null, last: null, cities: {}, genres: {}, venues: [], cur: null, fromArchive: false });
+      return x;
+    };
+    ((CR.rows && CR.rows[kind === 'label' ? 'labels' : 'promoters']) || []).forEach(r => {
+      const x = get(r[0]); if (!x) return;
+      Object.assign(x, { nights: r[1] || 0, first: r[3] || null, last: r[4] || null, cities: r[5] || {}, genres: r[6] || {}, venues: r[7] || [], fromArchive: true });
+    });
+    S.ds.events.forEach(e => { if (e.end > t) (kind === 'label' ? e.labels : e.promoters || []).forEach(n => { const x = get(n); if (x) x.evs.push(e); }); });
+    CURATED().forEach(c => {
+      if (!c.city && !c.url) return;
+      const x = kind === 'promoter' ? get(c.name) : byKey.get(lkey(c.name)); // a label only when it is one
+      if (x) { x.cur = c; x.name = c.name; }
+    });
+    const list = [];
+    byKey.forEach(x => {
+      // From the feed alone: its cities, sounds and venues from what's coming up.
+      if (!x.fromArchive) {
+        const vs = {};
+        x.evs.forEach(e => {
+          x.cities[e.cityId] = (x.cities[e.cityId] || 0) + 1;
+          x.genres[e.genre] = (x.genres[e.genre] || 0) + 1;
+          const vk = e.cityId + '|' + venue(e).name; vs[vk] = (vs[vk] || 0) + 1;
+        });
+        x.venues = Object.keys(vs).sort((a, b) => vs[b] - vs[a]).slice(0, 3).map(vk => { const i = vk.indexOf('|'); return [vk.slice(i + 1), vk.slice(0, i), vs[vk]]; });
+      }
+      x.soon = new Set(x.evs.map(e => e.cityId + '|' + nightKey(e.start, city(e).tz))).size;
+      if (!x.fromArchive) x.nights = x.soon;
+      x.main = mainGenre(x.genres);
+      const home = x.cur && x.cur.city && S.ds.cityById[x.cur.city];
+      x.home = home || S.ds.cityById[Object.keys(x.cities).sort((a, b) => x.cities[b] - x.cities[a])[0]] || null;
+      if (kind === 'promoter' && !x.cur && venueRun(x.name, x.venues, Math.max(1, x.nights))) return;
+      if (!x.home && !x.evs.length && !x.cur) return;
+      list.push(x);
+    });
+    CR.built[kind] = { ds: S.ds, rows: CR.rows, vrows: V.rows, t: S.now, list: list, byKey: byKey };
+    return CR.built[kind];
+  }
+  // Nights in the time window per promoter or label, in the area when the lists follow the map.
+  function crewWindow(kind, areaOnly) {
+    const t = S.now, out = new Map();
+    S.ds.events.forEach(e => {
+      if (!RM.inWindow(e, S.ds, t, S.win) || !RM.inGenres(e, S.genres) || (areaOnly && !S.area.has(e.venueId))) return;
+      (kind === 'label' ? e.labels : e.promoters || []).forEach(n => {
+        const k = lkey(n); let w = out.get(k);
+        if (!w) out.set(k, w = { nights: new Set(), evs: [] });
+        w.nights.add(e.cityId + '|' + nightKey(e.start, city(e).tz)); w.evs.push(e);
+      });
+    });
+    return out;
+  }
+  const cityList = (cities, n) => {
+    const ids = Object.keys(cities || {}).filter(id => S.ds.cityById[id]).sort((a, b) => cities[b] - cities[a]);
+    return ids.slice(0, n).map(id => S.ds.cityById[id].name).join(' · ') + (ids.length > n ? ' +' + (ids.length - n) : '');
+  };
+  function crewRow(x, w) {
+    const k = w ? w.nights.size : 0, evs = (w && w.evs.length ? w.evs : x.evs.filter(e => e.end > S.now)).slice().sort((a, b) => a.start - b.start), next = evs[0];
+    const where = cityList(x.cities, 2) || (x.home ? x.home.name : '');
+    const line = next ? 'Next: ' + (RM.isLive(next, S.now) ? 'live now' : tDay(next.start, city(next).tz) + ' ' + tTime(next.start, city(next).tz)) + ' · ' + venue(next).name + ', ' + city(next).name
+      : x.last ? 'Last night listed ' + fmtNight(x.last) : x.cur ? 'No nights listed yet' : '';
+    const tag = x.cur && x.cur.kind ? x.cur.kind : x.kind === 'label' ? '' : '';
+    return '<li class="vrow' + (k ? '' : ' quiet') + '" data-crew="' + esc(x.key) + '" data-kind="' + x.kind + '" tabindex="0" role="button">' +
+      '<div class="what"><span class="title">' + esc(x.name) + '</span>' +
+      '<div class="sub">' + (where ? '<span>' + esc(where) + '</span>' : '') + (tag ? '<span class="vtag">' + esc(tag) + '</span>' : '') + '</div>' +
+      (line ? '<div class="sub2">' + esc(line) + '</div>' : '') + '</div>' +
+      '<div class="vside"><b' + (k ? '' : ' class="none"') + '>' + (k ? fmtN(k) : '0') + '</b>' + genreBar(x.genres) + '</div></li>';
+  }
+  // A promoter or label in focus: where it's based, where and in what sound it throws nights, its venues and links.
+  function crewCard(x, w, full) {
+    const k = w ? w.nights.size : 0, sh = genreShares(x.genres), demo = S.ds.source === 'demo';
+    const based = x.cur && x.cur.city && S.ds.cityById[x.cur.city] ? 'Based in ' + S.ds.cityById[x.cur.city].name : '';
+    const where = cityList(x.cities, 4);
+    const venues = full && x.venues.length ? '<p class="vc-reg"><span>Venues</span>' + x.venues.map((v, i, all) => {
+      const ve = venueNamed(v[0], v[1]), comma = i < all.length - 1 ? ',' : '';
+      return '<span class="nw">' + (ve ? '<button type="button" class="linkish" data-venue="' + esc(ve.id) + '">' + esc(ve.name) + '</button>' : esc(v[0])) + comma + '</span>';
+    }).join(' ') + '</p>' : '';
+    const stats = full ? '<dl class="vc-stats"><div><dt>Coming up</dt><dd>' + (k ? plural(k, 'night', 'nights') + ' ' + WIN_LABEL[S.win] : 'Nothing ' + WIN_LABEL[S.win]) + '</dd></div>' +
+      '<div><dt>Nights listed</dt><dd>' + (x.nights ? fmtN(x.nights) + (x.first ? ' since ' + fmtNight(x.first, true) : '') : 'None yet') + '</dd></div></dl>' : '';
+    const about = [based, where && (based ? 'nights in ' : 'Nights in ') + where].filter(Boolean).join(' · ');
+    return '<div class="vcard"><div class="vc-head"><div><h3>' + esc(x.name) + '</h3>' + (about ? '<p>' + esc(about) + '</p>' : '') + '</div>' +
+      '<span class="vtag">' + esc(x.cur && x.cur.kind ? x.cur.kind : x.kind === 'label' ? 'Record label' : 'Promoter') + '</span></div>' +
+      (sh.length ? genreBar(x.genres, 'big') + '<p class="vc-mix">' + sh.slice(0, 4).map(s => '<span class="gtag" style="--c:' + RM.GENRE[s.id].color + '">' + esc(RM.GENRE[s.id].name) + ' ' + Math.round(s.p * 100) + '%</span>').join('') + '</p>' : '') +
+      stats + venues +
+      '<div class="vc-actions">' +
+      (x.cur && x.cur.url ? '<a class="btn" href="' + esc(x.cur.url) + '" target="_blank" rel="noopener">Website</a>' : '') +
+      (demo ? '' : '<a class="btn" href="' + esc(archiveLabelUrl(x.name)) + '">Past nights</a>') +
+      (full ? '' : '<button class="btn" type="button" data-act="crew-more">About ' + (x.kind === 'label' ? 'the label' : 'them') + '</button>') +
+      '<button class="btn" type="button" data-act="label-clear">' + (full ? (x.kind === 'label' ? 'All labels' : 'All promoters') : 'Show all listings') + '</button></div></div>';
+  }
+  // The directory's venue for a name in a city, if it has one.
+  function venueNamed(name, cityId) {
+    const d = vdir(), c = S.ds.cityById[cityId];
+    return c ? d.byKey.get(cityId + '|' + (vkey(name, c.name) || norm(name).trim())) || null : null;
+  }
+  // The entry a focus points at, made up from its name when no list has it yet.
+  function crewOf(kind, key, name) {
+    const d = crewDir(kind);
+    return d.byKey.get(key) || { key: key, name: name, kind: kind, evs: [], nights: 0, first: null, last: null, cities: {}, genres: {}, venues: [], cur: null, soon: 0, main: null, home: null };
+  }
+  function renderPromoters() {
+    loadCrews(); loadVenues();
+    const kind = S.crewKind, d = crewDir(kind), areaOn = D.L.area;
+    const focus = S.label && S.label.kind !== 'venue' ? S.label : null;
+    const winAll = crewWindow(kind, false), win = areaOn ? crewWindow(kind, true) : winAll;
+    const k = x => { const w = win.get(x.key); return w ? w.nights.size : 0; };
+    let html = '<div class="crewbar"><div class="seg" role="radiogroup" aria-label="Show">' +
+      ['promoter', 'label'].map(v => '<button type="button" role="radio" data-act="crew-kind" data-kind="' + v + '" aria-checked="' + (kind === v) + '">' + (v === 'label' ? 'Record labels' : 'Promoters & groups') + '</button>').join('') + '</div></div>';
+    if (focus) {
+      const fk = focus.kind === 'label' && kind === 'label' ? 'label' : focus.kind === 'promoter' && kind === 'promoter' ? 'promoter' : null;
+      if (fk) html += crewCard(crewOf(fk, focus.key, focus.name), winAll.get(focus.key), true);
+    }
+    let pool;
+    if (areaOn) {
+      // Nights in the area, or based in or known in a city on the map.
+      const inView = new Set(S.ds.cities.filter(c => MapView.inView(c.lon, c.lat)).map(c => c.id));
+      pool = d.list.filter(x => k(x) > 0 || (x.cur && inView.has(x.cur.city)) || Object.keys(x.cities).some(id => inView.has(id)));
+    } else pool = d.list.filter(x => k(x) > 0 || x.cur);
+    if (S.genres.size) pool = pool.filter(x => k(x) > 0 || (x.main && S.genres.has(x.main)));
+    pool.sort((a, b) => k(b) - k(a) || b.soon - a.soon || b.nights - a.nights || a.name.localeCompare(b.name));
+    const active = pool.filter(x => k(x) > 0).length, cap = S.crewAll ? Infinity : 60;
+    const noun = kind === 'label' ? ['label', 'labels'] : ['promoter or group', 'promoters and groups'];
+    html += (S.mode === 'narrow' ? '' : areaBar()) + '<div class="brief"><b>' + plural(active, noun[0], noun[1]) + '</b> with nights ' + WIN_LABEL[S.win] + (areaOn ? ' in this area' : '') + (S.genres.size ? ' for this genre filter' : '') +
+      (pool.length > active ? ', and ' + fmtN(pool.length - active) + ' more with nothing coming up' : '') + '.' +
+      (areaOn && S.mode === 'narrow' ? ' <button type="button" class="linkish" data-act="area-all">Show everywhere</button>' : '') + '</div>';
+    if (!pool.length) html += '<p class="fine">No ' + noun[1] + (areaOn ? ' in this area' : '') + ' yet.</p>';
+    else {
+      html += '<div class="vhead" aria-hidden="true"><span>' + (kind === 'label' ? 'Label' : 'Promoter or group') + '</span><span>Nights ' + WIN_SHORT[S.win] + '</span></div><ol class="rows">' +
+        pool.slice(0, cap).map(x => crewRow(x, win.get(x.key))).join('') + '</ol>';
+      if (pool.length > cap) html += '<button class="more" type="button" data-act="crew-all">Show all ' + fmtN(pool.length) + '</button>';
+    }
+    html += '<p class="fine">' + (kind === 'label'
+      ? 'Labels come from their names in a listing\'s title, promoters or lineup credits (a curated list, plus any promoter called “… Records”).'
+      : 'Promoters are the ones listings name, plus collectives and event series found in titles. A venue\'s own nights are under Venues.') +
+      ' Select one to see its nights on the map.</p>';
+    body('promoters').innerHTML = html;
+    meta('promoters', fmtN(pool.length) + (areaOn ? ' in view' : ''));
+  }
+  // The chip's Details for a promoter or label: its card in the Promoters tab, scrolled to on phones.
+  function crewDetails() {
+    if (S.label && S.label.kind !== 'venue') S.crewKind = S.label.kind === 'label' ? 'label' : 'promoter';
+    setMapFull(false);
+    selectTab('promoters');
+    renderPromoters();
     if (S.mode !== 'wide') { const bar = $('#tabbar'); window.scrollTo({ top: bar.getBoundingClientRect().top + window.scrollY - 4, behavior: reduceMotion ? 'auto' : 'smooth' }); }
   }
 
@@ -1318,14 +1511,15 @@
   function searchItems(q) {
     const s = norm(q).trim(); if (s.length < 2) return [];
     const ds = S.ds, t = S.now, out = [];
-    ds.cities.filter(c => norm(c.name).indexOf(s) >= 0).slice(0, 4).forEach(c => out.push({ g: 'Cities', kind: 'city', id: c.id, label: c.name, hint: plural((D.byCity.get(c.id) || []).length, 'event', 'events') + ' ' + WIN_LABEL[S.win] }));
+    ds.cities.filter(c => norm(c.name).indexOf(s) >= 0 || (c.aka || []).some(a => norm(a).indexOf(s) >= 0)).slice(0, 4).forEach(c => out.push({ g: 'Cities', kind: 'city', id: c.id, label: c.name, hint: plural((D.byCity.get(c.id) || []).length, 'event', 'events') + ' ' + WIN_LABEL[S.win] }));
     RM.GENRES.filter(g => norm(g.name).indexOf(s) >= 0 || g.subs.some(x => norm(x).indexOf(s) >= 0)).slice(0, 3).forEach(g => out.push({ g: 'Genres', kind: 'genre', id: g.id, label: g.name, hint: 'Filter the map' }));
     ds.artists.filter(a => norm(a.name).indexOf(s) >= 0).sort((a, b) => a.tier - b.tier).slice(0, 5).forEach(a => { const n = routeGigs(a.id).length; out.push({ g: 'DJs and artists', kind: 'artist', id: a.id, label: a.name, hint: plural(n, 'upcoming date', 'upcoming dates') }); });
     const ls = lkey(q);
     if (ls.length >= 2) {
       const hits = labelIndex().filter(x => (' ' + x.key).indexOf(' ' + ls) >= 0).sort((a, b) => b.n - a.n || a.name.length - b.name.length);
-      hits.filter(x => x.kind === 'label').slice(0, 4).forEach(x => out.push({ g: 'Record labels', kind: x.n ? 'label' : 'label-archive', id: x.key, label: x.name, hint: x.n ? plural(x.n, 'upcoming night', 'upcoming nights') : 'Nothing coming up · search the archive' }));
-      hits.filter(x => x.kind === 'promoter' && x.n).slice(0, 3).forEach(x => out.push({ g: 'Promoters', kind: 'label', id: x.key, label: x.name, hint: plural(x.n, 'upcoming night', 'upcoming nights') }));
+      loadCrews();
+      hits.filter(x => x.kind === 'label').slice(0, 4).forEach(x => out.push({ g: 'Record labels', kind: 'label', id: x.key, label: x.name, hint: x.n ? plural(x.n, 'upcoming night', 'upcoming nights') : 'Nothing coming up' }));
+      hits.filter(x => x.kind === 'promoter').slice(0, 4).forEach(x => out.push({ g: 'Promoters & groups', kind: 'label', id: x.key, label: x.name, hint: x.n ? plural(x.n, 'upcoming night', 'upcoming nights') : 'Nothing coming up' }));
     }
     ds.events.filter(e => e.end > t && norm(e.title).indexOf(s) >= 0).slice(0, 6).forEach(e => out.push({ g: 'Events', kind: 'event', id: e.id, label: e.title, hint: city(e).name + ', ' + tDate(e.start, city(e).tz) }));
     // Venues: the directory (with places that have nothing coming up), matched from the start of a word.
@@ -1378,7 +1572,6 @@
     else if (r.kind === 'genre') setGenre(r.id, true);
     else if (r.kind === 'artist') setRoute(r.id);
     else if (r.kind === 'label') setLabel(labelIndex().find(x => x.key === r.id));
-    else if (r.kind === 'label-archive') location.href = archiveLabelUrl(r.label);
     else if (r.kind === 'event') openEvent(r.id);
     else if (r.kind === 'venue') focusVenue(vdir().byId[r.id]);
     else if (r.kind === 'osm') {
@@ -2264,7 +2457,7 @@
   function hashSeed(str) { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
   function fromFeed(feed) {
     const ds = { source: 'feed', cities: [], cityById: {}, venues: [], venueById: {}, artists: [], artistById: {}, events: [], eventById: {}, festivals: [] };
-    (feed.cities || []).forEach(c => { const cc = { id: c.id, name: c.name, cc: c.country, lat: c.lat, lon: c.lon, tz: c.tz || 'UTC', region: c.region || 'eu', cur: c.currency || 'USD', weight: 3, venues: [], residents: [] }; ds.cities.push(cc); ds.cityById[cc.id] = cc; });
+    (feed.cities || []).forEach(c => { const cc = { id: c.id, name: c.name, aka: c.aka || [], cc: c.country, lat: c.lat, lon: c.lon, tz: c.tz || 'UTC', region: c.region || 'eu', cur: c.currency || 'USD', weight: 3, venues: [], residents: [] }; ds.cities.push(cc); ds.cityById[cc.id] = cc; });
     const appearances = {};
     (feed.events || []).forEach(x => (x.lineup || []).forEach(n => { const k = norm(n); appearances[k] = (appearances[k] || 0) + 1; }));
     const artistId = name => {
@@ -2372,6 +2565,9 @@
       if (a === 'venue') return focusVenue(vdir().byVenue[act.dataset.vid]);
       if (a === 'venue-more') return venueDetails();
       if (a === 'ven-all') { S.venAll = true; renderVenues(); return; }
+      if (a === 'crew-kind') { S.crewKind = act.dataset.kind === 'label' ? 'label' : 'promoter'; S.crewAll = false; renderPromoters(); return; }
+      if (a === 'crew-all') { S.crewAll = true; renderPromoters(); return; }
+      if (a === 'crew-more') return crewDetails();
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
       if (a === 'list-all') { S.listAll = true; renderListings(); return; }
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
@@ -2385,6 +2581,8 @@
     if (evRow) return openEvent(evRow.dataset.ev);
     const vRow = t.closest('[data-venue]');
     if (vRow) return focusVenue(vdir().byId[vRow.dataset.venue]);
+    const cRow = t.closest('[data-crew]');
+    if (cRow) { const x = crewDir(cRow.dataset.kind).byKey.get(cRow.dataset.crew); if (x) setLabel({ key: x.key, name: x.name, kind: x.kind }); return; }
     const sg = t.closest('[data-sgenre]');
     if (sg) { setGenre(sg.dataset.sgenre, true); MapView.flyToCity(S.ds.cityById[sg.dataset.city]); return; }
     const cityEl = t.closest('[data-city]');

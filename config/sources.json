@@ -19,7 +19,7 @@
     },
     "posh": {
       "enabled": true, "actor": "trev0n~posh-vip-scraper",
-      "cities": ["newyork", "chicago", "losangeles", "miami", "austin", "denver", "sanfrancisco", "milwaukee"],
+      "cities": ["newyork", "chicago", "losangeles", "miami", "tampa", "stpete", "austin", "denver", "sanfrancisco", "milwaukee"],
       "maxItemsPerCity": 30, "maxChargeUsdPerRun": 0.12, "pricePerResultUsd": 0.003, "concurrency": 3, "scrapeDays": 31, "maxAgeHours": 720, "retryHours": 20
     },
     "partiful": {

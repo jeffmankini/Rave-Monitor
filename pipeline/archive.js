@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isContactLine, positionQuality, jitter, splitLineup, genresFrom, fallbackGenre } from './lib/normalize.js';
-import { detectLabels } from './lib/labels.js';
+import { detectLabels, detectPromoters, mergePromoters } from './lib/labels.js';
 import { norm } from './lib/util.js';
 
 const uniq = a => [...new Set(a.filter(x => x !== undefined && x !== null && x !== ''))];
@@ -54,6 +54,9 @@ function tidy(r, cities) {
   } else r.genres = r.genres.filter(g => g !== 'other');
   const labels = detectLabels(r);
   if (labels.length) r.labels = labels; else delete r.labels;
+  // Curated promoters and event series too (config/promoters.json), so additions reach old nights.
+  const promoters = mergePromoters(r.promoters, detectPromoters(r));
+  if (promoters.length) r.promoters = promoters; else delete r.promoters;
   const v = r.venue, c = cities[r.cityId];
   if (v && c && positionQuality(v.lat, v.lon) === 'none') {
     const [lat, lon] = jitter(`${r.cityId}:${norm(v.name || r.id)}`, c.lat, c.lon);

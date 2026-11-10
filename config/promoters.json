@@ -1,0 +1,31 @@
+{
+  "_note": "Promoters, collectives and event series to find in listings that don't name their promoter: an event gets one when its title, a promoter name or a lineup credit names it (same rules as config/labels.json: 'match' phrases anywhere, whole words; 'lead' phrases only at the start of a title; 'genres' limits names that are also ordinary words). Promoters the listings name themselves need no entry. 'city', 'url' and 'kind' show on the promoter's card on the map page.",
+  "promoters": [
+    { "name": "split/shift", "match": ["split/shift", "splitshift"], "city": "milwaukee", "url": "https://splitshift.fm", "kind": "Collective" },
+    { "name": "Boiler Room", "kind": "Event series" },
+    { "name": "elrow", "match": ["elrow", "elrow Town"], "kind": "Event series" },
+    { "name": "ANTS", "match": [], "lead": ["ANTS"], "genres": ["house", "techno"], "kind": "Event series" },
+    { "name": "Teksupport", "kind": "Promoter" },
+    { "name": "Awakenings", "genres": ["techno"], "kind": "Event series" },
+    { "name": "Time Warp", "genres": ["techno", "house"], "kind": "Event series" },
+    { "name": "The Warehouse Project", "match": ["Warehouse Project"], "kind": "Event series" },
+    { "name": "Klubnacht", "kind": "Club night" },
+    { "name": "Insomniac", "kind": "Promoter" },
+    { "name": "DGTL", "kind": "Event series" },
+    { "name": "Mixmag", "match": ["Mixmag Live", "Mixmag Lab", "Mixmag presents"], "kind": "Event series" },
+    { "name": "Keep Hush", "kind": "Event series" },
+    { "name": "Cercle", "match": [], "lead": ["Cercle"], "kind": "Event series" },
+    { "name": "Music On", "match": [], "lead": ["Music On"], "genres": ["techno", "house"], "kind": "Event series" },
+    { "name": "Abode", "match": [], "lead": ["Abode"], "genres": ["house"], "kind": "Event series" },
+    { "name": "Into The Woods", "genres": ["techno", "house"], "kind": "Event series" },
+    { "name": "Body & Soul", "genres": ["house", "disco", "afro"], "kind": "Event series" },
+    { "name": "Mamba Negra", "kind": "Collective" },
+    { "name": "Discwoman", "kind": "Collective" },
+    { "name": "Honey Soundsystem", "kind": "Collective" },
+    { "name": "Mutual Dreaming", "kind": "Promoter" },
+    { "name": "Factory 93", "kind": "Promoter" },
+    { "name": "Link Miami Rebels", "kind": "Promoter" },
+    { "name": "We Belong Here", "kind": "Event series" },
+    { "name": "Percolate", "kind": "Promoter" }
+  ]
+}

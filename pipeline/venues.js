@@ -49,7 +49,7 @@ export function displayName(name, cityName = '') {
 
 // The night a listing belongs to: its local date, 6 hours back, so 1 am Sunday is Saturday night.
 const fmts = {};
-function nightOf(iso, tz) {
+export function nightOf(iso, tz) {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return '';
   const f = fmts[tz] ||= new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });

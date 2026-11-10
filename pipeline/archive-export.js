@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildVenues } from './venues.js';
+import { buildCrews } from './promoters.js';
 import { loadArchive, summarize, monthOf } from './archive.js';
 
 // Lineup entries that aren't artists, left out of the artists table.
@@ -67,6 +68,8 @@ export async function exportArchive(dir, out) {
   for (const [m, list] of Object.entries(browse.months)) fs.writeFileSync(path.join(out, 'data', `${m}.json`), JSON.stringify(list));
   // The venue directory the map's Venues tab and layer use (pipeline/venues.js has the row format).
   fs.writeFileSync(path.join(out, 'data', 'venues.json'), JSON.stringify(buildVenues([...archive.records.values()], archive.cities)));
+  // The promoters and labels the Promoters tab uses (pipeline/promoters.js has the row format).
+  fs.writeFileSync(path.join(out, 'data', 'promoters.json'), JSON.stringify(buildCrews([...archive.records.values()], archive.cities)));
   // OpenStreetMap's clubs around each city, as fetched (pipeline/osm.js), for the venues layer.
   const osmDir = path.join(dir, 'osm');
   if (fs.existsSync(osmDir)) {

@@ -1,6 +1,7 @@
 {
   "_note": "Record labels for the label filter. An event gets a label when its title, a promoter name or a lineup credit like 'Ben UFO (Hessle Audio)' names it. 'match' phrases count anywhere in those (whole words, case, accents and punctuation ignored, & = and); 'lead' phrases only at the start of a title, as in 'RINSE: Y U QT'. 'genres' limits a label to events of those families, for names that are also ordinary words (Hospitality, Cocoon, Running Back). Keep phrases distinctive: 'Warp Records', not 'Warp', which would match 'Time Warp'.",
   "labels": [
+    { "name": "split/shift", "match": ["split/shift", "splitshift"] },
     { "name": "Drumcode" },
     { "name": "KNTXT" },
     { "name": "Afterlife", "genres": ["techno", "house"] },

@@ -425,6 +425,10 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .legend .gkey { display: inline-flex; align-items: center; gap: 5px; }
 .dlg .legal a { color: inherit; }
 
+/* promoters: the promoters / labels switch */
+.crewbar { padding: 2px 16px 10px; }
+.crewbar .seg { display: inline-flex; }
+.crewbar .seg button { height: 30px; padding: 0 12px; font-size: var(--s-12); }
 /* venues */
 .vhead { display: flex; justify-content: space-between; gap: 12px; padding: 2px 16px 6px; color: var(--ink-3); font-size: var(--s-11); }
 .vrow { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 12px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--line); cursor: pointer; }
@@ -610,6 +614,8 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .tabbed .ph { padding: 10px 16px 4px; }
 
   /* Lists */
+  .crewbar { padding-left: max(14px, env(safe-area-inset-left)); }
+  .crewbar .seg button { height: 36px; font-size: var(--s-13); }
   .erow, .wrow, .hrow, .grow, .orow, .srow, .vrow, .vhead { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
   .vrow { padding-top: 12px; padding-bottom: 12px; }
   .vrow .title { font-size: var(--s-14); }
@@ -818,7 +824,8 @@ body.ui-idle #map-over { cursor: none !important; }
   <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>
   <div class="dlg">
     <h2 id="about-title">About Rave Monitor</h2>
-    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next. It's an open-source proof of concept by <a href="https://splitshift.fm" target="_blank" rel="noopener" style="color:inherit">split/shift</a>.</p>
+    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next.</p>
+    <p>It started inside <a href="https://splitshift.fm" target="_blank" rel="noopener" style="color:inherit">split/shift</a>, a Milwaukee dance-music nonprofit, out of a need for a better way to browse events and happenings, so we could plan our work and create new event experiences with the whole scene in view. Now it's open source and free for everyone.</p>
     <div id="about-data"></div>
     <p>It's free to use. If it's useful to you, you can support it by <a href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" style="color:inherit">buying a coffee</a>.</p>
     <h3>The archive</h3>

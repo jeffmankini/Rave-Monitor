@@ -2,7 +2,7 @@
 // electronic music, maps genres to the map's eight families (or 'electronic' and 'misc' when none
 // fits) and assigns a city.
 import { km, norm, slug, localHour } from './util.js';
-import { detectLabels, promoterNames } from './labels.js';
+import { detectLabels, detectPromoters, mergePromoters, promoterNames } from './labels.js';
 
 export const FAMILIES = ['techno', 'house', 'dnb', 'afro', 'disco', 'garage', 'trance', 'bass'];
 // When no family fits: 'electronic' (dance and electronic music in general: EDM, electronica, club,
@@ -203,8 +203,9 @@ export function makeEvent(ctx, f) {
   let genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
   if (!genres.length) genres = [fallbackGenre({ title: f.title, tags: f.tags || [], text: [f.genreText, f.lineupText].filter(Boolean).join(' | '), source: f.source })];
   const lineup = [...new Set(splitLineup(f.lineup).filter(n => n.length < 80 && !isContactLine(n)))].slice(0, 24);
-  const promoters = promoterNames(f.promoters).filter(n => !isContactLine(n));
-  const labels = detectLabels({ title: f.title, promoters, lineup, genres });
+  const listed = promoterNames(f.promoters).filter(n => !isContactLine(n));
+  const promoters = mergePromoters(listed, detectPromoters({ title: f.title, promoters: listed, lineup, genres }));
+  const labels = detectLabels({ title: f.title, promoters: listed, lineup, genres });
   return {
     id: `${f.source}:${f.id}`,
     title: cleanName(f.title).slice(0, 160),
