@@ -637,7 +637,7 @@
     const ids = tabIdsFor(mode);
     if (mode === 'wide') ['live', 'heat'].forEach(id => { const el = PANELS[id].el; el.hidden = false; el.removeAttribute('role'); el.removeAttribute('aria-labelledby'); left.appendChild(el); });
     ids.forEach(id => tp.appendChild(PANELS[id].el));
-    $('#tabbar').innerHTML = ids.map((id, i) => '<button class="tab" role="tab" type="button" id="t-' + id + '" aria-controls="p-' + id + '" aria-selected="false" tabindex="-1" data-tab="' + id + '">' + PANELS[id].label + (mode !== 'narrow' ? '<kbd aria-hidden="true">' + (i + 1) + '</kbd>' : '') + '</button>').join('');
+    $('#tabbar').innerHTML = ids.map((id, i) => '<button class="tab" role="tab" type="button" id="t-' + id + '" aria-controls="p-' + id + '" aria-selected="false" tabindex="-1" data-tab="' + id + '"' + (mode !== 'narrow' && i < 9 ? ' title="' + PANELS[id].label + ' (press ' + (i + 1) + ')" aria-keyshortcuts="' + (i + 1) + '"' : '') + '>' + PANELS[id].label + '</button>').join('');
     const want = mode === 'wide' ? S.tab.right : S.tab.single;
     selectTab(ids.indexOf(want) >= 0 ? want : ids[0]);
     if (S.sel) $('#scrim').hidden = mode !== 'narrow';

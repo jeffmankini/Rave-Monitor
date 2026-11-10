@@ -159,8 +159,10 @@ export const posh = {
   id: 'posh', label: 'Posh', needs: ['APIFY_TOKEN'], perCity: true,
   async collect(ctx) {
     const s = ctx.settings;
-    // Posh's explore filter takes named time frames; widen to the year when the window runs into next month.
-    const when = isoDay(ctx.from).slice(0, 7) === isoDay(ctx.to).slice(0, 7) ? 'This+Month' : 'This+Year';
+    // Posh's explore filter only takes Today, This Week or This Month (it dropped This Year in
+    // November 2026 and answers anything else with HTTP 400). This Month is the widest; startsAfter
+    // and startsBefore trim it to the window.
+    const when = 'This+Month';
     return perCity(ctx, 'posh', async c => (await ctx.apify(s.actor, {
       startUrls: [{ url: `https://posh.vip/explore?location=${encodeURIComponent(c.sources.posh)}&lat=${c.lat}&lng=${c.lon}&when=${when}` }],
       maxEvents: s.maxItemsPerCity, scrapeEventDetails: true, eventTimeFilter: 'upcoming', sortBy: 'startDateAsc',
