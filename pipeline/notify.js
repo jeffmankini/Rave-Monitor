@@ -294,6 +294,10 @@ export async function run({ db, feed, venues, curated, cities, now = Date.now(),
     ...inserts('seen_events', ['id', 'fp', 'first_seen', 'status'], plan.seenNew),
     ...plan.seenStatus.map(s => ({ sql: 'UPDATE seen_events SET status = ? WHERE id = ?', params: [s.status, s.id] })),
     { sql: 'DELETE FROM seen_events WHERE first_seen < ?', params: [now - 90 * DAY] },
+    // Kept no longer than needed: alerts for 180 days, expired sessions and sign-in links not at all.
+    { sql: 'DELETE FROM notifications WHERE created_at < ?', params: [now - 180 * DAY] },
+    { sql: 'DELETE FROM sessions WHERE expires_at < ?', params: [now] },
+    { sql: 'DELETE FROM login_links WHERE expires_at < ?', params: [now - DAY] },
     ...inserts('notifications', ['user_id', 'kind', 'ref', 'title', 'body', 'data', 'created_at'], plan.alerts),
     // Too old to email, or emails are off: never email these.
     { sql: 'UPDATE notifications SET emailed_at = 0 WHERE emailed_at IS NULL AND (created_at < ? OR user_id IN (SELECT id FROM users WHERE email_freq = ?))', params: [now - STALE, 'off'] }

@@ -3,5 +3,5 @@
   "gaMeasurementId": "G-0N5FDZ88K0",
   "contactEndpoint": "https://api.ravemonitor.com/contact",
   "turnstileSiteKey": "0x4AAAAAAF5Z9QoQ0buXuTsj",
-  "accountsApi": ""
+  "accountsApi": "https://api.ravemonitor.com/v1"
 }

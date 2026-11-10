@@ -144,7 +144,12 @@ jobs:
           [ -n "$POSTMARK_TOKEN" ] || { echo "No POSTMARK_TOKEN; skipping."; exit 0; }
           server=$(curl -s -H "Accept: application/json" -H "X-Postmark-Server-Token: $POSTMARK_TOKEN" https://api.postmarkapp.com/server)
           if echo "$server" | jq -e .ID > /dev/null; then echo "Postmark server: $(echo "$server" | jq -r .Name)"
-          else echo "::error::POSTMARK_TOKEN isn't a working Postmark server token: $(echo "$server" | jq -r '.Message // "no answer"'). Copy it from your server's API Tokens tab in Postmark."; fi
+          else echo "::error::POSTMARK_TOKEN isn't a working Postmark server token: $(echo "$server" | jq -r '.Message // "no answer"'). Copy it from your server's API Tokens tab in Postmark."; exit 0; fi
+          # Postmark's black hole address takes the message and never delivers it (it counts as one email).
+          sent=$(curl -s -X POST https://api.postmarkapp.com/email -H "Accept: application/json" -H "Content-Type: application/json" -H "X-Postmark-Server-Token: $POSTMARK_TOKEN" \
+            -d '{"From":"Rave Monitor <hello@ravemonitor.com>","To":"test@blackhole.postmarkapp.com","Subject":"Rave Monitor setup check","TextBody":"A setup check from the API Worker deploy.","MessageStream":"outbound","Tag":"setup-check"}')
+          if [ "$(echo "$sent" | jq -r .ErrorCode)" = "0" ]; then echo "Postmark accepts mail from hello@ravemonitor.com."
+          else echo "::error::Postmark won't send from hello@ravemonitor.com yet: $(echo "$sent" | jq -r '.Message // "no answer"'). Check that ravemonitor.com is verified (DKIM and Return-Path) under Sender Signatures."; fi
       - name: Check it answers
         run: |
           for i in 1 2 3 4 5 6; do
