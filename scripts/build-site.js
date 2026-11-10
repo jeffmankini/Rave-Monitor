@@ -102,10 +102,10 @@ fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="
 ${contact ? `  <url><loc>${SITE_URL}/contact/</loc><changefreq>yearly</changefreq></url>\n` : ''}${legal.pages.map(p => `  <url><loc>${SITE_URL}/${p.slug}/</loc><changefreq>monthly</changefreq></url>`).join('\n')}
 </urlset>
 `);
-// Static files (favicons) are copied as they are.
+// Static files (favicons, the fonts folder) are copied as they are.
 const statics = path.join(ROOT, 'site', 'static');
 const copied = fs.existsSync(statics) ? fs.readdirSync(statics).filter(f => !f.startsWith('.')) : [];
-for (const f of copied) fs.copyFileSync(path.join(statics, f), path.join(dist, f));
+for (const f of copied) fs.cpSync(path.join(statics, f), path.join(dist, f), { recursive: true });
 const feed = path.join(ROOT, 'public', 'events.json');
 if (fs.existsSync(feed)) fs.copyFileSync(feed, path.join(dist, 'events.json'));
 else if (fs.existsSync(path.join(dist, 'events.json'))) fs.rmSync(path.join(dist, 'events.json'));

@@ -195,4 +195,4 @@ test/              node --test
 
 ## License
 
-MIT. Map shapes are from Natural Earth via world-atlas, in the public domain. The street map is © OpenStreetMap contributors (ODbL), with tiles from OpenFreeMap and the OpenMapTiles schema, drawn with MapLibre GL JS (BSD-3-Clause).
+MIT. The fonts, Archivo and Unbounded, are served from the site itself (`site/static/fonts`, from Fontsource) under the SIL Open Font License 1.1, so no page loads anything from Google Fonts. Map shapes are from Natural Earth via world-atlas, in the public domain. The street map is © OpenStreetMap contributors (ODbL), with tiles from OpenFreeMap and the OpenMapTiles schema, drawn with MapLibre GL JS (BSD-3-Clause).
