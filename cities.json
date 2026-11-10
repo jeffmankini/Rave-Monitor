@@ -258,12 +258,26 @@
   "lon": 18.069,
   "tz": "Europe/Stockholm"
  },
+ "stpete": {
+  "name": "St. Pete",
+  "country": "US",
+  "lat": 27.768,
+  "lon": -82.64,
+  "tz": "America/New_York"
+ },
  "sydney": {
   "name": "Sydney",
   "country": "AU",
   "lat": -33.869,
   "lon": 151.209,
   "tz": "Australia/Sydney"
+ },
+ "tampa": {
+  "name": "Tampa",
+  "country": "US",
+  "lat": 27.951,
+  "lon": -82.457,
+  "tz": "America/New_York"
  },
  "tbilisi": {
   "name": "Tbilisi",
