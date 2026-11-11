@@ -1,7 +1,8 @@
 {
   "_about": "What's new: the changes visitors see, newest first. Shown in the map page's What's new panel (footer) and on /updates/. kind is new, better or fixed. Keep each one to a sentence or two, in plain words; test/updates.test.js checks the order and the fields.",
   "updates": [
-    { "date": "2026-11-10", "kind": "new", "title": "Color themes", "text": "Pick the site's colors with the palette button at the top: Midnight, Ember, Acid, Ultraviolet, Lagoon or Graphite. The map changes with them, and your browser remembers the choice." },
+    { "date": "2026-11-10", "kind": "new", "title": "Supporters", "text": "Support Rave Monitor for $5 a month and get new shows from who you follow emailed right away, scene alerts for every new night in your cities and genres, a calendar feed of your shows, and your own site colors. Everything else stays free. Find it under Supporter in your account." },
+    { "date": "2026-11-10", "kind": "new", "title": "Color themes", "text": "Pick the site's colors with the palette button at the top: Midnight, Ember, Acid, Ultraviolet, Lagoon or Graphite, each with a white accent. The map changes with them, and your browser remembers the choice." },
     { "date": "2026-11-10", "kind": "new", "title": "What's new", "text": "This list of what's changed on Rave Monitor, from launch on. A dot by What's new at the bottom of the map page means there's something you haven't seen." },
     { "date": "2026-11-10", "kind": "new", "title": "Accounts", "text": "Sign in with a link sent to your email, no password needed. Follow artists, venues, promoters and record labels, save shows, and choose your cities and genres." },
     { "date": "2026-11-10", "kind": "new", "title": "Alerts", "text": "New shows from who you follow, a reminder the day before a show you saved, and a heads-up if it sells out, is cancelled or is postponed. They collect under the bell and come by email right away or as a daily or weekly digest." },
