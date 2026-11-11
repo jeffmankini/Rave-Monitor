@@ -23,7 +23,7 @@ const labelNames = JSON.parse(read('config/labels.json')).labels.map(l => l.name
 const promoterInfo = JSON.parse(read('config/promoters.json')).promoters.map(({ name, city, url, kind }) => ({ name, city, url, kind }));
 const venueInfo = JSON.parse(read('config/venues.json')).venues.map(({ name, match, city, address, lat, lon, url }) => ({ name, match, city, address, lat, lon, url }));
 // Artists to find and follow even with nothing listed (config/artists.json).
-const artistInfo = JSON.parse(read('config/artists.json')).artists.map(({ name, city, url, instagram }) => ({ name, city, url, instagram }));
+const artistInfo = JSON.parse(read('config/artists.json')).artists.map(({ name, city, url, youtube, spotify, soundcloud, instagram }) => ({ name, city, url, youtube, spotify, soundcloud, instagram }));
 const tzTable = read('site/tz.json').trim();
 const parts = {
   // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).

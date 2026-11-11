@@ -1,6 +1,7 @@
 {
-  "_comment": "Artists people can find in search and follow even when nothing of theirs is listed right now. name as it appears in lineups (follows match it the way lineups are matched), city: a city id from config/cities.json, url and instagram: links shown with them. When one turns up in a listing, the usual dates and alerts apply.",
+  "_comment": "Artists people can find in search and follow even when nothing of theirs is listed right now. name as it appears in lineups (follows match it the way lineups are matched), city: a city id from config/cities.json, and links shown with them, each optional: url (their website), youtube, spotify, soundcloud, instagram. When one turns up in a listing, the usual dates and alerts apply.",
   "artists": [
-    { "name": "Geff Bohm", "city": "milwaukee", "url": "https://geffbohm.com", "instagram": "https://www.instagram.com/geffbohm" }
+    { "name": "Geff Bohm", "city": "milwaukee", "url": "https://geffbohm.com", "instagram": "https://www.instagram.com/geffbohm" },
+    { "name": "BRKS", "city": "chicago", "youtube": "https://www.youtube.com/@MusicByBRKS", "spotify": "https://open.spotify.com/artist/18oZ9JdlVSAEzs3iICKyGL", "soundcloud": "https://soundcloud.com/brks_music/", "instagram": "https://www.instagram.com/brksmusic/" }
   ]
 }

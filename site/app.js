@@ -891,8 +891,10 @@
     if (!aid) { chip.hidden = true; MapView.changed(false); return; }
     const a = artist(aid), gigs = routeGigs(aid);
     // Artists from config/artists.json bring their links, and say so when nothing is listed.
-    const links = (a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">Website</a>' : '') + (a.ig ? '<a href="' + esc(a.ig) + '" target="_blank" rel="noopener">Instagram</a>' : '');
-    chip.innerHTML = '<span>' + esc(a.name) + ': ' + (gigs.length ? plural(gigs.length, 'upcoming date', 'upcoming dates') : 'nothing listed right now') + '</span>' + links + followBtn('artist', akey(a.name), a.name, a.home) + '<button type="button" data-act="route-clear">Clear</button>';
+    // The links go on a second line, so the name, Follow and Clear keep the first.
+    const links = (a.links || []).map(l => '<a href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + l[0] + '</a>').join('');
+    chip.classList.toggle('has-links', !!links);
+    chip.innerHTML = '<span>' + esc(a.name) + ': ' + (gigs.length ? plural(gigs.length, 'upcoming date', 'upcoming dates') : 'nothing listed right now') + '</span>' + followBtn('artist', akey(a.name), a.name, a.home) + '<button type="button" data-act="route-clear">Clear</button>' + (links ? '<div class="rc-links">' + links + '</div>' : '');
     chip.hidden = false;
     if (S.sel && S.mode === 'narrow') closeDrawer();
     MapView.fitEvents(gigs);
@@ -2595,7 +2597,8 @@
     (window.RM_ARTISTS || []).forEach(c => {
       if (!c || !c.name) return;
       const a = ds.artistById[artistId(c.name)];
-      a.curated = true; a.url = c.url || ''; a.ig = c.instagram || ''; a.home = c.city || null;
+      a.curated = true; a.home = c.city || null;
+      a.links = [['Website', c.url], ['YouTube', c.youtube], ['Spotify', c.spotify], ['SoundCloud', c.soundcloud], ['Instagram', c.instagram]].filter(l => /^https:\/\//.test(l[1] || ''));
     });
     return ds;
   }

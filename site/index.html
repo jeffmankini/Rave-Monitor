@@ -202,7 +202,8 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .layers label { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--s-13); color: var(--ink); cursor: pointer; }
 .layers small { display: block; color: var(--ink-3); font-size: var(--s-11); }
 .layers input { accent-color: var(--now); width: 16px; height: 16px; }
-.mapchips { position: absolute; left: 50%; top: 54px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 24px); pointer-events: none; }
+/* Full width (less the map's 12px inset) so chips can use it; each chip sits centred and only it takes clicks. */
+.mapchips { position: absolute; left: 12px; right: 12px; top: 54px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .route-chip {
   display: flex; align-items: center; gap: 10px; pointer-events: auto;
   padding: 6px 6px 6px 12px; border-radius: 18px; background: var(--now); color: var(--now-ink); font-size: var(--s-13); font-weight: 600;
@@ -212,6 +213,9 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .route-chip > span { overflow: hidden; text-overflow: ellipsis; }
 .route-chip button { border: 0; border-radius: 12px; background: var(--now-ink); color: var(--now); height: 24px; padding: 0 10px; font-size: var(--s-12); flex: none; }
 .route-chip a { color: var(--now-ink); font-size: var(--s-12); flex: none; }
+/* An artist's links (config/artists.json) on a second line under the name, Follow and Clear. */
+.route-chip.has-links { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 3px; padding-bottom: 7px; }
+.route-chip .rc-links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 12px; }
 .label-chip { background: #cfe3ff; }
 .tool.locate { display: inline-grid; place-items: center; padding: 0; width: 32px; }
 .tool.locate svg { width: 17px; height: 17px; }
