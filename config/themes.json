@@ -1,5 +1,5 @@
 {
-  "_about": "Color themes visitors can pick from the palette button in the header. The choice is kept in the browser (localStorage rm_theme) and applies to every page. Each theme sets the page's colors; map colors (parks, buildings, roads, labels) are worked out from them unless the theme's map block sets them. Keep text readable: test/themes.test.js checks the contrast.",
+  "_about": "Color themes visitors can pick from the palette button in the header. The choice is kept in the browser (localStorage rm_theme) and applies to every page. Each theme sets the page's colors, with a white accent like Midnight's ivory (a hint of the theme's own color); map colors (parks, buildings, roads, labels) are worked out from them unless the theme's map block sets them. Keep text readable: test/themes.test.js checks the contrast.",
   "default": "midnight",
   "themes": [
     {
@@ -15,22 +15,22 @@
     {
       "id": "ember", "name": "Ember",
       "void": "#0e0907", "deck": "#170f0b", "deck2": "#24170f", "land": "#271a12", "line": "#3b281c",
-      "ink": "#f6ede7", "ink2": "#cfb8ab", "ink3": "#a08577", "now": "#ffb547", "nowInk": "#1d1104", "tint": "#f0b393"
+      "ink": "#f6ede7", "ink2": "#cfb8ab", "ink3": "#a08577", "now": "#fbeee2", "nowInk": "#1c120c", "tint": "#f0b393"
     },
     {
       "id": "acid", "name": "Acid",
       "void": "#050b07", "deck": "#0a130d", "deck2": "#122117", "land": "#15251a", "line": "#1f3527",
-      "ink": "#e8f5eb", "ink2": "#aac6b2", "ink3": "#7e9b87", "now": "#c5ff3b", "nowInk": "#0e1700", "tint": "#9fe8b6"
+      "ink": "#e8f5eb", "ink2": "#aac6b2", "ink3": "#7e9b87", "now": "#eef8ea", "nowInk": "#0c160f", "tint": "#9fe8b6"
     },
     {
       "id": "ultraviolet", "name": "Ultraviolet",
       "void": "#0b0614", "deck": "#140b22", "deck2": "#201335", "land": "#25163c", "line": "#352350",
-      "ink": "#f3eafd", "ink2": "#c0aedb", "ink3": "#9582b2", "now": "#ff6bd6", "nowInk": "#24041c", "tint": "#c9a3f2"
+      "ink": "#f3eafd", "ink2": "#c0aedb", "ink3": "#9582b2", "now": "#f6edff", "nowInk": "#1b0f2b", "tint": "#c9a3f2"
     },
     {
       "id": "lagoon", "name": "Lagoon",
       "void": "#031110", "deck": "#071a19", "deck2": "#0d2826", "land": "#102c2a", "line": "#193e3b",
-      "ink": "#e3f5f2", "ink2": "#a3c8c2", "ink3": "#769a94", "now": "#5ef0db", "nowInk": "#021512", "tint": "#87dccf"
+      "ink": "#e3f5f2", "ink2": "#a3c8c2", "ink3": "#769a94", "now": "#e8faf6", "nowInk": "#04201d", "tint": "#87dccf"
     },
     {
       "id": "graphite", "name": "Graphite",
