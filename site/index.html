@@ -643,6 +643,24 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 .acct-cal label { font-size: var(--s-12); color: var(--ink-3); }
 .acct-cal input { height: 36px; min-width: 0; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck); color: var(--ink); font-size: var(--s-12); }
 
+/* The city field in Settings: type a few letters, pick from the list. */
+.acct-combo { position: relative; display: grid; gap: 6px; max-width: 360px; margin-top: 10px; }
+.acct-combo label { font-size: var(--s-12); color: var(--ink-2); }
+.acct-combo input { width: 100%; height: 38px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--void); color: var(--ink); font: inherit; font-size: var(--s-13); }
+.acct-combo input::placeholder { color: var(--ink-3); }
+.acct-combo input:focus-visible { outline: 2px solid var(--now); outline-offset: 1px; }
+.acct-combo [role="listbox"] {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5; margin: 0; padding: 4px; list-style: none; display: grid; gap: 0;
+  max-height: 260px; overflow: auto; overscroll-behavior: contain; border-radius: 10px; border: 1px solid var(--line); background: var(--deck); box-shadow: 0 14px 40px rgba(0,0,0,.5);
+}
+.acct-combo [role="listbox"][hidden] { display: none; }
+.dlg .acct-combo [role="listbox"] li { max-width: none; }
+.acct-combo [role="option"] { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; color: var(--ink); font-size: var(--s-13); }
+.acct-combo [role="option"] small { color: var(--ink-3); font-size: var(--s-11); letter-spacing: .04em; }
+.acct-combo [role="option"][aria-selected="true"], .acct-combo [role="option"]:hover { background: var(--deck-2); }
+.acct-combo [role="option"][aria-selected="true"] span { color: var(--now); }
+.acct-combo .none { padding: 8px 10px; color: var(--ink-3); font-size: var(--s-12); }
+
 /* ---------- donations (site/donate.js): the Donate pop-up ---------- */
 dialog:modal { overscroll-behavior: contain; }
 dialog::backdrop { overflow: hidden; overscroll-behavior: contain; }
@@ -769,7 +787,8 @@ a.strow.playing { background: rgba(var(--now-rgb), .07); }
   .acct-chips .btn, .acct-row .btn { height: 40px; }
   .fbtn.mini { width: 32px; height: 32px; margin: -8px 0 -8px 2px; }
   /* 16px stops iOS Safari zooming in on the field. */
-  .acct-form input[type=email], .acct-form select { height: 46px; font-size: 16px; border-radius: 12px; }
+  .acct-form input[type=email], .acct-form select, .acct-combo input { height: 46px; font-size: 16px; border-radius: 12px; }
+  .acct-combo [role="option"] { padding: 12px 12px; font-size: var(--s-14); }
   .acct-form .btn.primary { height: 46px; border-radius: 12px; font-size: var(--s-14); }
   /* The sheet's bar keeps tickets wide: Save is its heart alone. */
   body.narrow .dr-actions .sbtn { width: 46px; padding: 0; justify-content: center; flex: none; }

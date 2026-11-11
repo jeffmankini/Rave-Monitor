@@ -1,0 +1,6 @@
+{
+  "_comment": "Artists people can find in search and follow even when nothing of theirs is listed right now. name as it appears in lineups (follows match it the way lineups are matched), city: a city id from config/cities.json, url and instagram: links shown with them. When one turns up in a listing, the usual dates and alerts apply.",
+  "artists": [
+    { "name": "Geff Bohm", "city": "milwaukee", "url": "https://geffbohm.com", "instagram": "https://www.instagram.com/geffbohm" }
+  ]
+}

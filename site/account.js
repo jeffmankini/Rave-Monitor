@@ -407,7 +407,9 @@
     return '<form class="acct-form acct-settings" id="acct-settings" onsubmit="return false">' +
       '<h3>Your cities</h3><p class="fine">For your weekly picks, and to keep new-show alerts close to home.</p>' +
       '<ul class="acct-chips">' + me.cities.map(id => '<li><span>' + esc(cname(id)) + '</span><button type="button" class="btn" data-acct-city-del="' + esc(id) + '" aria-label="Remove ' + esc(cname(id)) + '">Remove</button></li>').join('') + '</ul>' +
-      (me.cities.length < 12 ? '<label class="sr-only" for="acct-city-add">Add a city</label><select id="acct-city-add"><option value="">Add a city…</option>' + cities.filter(c => !me.cities.includes(c.id)).map(c => '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>').join('') + '</select>' : '') +
+      (me.cities.length < 12 ? '<div class="acct-combo"><label for="acct-city-add">Add a city</label>' +
+        '<input id="acct-city-add" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acct-city-opts" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Start typing a city">' +
+        '<ul id="acct-city-opts" role="listbox" aria-label="Cities" hidden></ul></div>' : '') +
       '<h3>Genres you like</h3><p class="fine">Your picks come from these. None picked means all of them.</p><div class="acct-genres">' +
       genres.map(g => '<button type="button" class="gchip" data-acct-genre="' + esc(g.id) + '" aria-pressed="' + me.genres.includes(g.id) + '" style="--c:' + esc(g.color) + '"><i class="gdot" style="--c:' + esc(g.color) + '"></i>' + esc(g.name) + '</button>').join('') + '</div>' +
       '<h3>Alerts</h3>' +
@@ -486,7 +488,6 @@
   document.addEventListener('change', ev => {
     if (!ev.target.closest('#account')) return;
     const t = ev.target;
-    if (t.id === 'acct-city-add' && t.value) { const cities = A.me.cities.concat(t.value).slice(0, 12); patch({ local: { cities }, send: { cities } }); render(); const s = $('#acct-city-add'); if (s) s.focus(); return; }
     if (t.name === 'acct-freq') { patch({ local: { freq: t.value }, send: { freq: t.value } }); return; }
     const p = t.dataset.acctPref;
     if (p === 'mine') { patch({ local: { mine: t.checked }, send: { mine: t.checked } }); return; }
@@ -495,6 +496,63 @@
   });
   document.addEventListener('submit', ev => {
     if (ev.target.id === 'acct-signin') { ev.preventDefault(); submitSignin(ev.target); }
+  });
+
+  /* ---------- the city field: type a few letters, pick from the list ---------- */
+  const fold = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const C = { list: [], active: -1 };
+  function cityMatches(q) {
+    const a = app(), s = fold(q);
+    if (!a || !A.me) return [];
+    const pool = a.cities().filter(c => !A.me.cities.includes(c.id));
+    if (!s) return pool.sort((x, y) => x.name.localeCompare(y.name));
+    // Names that start with what's typed come first, then a word inside, then other names it goes by.
+    const rank = c => { const n = fold(c.name); return n.indexOf(s) === 0 ? 0 : (' ' + n).indexOf(' ' + s) >= 0 ? 1 : c.aka.some(x => fold(x).indexOf(s) === 0) ? 2 : n.indexOf(s) >= 0 ? 3 : 9; };
+    return pool.map(c => [c, rank(c)]).filter(x => x[1] < 9).sort((x, y) => x[1] - y[1] || x[0].name.localeCompare(y[0].name)).map(x => x[0]);
+  }
+  function drawCities(open) {
+    const i = $('#acct-city-add'), box = $('#acct-city-opts');
+    if (!i || !box) return;
+    // Typed: the best eight. Opened empty (the down arrow): every city, to browse.
+    C.list = open ? cityMatches(i.value).slice(0, i.value.trim() ? 8 : 200) : [];
+    C.active = C.list.length ? 0 : -1;
+    if (!open) { box.hidden = true; i.setAttribute('aria-expanded', 'false'); i.removeAttribute('aria-activedescendant'); return; }
+    box.innerHTML = C.list.length ? C.list.map((c, k) => '<li role="option" id="acct-city-' + k + '" data-k="' + k + '" aria-selected="' + (k === C.active) + '"><span>' + esc(c.name) + '</span>' + (c.cc ? '<small>' + esc(c.cc) + '</small>' : '') + '</li>').join('')
+      : '<li class="none" role="presentation">No city by that name on the map yet.</li>';
+    box.hidden = false;
+    i.setAttribute('aria-expanded', 'true');
+    if (C.active >= 0) i.setAttribute('aria-activedescendant', 'acct-city-0'); else i.removeAttribute('aria-activedescendant');
+  }
+  function moveCity(d) {
+    if (!C.list.length) return;
+    C.active = (C.active + d + C.list.length) % C.list.length;
+    $$('#acct-city-opts [role="option"]').forEach(o => o.setAttribute('aria-selected', String(+o.dataset.k === C.active)));
+    const el = $('#acct-city-' + C.active); if (el) el.scrollIntoView({ block: 'nearest' });
+    $('#acct-city-add').setAttribute('aria-activedescendant', 'acct-city-' + C.active);
+  }
+  function addCity(c) {
+    if (!c || !A.me || A.me.cities.includes(c.id)) return;
+    const cities = A.me.cities.concat(c.id).slice(0, 12);
+    patch({ local: { cities }, send: { cities } });
+    render();
+    const i = $('#acct-city-add');
+    if (i) i.focus();
+  }
+  document.addEventListener('input', ev => { if (ev.target.id === 'acct-city-add') drawCities(!!ev.target.value.trim()); });
+  document.addEventListener('keydown', ev => {
+    if (ev.target.id !== 'acct-city-add') return;
+    const open = !$('#acct-city-opts').hidden;
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); if (open) moveCity(1); else drawCities(true); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); if (open) moveCity(-1); }
+    else if (ev.key === 'Enter') { ev.preventDefault(); if (open && C.active >= 0) addCity(C.list[C.active]); }
+    // Esc closes the list first; with it closed, Esc closes the dialog as usual.
+    else if (ev.key === 'Escape' && open) { ev.preventDefault(); ev.stopPropagation(); drawCities(false); }
+  });
+  document.addEventListener('focusout', ev => { if (ev.target.id === 'acct-city-add') setTimeout(() => { const i = $('#acct-city-add'); if (i && document.activeElement !== i) drawCities(false); }, 120); });
+  // Pressing an option picks it before the field loses focus.
+  document.addEventListener('pointerdown', ev => {
+    const o = ev.target.closest && ev.target.closest('#acct-city-opts [role="option"]');
+    if (o) { ev.preventDefault(); addCity(C.list[+o.dataset.k]); }
   });
 
   /* ---------- start ---------- */

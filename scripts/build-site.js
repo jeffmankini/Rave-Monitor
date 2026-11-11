@@ -22,11 +22,13 @@ const labelNames = JSON.parse(read('config/labels.json')).labels.map(l => l.name
 // The curated promoters and groups (config/promoters.json): what their cards show.
 const promoterInfo = JSON.parse(read('config/promoters.json')).promoters.map(({ name, city, url, kind }) => ({ name, city, url, kind }));
 const venueInfo = JSON.parse(read('config/venues.json')).venues.map(({ name, match, city, address, lat, lon, url }) => ({ name, match, city, address, lat, lon, url }));
+// Artists to find and follow even with nothing listed (config/artists.json).
+const artistInfo = JSON.parse(read('config/artists.json')).artists.map(({ name, city, url, instagram }) => ({ name, city, url, instagram }));
 const tzTable = read('site/tz.json').trim();
 const parts = {
   // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).
   __GEO_JSON__: JSON.stringify((({ lo, lakes }) => ({ lo, lakes }))(JSON.parse(read('site/geo.json')))), __DATA_JS__: read('site/demo-data.js'),
-  __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_PROMOTERS = ${JSON.stringify(promoterInfo)};\nwindow.RM_VENUES = ${JSON.stringify(venueInfo)};\nwindow.RM_TZ = ${tzTable};\n` +
+  __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_PROMOTERS = ${JSON.stringify(promoterInfo)};\nwindow.RM_VENUES = ${JSON.stringify(venueInfo)};\nwindow.RM_ARTISTS = ${JSON.stringify(artistInfo)};\nwindow.RM_TZ = ${tzTable};\n` +
     `window.RM_THEMES = ${JSON.stringify(themes)};\nwindow.RM_UPDATES_LATEST = ${JSON.stringify(updates[0].date)};\n` + KIT_SRC + '\n' + read('site/app.js'),
   // The mini player for the Streams tab and the Donate pop-up, in a script of their own so they work
   // even if the map can't start.

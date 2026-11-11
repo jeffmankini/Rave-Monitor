@@ -890,7 +890,9 @@
     const chip = $('#route-chip');
     if (!aid) { chip.hidden = true; MapView.changed(false); return; }
     const a = artist(aid), gigs = routeGigs(aid);
-    chip.innerHTML = '<span>' + esc(a.name) + ': ' + plural(gigs.length, 'upcoming date', 'upcoming dates') + '</span>' + followBtn('artist', akey(a.name), a.name) + '<button type="button" data-act="route-clear">Clear</button>';
+    // Artists from config/artists.json bring their links, and say so when nothing is listed.
+    const links = (a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">Website</a>' : '') + (a.ig ? '<a href="' + esc(a.ig) + '" target="_blank" rel="noopener">Instagram</a>' : '');
+    chip.innerHTML = '<span>' + esc(a.name) + ': ' + (gigs.length ? plural(gigs.length, 'upcoming date', 'upcoming dates') : 'nothing listed right now') + '</span>' + links + followBtn('artist', akey(a.name), a.name, a.home) + '<button type="button" data-act="route-clear">Clear</button>';
     chip.hidden = false;
     if (S.sel && S.mode === 'narrow') closeDrawer();
     MapView.fitEvents(gigs);
@@ -1580,7 +1582,10 @@
     const ds = S.ds, t = S.now, out = [];
     ds.cities.filter(c => norm(c.name).indexOf(s) >= 0 || (c.aka || []).some(a => norm(a).indexOf(s) >= 0)).slice(0, 4).forEach(c => out.push({ g: 'Cities', kind: 'city', id: c.id, label: c.name, hint: plural((D.byCity.get(c.id) || []).length, 'event', 'events') + ' ' + WIN_LABEL[S.win] }));
     RM.GENRES.filter(g => norm(g.name).indexOf(s) >= 0 || g.subs.some(x => norm(x).indexOf(s) >= 0)).slice(0, 3).forEach(g => out.push({ g: 'Genres', kind: 'genre', id: g.id, label: g.name, hint: 'Filter the map' }));
-    ds.artists.filter(a => norm(a.name).indexOf(s) >= 0).sort((a, b) => a.tier - b.tier).slice(0, 5).forEach(a => { const n = routeGigs(a.id).length; out.push({ g: 'DJs and artists', kind: 'artist', id: a.id, label: a.name, hint: plural(n, 'upcoming date', 'upcoming dates') }); });
+    ds.artists.filter(a => norm(a.name).indexOf(s) >= 0).sort((a, b) => !!b.curated - !!a.curated || a.tier - b.tier).slice(0, 5).forEach(a => {
+      const n = routeGigs(a.id).length;
+      out.push({ g: 'DJs and artists', kind: 'artist', id: a.id, label: a.name, hint: n ? plural(n, 'upcoming date', 'upcoming dates') : 'Nothing listed right now' + (a.curated && ACCOUNTS ? ' · follow for alerts' : '') });
+    });
     const ls = lkey(q);
     if (ls.length >= 2) {
       const hits = labelIndex().filter(x => (' ' + x.key).indexOf(' ' + ls) >= 0).sort((a, b) => b.n - a.n || a.name.length - b.name.length);
@@ -2586,6 +2591,12 @@
     });
     ds.events.sort((a, b) => a.start - b.start);
     ds.events.forEach(e => { ds.eventById[e.id] = e; });
+    // Artists to find and follow even with nothing listed (config/artists.json), with their links.
+    (window.RM_ARTISTS || []).forEach(c => {
+      if (!c || !c.name) return;
+      const a = ds.artistById[artistId(c.name)];
+      a.curated = true; a.url = c.url || ''; a.ig = c.instagram || ''; a.home = c.city || null;
+    });
     return ds;
   }
   function renderAboutData() {
@@ -2956,7 +2967,7 @@
     window.RM_APP = {
       events: () => S.ds.source === 'demo' ? [] : S.ds.events,
       event: id => S.ds.source === 'demo' ? null : S.ds.eventById[id] || null,
-      cities: () => S.ds.cities.map(c => ({ id: c.id, name: c.name })),
+      cities: () => S.ds.cities.map(c => ({ id: c.id, name: c.name, aka: c.aka || [], cc: c.cc || '' })),
       city: id => S.ds.cityById[id] || null,
       cityName: id => (S.ds.cityById[id] || {}).name || id,
       genres: () => RM.GENRES.map(g => ({ id: g.id, name: g.name, color: g.color })),
