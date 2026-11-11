@@ -13,7 +13,7 @@ import { runActor, setMemoryBudget, setMaxRuns } from './lib/apify.js';
 import { loadOrCollect, scrapeKey, cityCache, splitSourceCache } from './lib/cache.js';
 import { dedupe } from './lib/dedupe.js';
 import { ra, dice, posh, partiful, luma } from './sources/apify-sources.js';
-import { ticketmaster, skiddle } from './sources/api-sources.js';
+import { ticketmaster, skiddle, actsBilledOn } from './sources/api-sources.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCES = [ra, dice, ticketmaster, skiddle, posh, luma, partiful];
@@ -74,12 +74,13 @@ async function main() {
   const all = [], report = [];
   // Listings dropped for not being electronic music, so the archive can drop its copies too.
   const notElectronic = new Set();
+  const shared = { electronicActs: new Set() };
   const windowDays = srcCfg.windowDays || 14;
   setMemoryBudget(srcCfg.apifyMemoryMb);
   setMaxRuns(srcCfg.apifyMaxRuns);
   const tasks = SOURCES.filter(s => (!only || only.includes(s.id)) && srcCfg.sources[s.id] && srcCfg.sources[s.id].enabled !== false);
 
-  await Promise.all(tasks.map(async src => {
+  const runSource = async src => {
     const settings = srcCfg.sources[src.id];
     const t0 = Date.now(), warnings = [];
     const entry = { id: src.id, label: src.label, ok: false, raw: 0, kept: 0, cached: false, estCostUsd: 0, ms: 0, error: null, warnings };
@@ -87,6 +88,7 @@ async function main() {
     const ctx = {
       // A source can scrape further ahead (scrapeDays) than the feed shows, so a monthly pull covers the month.
       cities, cityById, settings, env, from, to: now + (settings.scrapeDays || windowDays) * 86400e3, notElectronic,
+      electronicActs: shared.electronicActs,
       log: (...m) => console.log(`[${src.id}]`, ...m),
       warn: m => { warnings.push(m); console.warn(`[${src.id}] ${m}`); },
       apify: async (actor, input, o = {}) => {
@@ -150,7 +152,12 @@ async function main() {
       entry.ms = Date.now() - t0;
       if (warnings.length > 20) entry.warnings = warnings.slice(0, 20).concat(`…and ${warnings.length - 20} more`);
     }
-  }));
+  };
+  // Ticketmaster goes last: acts billed on RA or DICE nights this run count as electronic there,
+  // whatever Ticketmaster files them under (see ticketmasterAct).
+  await Promise.all(tasks.filter(s => s.id !== 'ticketmaster').map(runSource));
+  shared.electronicActs = actsBilledOn(all);
+  await Promise.all(tasks.filter(s => s.id === 'ticketmaster').map(runSource));
 
   const { events, merged } = dedupe(all);
   events.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));

@@ -1,5 +1,6 @@
 // Sources with free official APIs: Ticketmaster Discovery and Skiddle.
-import { fetchJson, sleep, num, pick, isoDay, localToUtc } from '../lib/util.js';
+import fs from 'node:fs';
+import { fetchJson, sleep, num, pick, isoDay, localToUtc, norm } from '../lib/util.js';
 import { makeEvent, genresFrom, electronicScore, parsePrice, notElectronic, titleNamesStyle, titleNamesOtherGenre } from '../lib/normalize.js';
 
 const citiesFor = (ctx, key) => {
@@ -34,11 +35,33 @@ const tmMain = list => { const all = (list || []).map(tmClass); return all.find(
 const TM_ELECTRONIC = 'Dance/Electronic';
 const tmGenreKnown = c => !!(c && c.genre && c.genre !== 'Other');
 
+/** An act's name for matching: lowercase, no accents, no '(US)' or '(Live)', words only. */
+export const actKey = name => norm(name).replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+// Each name in a co-billed headliner ('Desire & Johnny Jewel', 'Kontravoid + Spike Hellis').
+const actParts = name => [name, ...String(name || '').split(/\s*(?:&|\+|,|\/|\bx\b|\band\b|\bw\/|\bwith\b|\bb2b\b)\s*/i)].map(actKey).filter(k => k.length > 1);
+// Lineup entries that aren't acts.
+const NOT_AN_ACT = /^(tba|tbc|tbd|special guests?|secret guests?|guests?|residents?|resident djs?|and more|more|friends|dj|djs|live|b2b|open decks|various artists)$/;
+/** Acts that count as electronic whatever Ticketmaster files them under (config/electronic-acts.json). */
+let LISTED = null;
+export function listedActs() {
+  if (!LISTED) LISTED = new Set(JSON.parse(fs.readFileSync(new URL('../../config/electronic-acts.json', import.meta.url), 'utf8')).acts.map(actKey));
+  return LISTED;
+}
+/** The acts billed on nights from sources that only list electronic music (RA, DICE), for ticketmasterAct. */
+export function actsBilledOn(events) {
+  const acts = new Set();
+  for (const e of events) if ((e.sources || []).some(s => s.id === 'ra' || s.id === 'dice'))
+    for (const n of e.lineup || []) { const k = actKey(n); if (k.length > 2 && !NOT_AN_ACT.test(k)) acts.add(k); }
+  return acts;
+}
+
 /**
  * { keep, why, tags } for a Ticketmaster listing: whether it's electronic music going by its acts'
- * classifications (why says what decided a drop), and the genre tags to show for it.
+ * classifications (why says what decided a drop), and the genre tags to show for it. An act in
+ * config/electronic-acts.json, or in billed (acts billed on RA or DICE nights this run), counts as
+ * electronic whatever Ticketmaster files it under.
  */
-export function ticketmasterAct(x) {
+export function ticketmasterAct(x, { billed } = {}) {
   const ev = (x.classifications || []).map(tmClass);
   const main = ev.find(c => c.primary) || ev[0] || {};
   const atts = (pick(x, '_embedded.attractions') || []).map(a => ({ name: a.name, c: tmMain(a.classifications) }));
@@ -49,13 +72,15 @@ export function ticketmasterAct(x) {
   const brands = atts.filter(isBrand);
   const acts = atts.filter(a => !isBrand(a));
   const known = acts.filter(a => a.c && a.c.segment === 'Music' && tmGenreKnown(a.c));
+  const listed = a => actParts(a.name).some(k => listedActs().has(k) || (billed && billed.has(k)));
   // Dance troupes (Jabbawockeez) and tribute bands are filed under the music they perform to.
-  const isElectronicAct = a => a.c.genre === TM_ELECTRONIC && a.c.subType !== 'Troupe' && a.c.subType !== 'Tribute Band';
+  const isElectronicAct = a => listed(a) || (!!a.c && a.c.genre === TM_ELECTRONIC && a.c.subType !== 'Troupe' && a.c.subType !== 'Tribute Band');
   const festival = main.subType === 'Festival' || brands.some(b => b.c.subType === 'Festival');
   const head = acts[0];
   let keep, why = '', lead = null;
   if (main.segment && main.segment !== 'Music') { keep = false; why = `${main.segment}, not a music show`; }
   else if (head && head.c && head.c.segment && head.c.segment !== 'Music') { keep = false; why = `${head.c.segment}, not a music show`; }
+  else if (head && listed(head)) { keep = true; lead = head; }
   else if (festival && known.length > 1) {
     keep = known.filter(isElectronicAct).length * 2 >= known.length;
     if (!keep) why = 'festival billed mostly with other genres';
@@ -119,7 +144,7 @@ export const ticketmaster = {
     return out;
   },
   normalize(x, ctx) {
-    const act = ticketmasterAct(x);
+    const act = ticketmasterAct(x, { billed: ctx.electronicActs });
     if (!act.keep) return notElectronic(ctx, 'ticketmaster', x.id);
     const v = pick(x, '_embedded.venues.0') || {};
     const pr = (x.priceRanges || [])[0];

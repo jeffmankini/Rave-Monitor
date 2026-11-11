@@ -1,0 +1,13 @@
+{
+  "_comment": "Acts that are electronic music even when Ticketmaster files them under Rock, Pop or Alternative (synth, darkwave and EBM acts, electronic bands). A Ticketmaster listing whose headliner is one of these stays in the feed, and a festival counts them as electronic acts. Names as billed; case, accents and a country tag like (US) don't matter, and a co-billed headliner ('Desire & Johnny Jewel') matches each name. Acts billed on a Resident Advisor or DICE night in the same run count too, without being listed here.",
+  "acts": [
+    "Book of Love",
+    "Boy Harsher",
+    "Combichrist",
+    "Desire",
+    "Gary Numan",
+    "Kontravoid",
+    "The Floozies",
+    "White Ring"
+  ]
+}

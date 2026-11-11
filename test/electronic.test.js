@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isElectronic, tagKind, fallbackGenre, makeEvent } from '../pipeline/lib/normalize.js';
-import { ticketmaster, ticketmasterAct } from '../pipeline/sources/api-sources.js';
+import { ticketmaster, ticketmasterAct, actsBilledOn, actKey } from '../pipeline/sources/api-sources.js';
 
 // Ticketmaster classifications as the Discovery API returns them: { segment, genre, subGenre, type, subType }.
 const cls = (segment, genre, subGenre, type, subType, primary = true) => ({
@@ -126,4 +126,32 @@ test('listings that aren\'t electronic music are dropped and noted for the archi
   const tm = listing('Alter Bridge', edm(), [act('Alter Bridge', cls('Music', 'Rock', 'Alternative Rock'))]);
   assert.equal(ticketmaster.normalize(tm, ctx), null);
   assert.ok(ctx.notElectronic.has('ticketmaster:Alter-Bridge'));
+});
+
+test('Ticketmaster: acts known to be electronic stay whatever Ticketmaster files them under', () => {
+  // config/electronic-acts.json
+  const numan = listing('Gary Numan', edm(), [act('Gary Numan', cls('Music', 'Rock', 'Pop', 'Individual', 'Musician'))], '20:00:00');
+  assert.deepEqual(ticketmasterAct(numan), { keep: true, why: '', tags: ['Dance/Electronic'] });
+  const kontravoid = listing('Kontravoid (US) + Spike Hellis (US)', edm('Club Dance'), [act('Kontravoid', cls('Music', 'Rock', 'Pop')), act('Spike Hellis', edm('Experimental'))]);
+  assert.equal(ticketmasterAct(kontravoid).keep, true);
+  // A co-billed headliner matches each of its names, but a tour named after one doesn't.
+  const desire = listing('Desire & Johnny Jewel, support: Mothermary', cls('Music', 'Dance/Electronic', 'Dance/Electronic'),
+    [act('Desire & Johnny Jewel', cls('Music', 'Pop', 'Pop Rock', 'Event Style', 'Concert')), act('Johnny Jewel', cls('Music', 'Alternative', 'Indie Rock'))]);
+  assert.equal(ticketmasterAct(desire).keep, true);
+  const arlo = listing('ARLO PARKS - DESIRE TOUR', cls('Music', 'Alternative', 'Alternative Rock'), [act('Arlo Parks', cls('Music', 'Alternative', 'Indie Rock')), act('Baird', edm())]);
+  assert.equal(ticketmasterAct(arlo).keep, false);
+  // On the list as a support act doesn't save a rock headliner.
+  const support = listing('Polyphia', cls('Music', 'Rock', 'Pop'), [act('Polyphia', cls('Music', 'Rock', 'Alternative Rock')), act('Boy Harsher', cls('Music', 'Alternative', 'Industrial'))]);
+  assert.equal(ticketmasterAct(support).keep, false);
+});
+
+test('Ticketmaster: acts billed on RA or DICE nights count as electronic', () => {
+  const ra = (title, lineup, src = 'ra') => ({ title, lineup, sources: [{ id: src }] });
+  const acts = actsBilledOn([ra('Frost Children', ['Frost Children', 'TBA']), ra('Klubnacht', ['Marcel Dettmann', 'Special Guest']), ra('Pop tour', ['Bruno Mars'], 'ticketmaster')]);
+  assert.deepEqual([...acts].sort(), ['frost children', 'marcel dettmann']);
+  const frost = listing('Frost Children', cls('Music', 'Pop', 'Electro Pop'), [act('Frost Children', cls('Music', 'Pop', 'Pop Rock'))]);
+  assert.equal(ticketmasterAct(frost).keep, false);
+  assert.equal(ticketmasterAct(frost, { billed: acts }).keep, true);
+  assert.equal(actKey('Kontravoid (US)'), 'kontravoid');
+  assert.equal(actKey('Âme'), 'ame');
 });
