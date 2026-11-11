@@ -1584,8 +1584,14 @@
     const ds = S.ds, t = S.now, out = [];
     ds.cities.filter(c => norm(c.name).indexOf(s) >= 0 || (c.aka || []).some(a => norm(a).indexOf(s) >= 0)).slice(0, 4).forEach(c => out.push({ g: 'Cities', kind: 'city', id: c.id, label: c.name, hint: plural((D.byCity.get(c.id) || []).length, 'event', 'events') + ' ' + WIN_LABEL[S.win] }));
     RM.GENRES.filter(g => norm(g.name).indexOf(s) >= 0 || g.subs.some(x => norm(x).indexOf(s) >= 0)).slice(0, 3).forEach(g => out.push({ g: 'Genres', kind: 'genre', id: g.id, label: g.name, hint: 'Filter the map' }));
-    ds.artists.filter(a => norm(a.name).indexOf(s) >= 0).sort((a, b) => !!b.curated - !!a.curated || a.tier - b.tier).slice(0, 5).forEach(a => {
-      const n = routeGigs(a.id).length;
+    // The name itself first (an exact match, then one starting with what was typed), then whoever has dates
+    // coming up, then the curated local artists (config/artists.json), then the bigger names.
+    const aStart = a => { const k = norm(a.name); return k === s ? 0 : k.indexOf(s) === 0 || k.indexOf(' ' + s) >= 0 ? 1 : 2; };
+    const aGigs = new Map();
+    const gigs = a => { if (!aGigs.has(a.id)) aGigs.set(a.id, routeGigs(a.id).length); return aGigs.get(a.id); };
+    ds.artists.filter(a => norm(a.name).indexOf(s) >= 0)
+      .sort((a, b) => aStart(a) - aStart(b) || (gigs(b) > 0) - (gigs(a) > 0) || !!b.curated - !!a.curated || a.tier - b.tier || a.name.length - b.name.length).slice(0, 5).forEach(a => {
+      const n = gigs(a);
       out.push({ g: 'DJs and artists', kind: 'artist', id: a.id, label: a.name, hint: n ? plural(n, 'upcoming date', 'upcoming dates') : 'Nothing listed right now' + (a.curated && ACCOUNTS ? ' · follow for alerts' : '') });
     });
     const ls = lkey(q);
