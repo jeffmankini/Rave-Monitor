@@ -72,6 +72,8 @@ async function main() {
   const sampleDelta = Math.ceil((now - SAMPLE_ANCHOR - 86400e3) / (7 * 86400e3)) * 7 * 86400e3;
 
   const all = [], report = [];
+  // Listings dropped for not being electronic music, so the archive can drop its copies too.
+  const notElectronic = new Set();
   const windowDays = srcCfg.windowDays || 14;
   setMemoryBudget(srcCfg.apifyMemoryMb);
   setMaxRuns(srcCfg.apifyMaxRuns);
@@ -84,7 +86,7 @@ async function main() {
     report.push(entry);
     const ctx = {
       // A source can scrape further ahead (scrapeDays) than the feed shows, so a monthly pull covers the month.
-      cities, cityById, settings, env, from, to: now + (settings.scrapeDays || windowDays) * 86400e3,
+      cities, cityById, settings, env, from, to: now + (settings.scrapeDays || windowDays) * 86400e3, notElectronic,
       log: (...m) => console.log(`[${src.id}]`, ...m),
       warn: m => { warnings.push(m); console.warn(`[${src.id}] ${m}`); },
       apify: async (actor, input, o = {}) => {
@@ -167,10 +169,15 @@ async function main() {
   };
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'events.json'), JSON.stringify(feed));
+  // Not published: the ids only tell pipeline/archive.js which saved listings to drop.
+  if (!sample) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'not-electronic.json'), JSON.stringify([...notElectronic].sort()));
+  }
   const cost = report.reduce((s, r) => s + (r.estCostUsd || 0), 0);
   console.log('\nSource          raw   kept  note');
   for (const r of report) console.log(`${r.label.padEnd(15)} ${String(r.raw).padStart(4)}  ${String(r.kept).padStart(5)}  ${r.error || (r.stale ? 'last good scrape' : r.cached ? 'cached' : r.ok ? 'ok' : '')}${r.estCostUsd ? `  ~$${r.estCostUsd}` : ''}`);
-  console.log(`\n${events.length} events in ${usedCities.length} cities after merging ${merged} duplicates. Estimated scraper cost this run: $${cost.toFixed(2)}.`);
+  console.log(`\n${events.length} events in ${usedCities.length} cities after merging ${merged} duplicates. ${notElectronic.size} listings weren't electronic music. Estimated scraper cost this run: $${cost.toFixed(2)}.`);
   console.log(`Wrote ${path.relative(ROOT, path.join(outDir, 'events.json'))}`);
 }
 

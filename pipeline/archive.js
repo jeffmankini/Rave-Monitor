@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isContactLine, positionQuality, jitter, splitLineup, genresFrom, fallbackGenre } from './lib/normalize.js';
+import { isContactLine, positionQuality, jitter, splitLineup, genresFrom, fallbackGenre, isElectronic } from './lib/normalize.js';
 import { detectLabels, detectPromoters, mergePromoters } from './lib/labels.js';
 import { norm } from './lib/util.js';
 
@@ -47,10 +47,20 @@ export function loadArchive(dir) {
  */
 function tidy(r, cities) {
   if (Array.isArray(r.lineup)) r.lineup = [...new Set(splitLineup(r.lineup).filter(n => !isContactLine(n)))];
-  // Nights saved before the 'electronic' and 'misc' buckets said 'other' (or nothing).
-  if (!Array.isArray(r.genres) || !r.genres.length || (r.genres.length === 1 && r.genres[0] === 'other')) {
+  // Ticketmaster files most Dance/Electronic listings under the sub-genre "Amapiano" whatever they are;
+  // nights saved before the feed stopped believing it lose it (and the family it gave them).
+  const onlyTicketmaster = (r.sources || []).length > 0 && r.sources.every(s => s.name === 'Ticketmaster');
+  if (onlyTicketmaster && Array.isArray(r.tags) && r.tags.includes('Amapiano') && !/amapiano/i.test(r.title || '')) {
+    r.tags = r.tags.filter(t => t !== 'Amapiano');
+    r.genres = [];
+  }
+  // Nights saved before the 'electronic' and 'misc' buckets said 'other' (or nothing), and untagged
+  // nights from a source that only lists electronic music saved as 'misc' (Klubnacht at Berghain).
+  const source = sourceOf(r);
+  const staleMisc = r.genres && r.genres.length === 1 && r.genres[0] === 'misc' && !(r.tags || []).length && ELECTRONIC_ONLY.has(source);
+  if (!Array.isArray(r.genres) || !r.genres.length || (r.genres.length === 1 && r.genres[0] === 'other') || staleMisc) {
     const fam = genresFrom(r.title, r.tags || []);
-    r.genres = fam.length ? fam : [fallbackGenre({ title: r.title, tags: r.tags || [], source: (r.sources && r.sources[0] && r.sources[0].id) || '' })];
+    r.genres = fam.length ? fam : [fallbackGenre({ title: r.title, tags: r.tags || [], source })];
   } else r.genres = r.genres.filter(g => g !== 'other');
   const labels = detectLabels(r);
   if (labels.length) r.labels = labels; else delete r.labels;
@@ -64,9 +74,18 @@ function tidy(r, cities) {
   }
 }
 
+// Saved sources keep the platform's name, not the feed's source id.
+const SOURCE_IDS = { 'Resident Advisor': 'ra', DICE: 'dice', Ticketmaster: 'ticketmaster', Skiddle: 'skiddle', Posh: 'posh', Partiful: 'partiful', Luma: 'luma' };
+const ELECTRONIC_ONLY = new Set(['ra', 'dice', 'ticketmaster']);
+/** The record's source id, preferring one that only lists electronic music when it has several. */
+function sourceOf(r) {
+  const ids = (r.sources || []).map(s => s.id || SOURCE_IDS[s.name]).filter(Boolean);
+  return ids.find(id => ELECTRONIC_ONLY.has(id)) || ids[0] || '';
+}
+
 const FIELDS = ['title', 'start', 'end', 'tz', 'cityId', 'venue', 'type', 'price', 'age', 'popularity'];
 
-/** Fold one feed into the archive. Returns counts of new and updated listings. */
+/** Fold one feed into the archive. Returns counts of new and updated listings, and the ids of the records the feed matched. */
 // Dates are kept to the day, so each daily run changes only what actually changed.
 export function mergeFeed(archive, feed, now = new Date().toISOString().slice(0, 10)) {
   const { records, cities } = archive;
@@ -74,6 +93,7 @@ export function mergeFeed(archive, feed, now = new Date().toISOString().slice(0,
   for (const r of records.values()) for (const k of r.keys) index.set(k, r.id);
   for (const c of feed.cities || []) cities[c.id] = { name: c.name, country: c.country, lat: c.lat, lon: c.lon, tz: c.tz };
   let added = 0, updated = 0;
+  const seen = new Set();
   for (const e of feed.events || []) {
     const keys = keysOf(e);
     const ids = uniq(keys.map(k => index.get(k)));
@@ -108,8 +128,27 @@ export function mergeFeed(archive, feed, now = new Date().toISOString().slice(0,
     rec.status = e.status || rec.status;
     rec.lastSeen = now;
     for (const k of rec.keys) index.set(k, rec.id);
+    seen.add(rec.id);
   }
-  return { added, updated };
+  return { added, updated, seen };
+}
+
+/**
+ * Drop listings that aren't electronic music: those the feed turned away this run (notElectronic, the
+ * ids pipeline/run.js saved) and, going by their saved genre tags, older ones the feed no longer shows.
+ * Listings this feed matched (seen, from mergeFeed) have already passed the feed's check and stay, and
+ * so do untagged ones: without the listing's text (not kept here) there's nothing safe to judge by.
+ */
+export function pruneArchive(archive, notElectronic = [], seen = new Set()) {
+  const drop = new Set(notElectronic);
+  let removed = 0;
+  for (const [id, r] of archive.records) {
+    if (seen.has(id)) continue;
+    const turnedAway = r.keys.some(k => drop.has(k));
+    const judged = (r.tags || []).length > 0 && !isElectronic({ title: r.title, tags: r.tags, genres: r.genres || [] });
+    if (turnedAway || judged) { archive.records.delete(id); removed++; }
+  }
+  return removed;
 }
 
 function mergeSources(a, b) {
@@ -175,12 +214,14 @@ export function writeArchive(dir, archive, now = new Date().toISOString().slice(
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [dir, feedFile] = process.argv.slice(2);
-  if (!dir || !feedFile) { console.error('usage: node pipeline/archive.js <archive-dir> <events.json>'); process.exit(2); }
+  const [dir, feedFile, notElectronicFile] = process.argv.slice(2);
+  if (!dir || !feedFile) { console.error('usage: node pipeline/archive.js <archive-dir> <events.json> [not-electronic.json]'); process.exit(2); }
   const feed = JSON.parse(fs.readFileSync(feedFile, 'utf8'));
   if (feed.sample) { console.log('Sample feed: not archived.'); process.exit(0); }
+  const turnedAway = notElectronicFile && fs.existsSync(notElectronicFile) ? JSON.parse(fs.readFileSync(notElectronicFile, 'utf8')) : [];
   const archive = loadArchive(dir);
-  const { added, updated } = mergeFeed(archive, feed);
+  const { added, updated, seen } = mergeFeed(archive, feed);
+  const removed = pruneArchive(archive, turnedAway, seen);
   writeArchive(dir, archive);
-  console.log(`Archive: ${added} new and ${updated} updated listings; ${archive.records.size} in total.`);
+  console.log(`Archive: ${added} new and ${updated} updated listings, ${removed} removed for not being electronic music; ${archive.records.size} in total.`);
 }

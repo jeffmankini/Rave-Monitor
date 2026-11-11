@@ -4,7 +4,7 @@ Live at [ravemonitor.com](https://ravemonitor.com). Like it? Use the Donate butt
 
 Rave Monitor started inside split/shift, a Milwaukee dance-music nonprofit, out of a need for a better way to browse events and happenings, so we could plan our work and create new event experiences with the whole scene in view. It's open source, inspired by World Monitor-style dashboards, and free for everyone.
 
-A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps the electronic ones, merges nights listed on more than one platform, and writes one `events.json`. A second step writes `streams.json`, the livestreams for the Streams tab. The site is a single HTML page that reads those files. Without a feed, it falls back to a built-in demo with fictional events.
+A scheduled job pulls public listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle (DICE is wired up but switched off), keeps electronic music only, merges nights listed on more than one platform, and writes one `events.json`. A second step writes `streams.json`, the livestreams for the Streams tab. The site is a single HTML page that reads those files. Without a feed, it falls back to a built-in demo with fictional events.
 
 On the page:
 
@@ -39,8 +39,9 @@ NTS Radio + YouTube → pipeline/streams.js → public/streams.json ─┘
 ```
 
 - **Normalize.** Every source maps to one event shape: title, start and end, venue and coordinates, lineup, genres, price, ticket status and source links.
-- **Filter.** RA and Ticketmaster's Dance/Electronic genre are electronic by definition. DICE uses its genre tags. Posh, Partiful, Luma and Skiddle listings must clearly mention electronic music (techno, house, rave, drum and bass and so on); brunches, sample sales and meetups are dropped.
-- **Genres.** Listings map to eight families: techno, house, drum and bass, afro and amapiano, disco and edits, garage and breaks, trance and psy, bass and dubstep. A listing none of them fits is **Dance/electronic** (EDM, electronica, club and ambient nights, or an untagged night from a source that only lists electronic music, like RA) or **Misc** (pop, rock, hip-hop, R&B, Latin and other shows, or no clue at all). A genre tag on the listing decides first: Ticketmaster's "Dance/Electronic" is Dance/electronic, its "Pop/Rock" is Misc.
+- **Filter.** Electronic music only (`isElectronic` in `pipeline/lib/normalize.js`). A listing's own genre tags decide first: a night tagged with at least as many electronic styles as other genres stays (house and R&B), one tagged mostly with other genres goes (an R&B, dancehall and hip-hop night with one amapiano tag, a rock show), unless its title names an electronic style outright ("Latin House"). Soul, funk, Latin and jazz count half, since house and disco nights often list them too, and covers bands and tribute acts go whatever they play. Untagged RA and DICE listings are electronic unless the title names another genre outright ("Hip-Hop Night", not "Alternative School presents…"). Posh, Partiful, Luma and Skiddle listings must clearly mention electronic music (techno, house, rave, drum and bass and so on); brunches, sample sales and meetups are dropped.
+- **Ticketmaster.** Its Dance/Electronic search also returns shows where only a support act or a lesser classification is filed under it (a pop tour with a DJ opening, a rock band at a venue called The Rave), so each act's own classification decides (`ticketmasterAct` in `pipeline/sources/api-sources.js`): the headliner's, or at a festival most of the billed acts'. A big name filed under Ticketmaster's catch-all Pop stays when the listing is Dance/Electronic and starts at 10pm or later (Calvin Harris at XS), not for a concert. Dance troupes, tribute bands, premium packages and fast-track add-ons, sports and theatre listings go, and so does a party with no electronic act billed whose title names another genre ("Emo Night", "Reggaeton Rave").
+- **Genres.** Listings map to eight families: techno, house, drum and bass, afro and amapiano, disco and edits, garage and breaks, trance and psy, bass and dubstep. A listing none of them fits is **Dance/electronic** (EDM, electronica, club and ambient nights, or an untagged night from a source that only lists electronic music, like RA) or **Misc** (pop, rock, hip-hop, R&B, Latin and other shows, or no clue at all), which the filter leaves out. A genre tag on the listing decides first: Ticketmaster's "Dance/Electronic" is Dance/electronic, its "Pop/Rock" is Misc. Ticketmaster files most Dance/Electronic listings under the sub-genre "Amapiano", whatever they are, so that only counts when an act or the title says amapiano.
 - **Merge.** The same night at the same venue on several platforms becomes one event that keeps every link. DICE set times are kept when present.
 
 ## Try it without any keys
@@ -111,8 +112,9 @@ Every listing the site shows is also kept in the `archive` branch, merged across
 - `/archive/data/venues.json` is the venue directory the Venues tab and map layer use (`pipeline/venues.js`): every place that has hosted a night, its spellings merged, with its position, how many nights it's had, its sounds and regulars.
 - The site offers the whole archive as a SQLite database (`/archive/archive.sqlite`, with `events`, `event_artists`, `event_sources`, `event_status` and `cities` tables) and a CSV file (`/archive/events.csv`), rebuilt on every deploy.
 - It's only as complete as the scrapes: paid sources are capped per city, so busy cities hold a sample of their nights.
+- It holds electronic music only, like the feed: a listing the feed turns away leaves the archive too (`pipeline/run.js` saves their ids to `cache/not-electronic.json`, which `pipeline/archive.js` reads), and so does an older one whose genre tags say it's something else.
 
-To build it locally: `node pipeline/archive.js <dir> public/events.json`, then `node pipeline/archive-export.js <dir> <out-dir>`.
+To build it locally: `node pipeline/archive.js <dir> public/events.json cache/not-electronic.json`, then `node pipeline/archive-export.js <dir> <out-dir>`.
 
 ## Configuration
 

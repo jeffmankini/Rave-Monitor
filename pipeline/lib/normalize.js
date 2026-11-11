@@ -42,9 +42,13 @@ export function genresFrom(...texts) {
 }
 
 // For listings no family fits. Tags decide first: a genre tag is the listing's own word for it.
-const ELECTRONIC_TAG = /\b(dance\s*\/\s*electronic|electronic|electronica|edm|club dance|dance pop|dance music|club classics|club|dj|electro ?pop|synth ?pop|synthwave|ambient|downtempo|experimental|idm|trip ?hop|big room|eurodance|hyperpop|bass|rave)\b/;
+// 'DJ' isn't one of them: Ticketmaster files reggae sound systems under Reggae > DJ.
+const ELECTRONIC_TAG = /\b(dance\s*\/\s*electronic|electronic|electronica|edm|club dance|dance pop|dance music|club classics|club|electro ?pop|synth ?pop|synthwave|ambient|downtempo|experimental|idm|intelligent dance music|trip ?hop|big room|big beat|hi-?nrg|eurodance|hyperpop|bass|rave|footwork|juke|ghetto ?tech|broken beat|jersey club)\b/;
 const ELECTRONIC_TEXT = /\b(electronic|electronica|edm|rave|ambient|downtempo|synthwave|idm|dance music|club night|dj set|warehouse)\b/;
 const NOT_ELECTRONIC = /\b(pop(?!-? ?up)|rock|hip ?-?hop|rap|r ?& ?b|rnb|jazz|blues|reggae|reggaeton|perreo|dancehall|latin|latino|salsa|bachata|cumbia|merengue|country|folk|metal|punk|emo|indie|alternative|soul|funk|gospel|k-?pop|afrobeats?|drag|comedy|performance art|motorsports?|racing|ska|new wave|karaoke)\b/;
+// In the title of a listing from a source that only lists electronic music, only a genre named outright
+// counts against it: 'Alternative School presents…' or 'Soul Clap' are names, 'Hip-Hop Night' is a genre.
+const NAMED_OTHER_GENRE = /\b(hip ?-?hop|r ?& ?b|rnb|reggaeton|perreo|dancehall|salsa|bachata|cumbia|banda|merengue|jazz|blues|country|metal|(?<!daft )punk|emo|k-?pop|afrobeats?|karaoke|comedy|gospel|pop (?:hits|party|night|anthems|bangers))\b/;
 const ELECTRONIC_SOURCES = new Set(['ra', 'dice', 'ticketmaster']);
 
 /**
@@ -60,9 +64,56 @@ export function fallbackGenre({ title = '', tags = [], text = '', source = '' } 
   }
   const all = norm([title, text].filter(Boolean).join(' | '));
   const strong = (all.replace(NOT_DISCO, ' ').match(STRONG) || []).length > 0;
-  if (NOT_ELECTRONIC.test(all) && !strong) return 'misc';
-  if (ELECTRONIC_SOURCES.has(source) || strong || ELECTRONIC_TEXT.test(all)) return 'electronic';
+  const electronicSource = ELECTRONIC_SOURCES.has(source);
+  if ((electronicSource ? NAMED_OTHER_GENRE : NOT_ELECTRONIC).test(all) && !strong) return 'misc';
+  if (electronicSource || strong || ELECTRONIC_TEXT.test(all)) return 'electronic';
   return 'misc';
+}
+
+// Rave Monitor lists electronic music only. These tags mark a listing as something else.
+const OTHER_TAG = /\b(pop(?!-? ?up)|rock|hip ?-?hop|rap|trap|r ?& ?b|rnb|jazz|blues|reggae|reggaeton|perreo|dancehall|latin|latino|salsa|bachata|cumbia|merengue|country|folk|metal|punk|emo|indie|alternative|soul|funk|gospel|k-?pop|afrobeats?|drag|comedy|performance art|motorsports?|racing|ska|karaoke|a cappella|singer-?songwriter|world music|classical|opera|musicals?|theatre|family|community|civic)\b/;
+// A covers band or tribute act is a live band, whatever it plays.
+const COVER_ACT = /\b(covers? band|tribute (act|band|show))\b/;
+// An electronic style named outright in a title (not 'house party' or '80s disco', which can be anything).
+const TITLE_STYLE = /\b(techno|house music|(?:deep|tech|afro|latin|tribal|soulful|funky|jackin'?|acid|progressive|vocal|chicago|organic|melodic|hard|electro|future|bass|piano|french|ghetto|minimal) ?house|amapiano|afro ?piano|drum ?(?:&|and|'?n'?) ?bass|dnb|d&b|jungle|dubstep|uk ?garage|ukg|trance|psytrance|hard ?style|gabber|breakbeat|electronic music|edm)\b/;
+
+/** Whether a title names an electronic style outright ('Latin House', 'Techno vs Hip Hop'). */
+export const titleNamesStyle = title => TITLE_STYLE.test(norm(title));
+/** Whether a title names another genre outright ('Emo Night', 'Reggaeton Rave'; not 'A Daft Punk party'). */
+export const titleNamesOtherGenre = title => NAMED_OTHER_GENRE.test(norm(title));
+
+// Rock, punk, jazz and metal styles named after an electronic word ('Garage Rock', 'Acid Jazz').
+const OTHER_COMPOUND = /\b(garage|acid|industrial|electro|dance)[- ]?(rock|punk|jazz|metal)\b/;
+// Genres house and disco grew out of, often listed beside them on a house or disco night: they count half.
+const NEAR_TAG = /^(soul|funk|funk ?\/ ?soul|northern soul|latin|latino|jazz|world music)$/;
+
+/**
+ * Whether one genre tag names an electronic style, another genre ('near' for soul, funk, Latin and jazz,
+ * which count half), or neither ('Other', '1990s', 'LGBTQ+').
+ */
+export function tagKind(tag) {
+  const t = norm(tag).trim();
+  if (!t) return null;
+  if (OTHER_COMPOUND.test(t)) return 'other';
+  if (genresFrom(t).length || ELECTRONIC_TAG.test(t)) return 'electronic';
+  if (NEAR_TAG.test(t)) return 'near';
+  return OTHER_TAG.test(t) ? 'other' : null;
+}
+
+/**
+ * Whether a listing is electronic music, from its own genre tags first: a night tagged with at least as
+ * many electronic styles as other genres stays (house and R&B; house, disco, soul and funk), one tagged
+ * mostly with other genres goes (an R&B, dancehall and hip-hop night with one amapiano tag, a rock
+ * show), unless its title names an electronic style outright. Without telling tags, the genre families
+ * decide: 'misc' (pop, rock, hip-hop… or no sign of electronic music at all) goes.
+ */
+export function isElectronic({ title = '', tags = [], genres = [] } = {}) {
+  if (tags.some(t => COVER_ACT.test(norm(t)))) return false;
+  let electronic = 0, other = 0;
+  for (const t of tags) { const k = tagKind(t); if (k === 'electronic') electronic++; else if (k === 'other') other++; else if (k === 'near') other += 0.5; }
+  if (electronic && electronic >= other) return true;
+  if (other) return TITLE_STYLE.test(norm(title));
+  return genres.some(g => g !== 'misc');
 }
 
 /** Score how clearly a listing is electronic music. Sources that only list electronic music skip this. */
@@ -172,6 +223,15 @@ export function splitLineup(list) {
 }
 
 /**
+ * Note a listing dropped for not being electronic music (run.js passes ctx.notElectronic, a Set, so the
+ * archive can drop it too) and return null.
+ */
+export function notElectronic(ctx, source, id) {
+  if (ctx && ctx.notElectronic && id !== undefined && id !== null) ctx.notElectronic.add(`${source}:${id}`);
+  return null;
+}
+
+/**
  * Build the shared event shape. Returns null when required fields are missing.
  * Only event-level facts are kept: no descriptions, attendee lists or organizer contact details.
  */
@@ -189,6 +249,9 @@ export function positionQuality(lat, lon) {
 
 export function makeEvent(ctx, f) {
   if (!f.title || !Number.isFinite(f.startMs)) return null;
+  let genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
+  if (!genres.length) genres = [fallbackGenre({ title: f.title, tags: f.tags || [], text: [f.genreText, f.lineupText].filter(Boolean).join(' | '), source: f.source })];
+  if (!isElectronic({ title: f.title, tags: f.tags || [], genres })) return notElectronic(ctx, f.source, f.id);
   const quality = positionQuality(f.lat, f.lon);
   let lat = quality === 'none' ? undefined : f.lat, lon = quality === 'none' ? undefined : f.lon, approx = quality === 'rough';
   const city = assignCity(ctx, lat, lon, { cityId: f.cityHint, name: f.cityName, country: f.country, tz: f.tz });
@@ -200,8 +263,6 @@ export function makeEvent(ctx, f) {
   const dur = { club: 6, after: 6, day: 7, concert: 3.5, festival: 12 }[type] || 5;
   let endMs = Number.isFinite(f.endMs) && f.endMs > f.startMs ? f.endMs : f.startMs + dur * 3600e3;
   if (endMs - f.startMs > 4 * 86400e3) endMs = f.startMs + 4 * 86400e3;
-  let genres = (f.genres && f.genres.length ? f.genres : genresFrom(f.title, f.tags || [], f.lineupText || ''));
-  if (!genres.length) genres = [fallbackGenre({ title: f.title, tags: f.tags || [], text: [f.genreText, f.lineupText].filter(Boolean).join(' | '), source: f.source })];
   const lineup = [...new Set(splitLineup(f.lineup).filter(n => n.length < 80 && !isContactLine(n)))].slice(0, 24);
   const listed = promoterNames(f.promoters).filter(n => !isContactLine(n));
   const promoters = mergePromoters(listed, detectPromoters({ title: f.title, promoters: listed, lineup, genres }));

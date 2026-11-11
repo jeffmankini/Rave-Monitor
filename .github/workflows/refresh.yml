@@ -69,7 +69,7 @@ jobs:
           else
             git worktree add -q --orphan -b archive archive-data
           fi
-          node pipeline/archive.js archive-data public/events.json
+          node pipeline/archive.js archive-data public/events.json cache/not-electronic.json
           # OpenStreetMap's clubs around each city, about once a week (pipeline/osm.js).
           node pipeline/osm.js archive-data || echo "OpenStreetMap refresh failed; keeping the last lists."
           cd archive-data
