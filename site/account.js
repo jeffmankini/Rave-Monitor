@@ -40,8 +40,10 @@
     history.replaceState(history.state, '', u.pathname + (u.search ? u.search : '') + u.hash);
   }
 
+  // In Stripe's test mode, supporting only shows in a browser that opened ?preview=supporters.
+  const preview = () => store.get('rm_supporter_preview') === 1;
   function setMe(p) {
-    if (p && 'billing' in p) A.billing = p.billing || null;
+    if (p && 'billing' in p) A.billing = p.billing && (!p.billing.test || preview()) ? p.billing : null;
     if (!p || !p.user) { A.me = null; A.follows = new Map(); A.saves = new Map(); A.unread = 0; A.items = null; A.calendar = null; }
     else {
       A.me = p.user;
@@ -430,7 +432,8 @@
   function supporterView() {
     const me = A.me, s = me.supporter;
     if (!s) {
-      return '<div class="sup-card"><h3>Support Rave Monitor</h3><p class="sup-price">' + esc((A.billing && A.billing.price) || '$5 a month') + '</p>' +
+      return '<div class="sup-card">' + (A.billing && A.billing.test ? '<p class="acct-note">Preview, in Stripe\'s test mode: pay with the card 4242 4242 4242 4242, any future date and any CVC. No real money moves.</p>' : '') +
+        '<h3>Support Rave Monitor</h3><p class="sup-price">' + esc((A.billing && A.billing.price) || '$5 a month') + '</p>' +
         '<p>Rave Monitor is free, and made by one person. Supporters keep it running, and get:</p>' +
         '<ul class="sup-perks">' + PERKS.map(p => '<li><b>' + p[0] + '</b><span>' + p[1] + '</span></li>').join('') + '</ul>' +
         (A.billing ? '<button type="button" class="btn primary" data-acct-act="checkout">Become a supporter</button>' : '<p class="fine">Supporting isn\'t open right now. Check back soon.</p>') +
@@ -558,7 +561,9 @@
     header();
     const p = new URLSearchParams(location.search);
     const token = p.get('signin'), want = p.get('account'), paid = p.get('checkout') === 'done';
-    strip('signin'); strip('account'); strip('checkout');
+    if (p.get('preview') === 'supporters') store.set('rm_supporter_preview', 1);
+    else if (p.get('preview') === 'off') store.set('rm_supporter_preview', null);
+    strip('signin'); strip('account'); strip('checkout'); strip('preview');
     if (token) await verify(token); else await loadMe();
     if (A.me) await pending();
     themeSync();

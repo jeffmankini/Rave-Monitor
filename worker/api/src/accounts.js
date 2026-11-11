@@ -12,7 +12,7 @@ import { verifyTurnstile } from './handler.js';
 import { sendEmail, message } from './postmark.js';
 import { signInEmail } from './emails.js';
 import { followKey } from './keys.js';
-import { isSupporter, billingOn, checkout, portal, webhook, forgetCustomer } from './billing.js';
+import { isSupporter, billingOn, stripeMode, checkout, portal, webhook, forgetCustomer } from './billing.js';
 import { calendarFeed } from './calendar.js';
 
 const DAY = 864e5;
@@ -86,8 +86,9 @@ export function publicUser(u) {
     customTheme: theme && COLOR_RE.test(theme.bg || '') && COLOR_RE.test(theme.accent || '') ? { bg: theme.bg, accent: theme.accent } : null
   };
 }
-/** Billing as the site sees it: off, or on with the price to show. */
-const billingInfo = env => billingOn(env) ? { price: env.SUPPORTER_PRICE || '$5 a month' } : null;
+/** Billing as the site sees it: off, or on with the price to show (and whether it's Stripe's test mode,
+ *  which the site only shows to a browser that opened the preview link). */
+const billingInfo = env => billingOn(env) ? { price: env.SUPPORTER_PRICE || '$5 a month', ...(stripeMode(env.STRIPE_SECRET_KEY) === 'test' ? { test: true } : {}) } : null;
 const calUrl = (ctx, user) => isSupporter(user) && user.cal_token ? ctx.api + '/v1/cal/' + user.cal_token + '.ics' : null;
 
 async function mePayload(env, user, ctx) {

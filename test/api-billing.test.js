@@ -77,7 +77,10 @@ test('billing stays off until the key and its webhook secret are there', { skip 
   assert.equal((await half.call('GET', '/v1/health')).body.billing, false);
   const on = setup();
   assert.equal((await on.call('GET', '/v1/health')).body.billing, true);
-  assert.deepEqual((await on.call('GET', '/v1/me')).body.billing, { price: '$5 a month' });
+  // A test-mode key says so; the site only shows it in a browser that opened the preview link.
+  assert.deepEqual((await on.call('GET', '/v1/me')).body.billing, { price: '$5 a month', test: true });
+  const live = setup({ STRIPE_SECRET_KEY: 'rk_live_abc', STRIPE_WEBHOOK_SECRET_LIVE: WHSEC });
+  assert.deepEqual((await live.call('GET', '/v1/me')).body.billing, { price: '$5 a month' });
   assert.equal(stripeMode('sk_live_x'), 'live'); assert.equal(stripeMode('rk_test_x'), 'test'); assert.equal(stripeMode('pk_test_x'), '');
 });
 
