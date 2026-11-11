@@ -2960,9 +2960,21 @@
     document.addEventListener('rm:open-colors', openColors);
     // Signed in, the choice is kept on the account too (site/account.js), so it follows people around.
     const note = $('.theme-note');
-    const sayWhere = () => { if (note) note.textContent = (window.RM_ACCT || {}).signedIn ? 'Saved to your account, so your colors follow you to every device.' : 'Saved in this browser, for every page.'; };
+    const sayWhere = () => {
+      if (!note) return;
+      const acct = window.RM_ACCT;
+      if (acct && acct.signedIn) note.textContent = 'Saved to your account, so your colors follow you to every device.';
+      // Accounts are on but nobody's signed in: say so, with a way in.
+      else if (acct) note.innerHTML = 'Saved in this browser. <button type="button" class="linkish" data-colors-signin>Sign in</button> to keep your colors on every device.';
+      else note.textContent = 'Saved in this browser, for every page.';
+    };
     document.addEventListener('rm:account', sayWhere);
     sayWhere();
+    pop.addEventListener('click', ev => {
+      if (!ev.target.closest('[data-colors-signin]')) return;
+      if (POP) { try { pop.hidePopover(); } catch (err) { /* already closed */ } } else { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+      document.dispatchEvent(new CustomEvent('rm:sign-in', { detail: { reason: 'Sign in to keep your colors on every device, along with who you follow, the shows you save and your alerts.' } }));
+    });
     btn.hidden = false;
   }
 
@@ -3024,6 +3036,7 @@
         set: id => setTheme(themeById(id) || themeById(THEMES && THEMES.def), true),
         custom: (bg, accent, save) => setOwnColors(bg, accent, save),
         own: () => (OWN ? { bg: OWN.bg, accent: OWN.accent } : null),
+        name: () => (currentTheme() || {}).name || null,
         has: id => !!themeById(id)
       },
       when: (ms, tz) => tDate(ms, tz) + ', ' + tTime(ms, tz),

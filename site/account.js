@@ -301,6 +301,8 @@
       else if (mine) { t.custom(mine.bg, mine.accent, true); patch({ local: { theme: 'custom' }, send: { theme: 'custom' }, quiet: true }); }
     }
   }
+  // The colors picker's "Sign in" (shown when signed out), with why.
+  document.addEventListener('rm:sign-in', ev => { if (!A.me) open('signin', ev.detail && ev.detail.reason); });
   // From the colors picker: every pick is saved to the account too, when signed in.
   document.addEventListener('rm:theme', ev => { if (A.me && ev.detail && ev.detail.id) patch({ local: { theme: ev.detail.id }, send: { theme: ev.detail.id }, quiet: true }); });
   document.addEventListener('rm:custom-colors', ev => { if (A.me) patch({ local: { theme: 'custom', customTheme: ev.detail }, send: { theme: 'custom', customTheme: ev.detail }, quiet: true }); });
@@ -422,6 +424,8 @@
       '<div class="acct-radios" role="radiogroup" aria-label="How often to email you">' + freq.map(f =>
         '<label class="acct-chk"><input type="radio" name="acct-freq" value="' + f[0] + '"' + (me.freq === f[0] ? ' checked' : '') + '><span>' + f[1] + (f[0] === 'instant' ? '<small>New shows emailed the moment we spot them.</small>' : '') + '</span></label>').join('') + '</div>' +
       '<p class="fine">Digests go out in your time zone (' + esc(me.tz) + ')' + (me.tz !== tz() ? '. <button type="button" class="linkish" data-acct-act="tz">Use this device\'s, ' + esc(tz()) + '</button>' : '') + '.</p>' +
+      '<h3>Colors</h3><p class="fine">' + (a && a.theme.name() ? esc(a.theme.name()) + ', saved to your account, so your colors follow you to every device.' : 'Your colors are saved to your account, so they follow you to every device.') + '</p>' +
+      '<div class="acct-row"><button type="button" class="btn" data-acct-act="colors">Change colors</button></div>' +
       '<h3>Your account</h3><div class="acct-row">' +
       '<button type="button" class="btn" data-acct-act="signout">Sign out</button>' +
       '<button type="button" class="btn danger" data-acct-act="delete">Delete your account</button></div>' +
@@ -466,6 +470,7 @@
     if (!act) return;
     const a = act.dataset.acctAct;
     if (a === 'again') { A.view = 'signin'; render(); return; }
+    if (a === 'colors') { dlg().close(); document.dispatchEvent(new CustomEvent('rm:open-colors')); return; }
     if (a === 'tz') { patch({ local: { tz: tz() }, send: { tz: tz() } }); render(); return; }
     if (a === 'signout') { try { await api('POST', '/auth/signout', {}); } catch (err) { /* signed out anyway */ } setMe(null); dlg().close(); flash('You\'re signed out.'); track('sign_out', {}); return; }
     if (a === 'cal' || a === 'cal-reset') {
