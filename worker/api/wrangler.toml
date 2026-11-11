@@ -44,3 +44,5 @@ SITE_URL = "https://ravemonitor.com"
 MAIL_FROM = "hello@ravemonitor.com"
 MAIL_FROM_NAME = "Rave Monitor"
 POSTMARK_STREAM = "outbound"
+# Supporters (src/billing.js): the price as the site shows it. The deploy makes the Stripe price itself.
+SUPPORTER_PRICE = "$5 a month"

@@ -6,8 +6,10 @@
 //  - shows people saved get a reminder the day before, and an alert when they sell out, are cancelled
 //    or are postponed;
 //  - once a week, people who picked cities get that week's picks there, in their genres;
+//  - supporters who asked for scene alerts get every new night in their cities and genres;
 // then emails what's new through Postmark: changes and reminders right away, new shows and picks as
-// each person chose (right away, a daily digest or a weekly one), each with one-click unsubscribe.
+// each person chose (a daily digest or a weekly one, or right away for supporters), each with
+// one-click unsubscribe.
 //
 // Only listings first seen since the last run count as new (seen_events), so a refresh never repeats
 // an alert, and the first run just takes note of what's there.
@@ -26,6 +28,7 @@ import { slug } from './lib/util.js';
 import { akey, lkey } from '../worker/api/src/keys.js';
 import { alertsEmail, when } from '../worker/api/src/emails.js';
 import { postmark, sendBatch, message } from '../worker/api/src/postmark.js';
+import { isSupporter } from '../worker/api/src/billing.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOUR = 36e5, DAY = 24 * HOUR;
@@ -35,6 +38,7 @@ const REMIND_BEFORE = 30 * HOUR;
 const DIGEST_HOUR = 8;          // digests go out from 8am in each person's time zone
 const STALE = 7 * DAY;          // alerts older than this are no longer emailed
 const PICKS = 8;
+const SCENE_MAX = 25;           // nights listed in one scene alert
 
 const parse = (s, fallback) => { try { return JSON.parse(s); } catch (err) { return fallback; } };
 
@@ -134,7 +138,7 @@ export function planAlerts({ events, seen, users, follows, saves, now, cityName,
     followers.get(k).push(f);
   }
 
-  const fresh = [];
+  const fresh = [], alerted = new Map();
   for (const e of live) {
     const fp = fingerprint(e, cityName), st = e.status || '';
     const prev = byId.get(e.id) || byFp.get(fp);
@@ -163,7 +167,24 @@ export function planAlerts({ events, seen, users, follows, saves, now, cityName,
       if (!x || !x.p.alerts.follows) continue;
       if (x.p.mine && x.p.cities.length && !x.p.cities.includes(e.cityId) && !h.venue) continue;
       add(uid, 'new_show', e.id, e.title, 'You follow ' + names(h.why), eventData(e, cityName, h.why));
+      if (!alerted.has(uid)) alerted.set(uid, new Set());
+      alerted.get(uid).add(e.id);
     }
+  }
+
+  // Scene alerts, for supporters: every new night in their cities (and genres), as one alert a run,
+  // leaving out the ones they just got as new shows.
+  for (const { u, p } of people.values()) {
+    if (!u.scene || !p.cities.length || !isSupporter(u, now)) continue;
+    const got = alerted.get(u.id) || new Set();
+    const list = fresh.filter(e => p.cities.includes(e.cityId) && Date.parse(e.start) > now && !GONE.includes(e.status) && !got.has(e.id) &&
+      (!p.genres.length || (e.genres || []).some(g => p.genres.includes(g)))).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+    if (!list.length) continue;
+    const where = p.cities.length > 2 ? 'your cities' : names(p.cities.map(cityName));
+    const shown = list.slice(0, SCENE_MAX);
+    add(u.id, 'scene', 'scene:' + new Date(now).toISOString().slice(0, 16), `${list.length} new ${list.length === 1 ? 'night' : 'nights'} in ${where}`,
+      list.length > shown.length ? `Just listed${p.genres.length ? ', in your genres' : ''}. The first ${shown.length} by date; the rest are on the map.` : `Just listed${p.genres.length ? ', in your genres' : ''}.`,
+      { events: shown.map(e => eventData(e, cityName)) });
   }
 
   // Saved shows: reminders and changes.
@@ -223,12 +244,14 @@ export function planEmails({ unsent, users, now }) {
     if (p.freq === 'off') continue;
     const urgent = items.filter(n => URGENT.includes(n.kind)), rest = items.filter(n => !URGENT.includes(n.kind));
     let freq = 'instant', send = urgent, digest = false;
-    if (p.freq === 'instant') send = items;
+    // Everything right away is a supporter perk; anyone else who chose it gets the daily digest.
+    if (p.freq === 'instant' && isSupporter(u, now)) send = items;
     else if (rest.length) {
+      const f = p.freq === 'weekly' ? 'weekly' : 'daily';
       const t = digestTimes(now, p.tz);
-      const due = p.freq === 'daily' ? t.daily : t.weekly;
+      const due = f === 'daily' ? t.daily : t.weekly;
       // Since the last digest, or since they joined: a new account's first digest waits for 8am too.
-      if (now >= due && Math.max(u.digest_at || 0, u.created_at || 0) < due) { send = items; freq = p.freq; digest = true; }
+      if (now >= due && Math.max(u.digest_at || 0, u.created_at || 0) < due) { send = items; freq = f; digest = true; }
     }
     if (send.length) out.push({ user: u, items: send, freq, digest });
   }

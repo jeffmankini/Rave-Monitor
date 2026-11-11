@@ -12,7 +12,15 @@
   // head already set from the visitor's pick; the canvas map and the street map take theirs from here.
   const THEMES = window.RM_THEMES && Array.isArray(window.RM_THEMES.list) && window.RM_THEMES.list.length ? window.RM_THEMES : null;
   const themeById = id => (THEMES && THEMES.list.find(t => t.id === id)) || null;
-  const currentTheme = () => themeById(document.documentElement.getAttribute('data-theme')) || themeById(THEMES && THEMES.def);
+  // Supporters' own colors (site/themekit.js works out the rest from a background and an accent),
+  // as the head applied them from local storage.
+  const KIT = window.RM_THEMEKIT || null;
+  const ownFrom = (bg, accent) => KIT ? { id: 'custom', name: 'Your own', bg, accent, c: KIT.custom(bg, accent) } : null;
+  let OWN = (() => { try { const x = JSON.parse(localStorage.getItem('rm_theme_custom') || 'null'); return x ? ownFrom(x.bg, x.accent) : null; } catch (err) { return null; } })();
+  const currentTheme = () => {
+    const id = document.documentElement.getAttribute('data-theme');
+    return (id === 'custom' && OWN) || themeById(id) || themeById(THEMES && THEMES.def);
+  };
   // Google Analytics events, only when the build added the tag (config/site.json). Consent is the
   // consent tool's job; the tag holds events back until it allows them.
   function track(name, params) {
@@ -2640,6 +2648,12 @@
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
       if (a === 'about') { ev.preventDefault(); openAbout(); return; }
       if (a === 'updates') { ev.preventDefault(); openUpdates(); return; }
+      if (a === 'supporter') {
+        const pop = $('#theme-pop');
+        if (themeOpen()) { if (POP) pop.hidePopover(); else { pop.hidden = true; $('#theme-btn').setAttribute('aria-expanded', 'false'); } }
+        document.dispatchEvent(new CustomEvent('rm:supporter'));
+        return;
+      }
       if (a === 'area-all') { MapView.home(true); return; }
     }
     const opt = t.closest('#results [role="option"]');
@@ -2779,14 +2793,60 @@
     if (save) { try { localStorage.setItem('rm_theme', t.id); } catch (err) { /* private browsing: for this visit only */ } }
     const box = $('#theme-opts'), r = box && box.querySelector('input[value="' + t.id + '"]');
     if (r) r.checked = true;
+    const edit = $('#theme-edit');
+    if (edit) edit.hidden = true;
     MapView.restyle();
+  }
+  const swatch = c => '--sv:' + c.void + ';--sl:' + c.land + ';--sn:' + c.now + ';--sk:' + c.line;
+  const acct = () => window.RM_ACCT || {};
+  const DEFAULT_OWN = ['#3b0a1e', '#ffffff'];
+  // The six presets, then "Your own" when supporting is switched on (or for a supporter).
+  function themeOptions() {
+    const box = $('#theme-opts');
+    if (!box || !THEMES) return;
+    const cur = currentTheme(), a = acct(), own = a.billing || a.supporter;
+    box.innerHTML = THEMES.list.map(t => '<label class="topt"><input type="radio" name="rm-theme" value="' + esc(t.id) + '"' + (t === cur ? ' checked' : '') + '>' +
+      '<span class="tsw" aria-hidden="true" style="' + swatch(t.c) + '"></span><span class="tn">' + esc(t.name) + '</span></label>').join('') +
+      (own ? '<label class="topt"><input type="radio" name="rm-theme" value="custom"' + (cur && cur.id === 'custom' ? ' checked' : '') + '>' +
+        '<span class="tsw' + (OWN ? '' : ' blank') + '" id="tsw-own" aria-hidden="true" style="' + (OWN ? swatch(OWN.c) : '') + '"></span><span class="tn">Your own' + (a.supporter ? '' : ' <span class="sup-tag">Supporters</span>') + '</span></label>' : '');
+    const edit = $('#theme-edit'), lock = $('#theme-lock');
+    if (edit) {
+      edit.hidden = !(own && a.supporter && cur && cur.id === 'custom');
+      $('#tc-bg').value = (OWN && OWN.bg) || DEFAULT_OWN[0];
+      $('#tc-accent').value = (OWN && OWN.accent) || DEFAULT_OWN[1];
+    }
+    if (lock) lock.hidden = true;
+  }
+  function paintOwnSwatch() {
+    const sw = $('#tsw-own');
+    if (sw && OWN) { sw.classList.remove('blank'); sw.setAttribute('style', swatch(OWN.c)); }
+  }
+  function setOwnColors(bg, accent, save) {
+    const own = ownFrom(bg, accent);
+    if (!own) return;
+    OWN = own;
+    const css = KIT.css(own.c);
+    let st = document.getElementById('rm-custom');
+    if (!st) { st = document.createElement('style'); st.id = 'rm-custom'; document.head.appendChild(st); }
+    st.textContent = ':root[data-theme="custom"]{' + css + '}';
+    document.documentElement.setAttribute('data-theme', 'custom');
+    const m = $('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', own.c.void);
+    if (save) { try { localStorage.setItem('rm_theme', 'custom'); localStorage.setItem('rm_theme_custom', JSON.stringify({ bg, accent, void: own.c.void, css })); } catch (err) { /* private browsing: for this visit only */ } }
+    const r = $('#theme-opts input[value="custom"]');
+    if (r) r.checked = true;
+    paintOwnSwatch();
+    MapView.restyle();
+  }
+  function openColors() {
+    const btn = $('#theme-btn'), pop = $('#theme-pop');
+    if (!btn || btn.hidden || themeOpen()) return;
+    if (POP) { try { pop.showPopover(); } catch (err) { /* already open */ } } else btn.click();
   }
   function buildThemePicker() {
     const btn = $('#theme-btn'), pop = $('#theme-pop'), box = $('#theme-opts');
     if (!btn || !pop || !box || !THEMES || THEMES.list.length < 2) return;
-    const cur = currentTheme();
-    box.innerHTML = THEMES.list.map(t => '<label class="topt"><input type="radio" name="rm-theme" value="' + esc(t.id) + '"' + (t === cur ? ' checked' : '') + '>' +
-      '<span class="tsw" aria-hidden="true" style="--sv:' + t.c.void + ';--sl:' + t.c.land + ';--sn:' + t.c.now + ';--sk:' + t.c.line + '"></span><span class="tn">' + esc(t.name) + '</span></label>').join('');
+    themeOptions();
     const opened = open => {
       btn.setAttribute('aria-expanded', String(open));
       if (open) { const r = box.querySelector('input:checked') || box.querySelector('input'); if (r) r.focus(); track('open_colors', {}); }
@@ -2803,14 +2863,53 @@
       document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !pop.hidden) { shut(); btn.focus(); } });
     }
     box.addEventListener('change', ev => {
+      const edit = $('#theme-edit'), lock = $('#theme-lock');
+      if (ev.target.value === 'custom') {
+        // Your own colors: supporters pick them here; anyone else hears how to get them.
+        if (!acct().supporter) {
+          const back = box.querySelector('input[value="' + ((currentTheme() || {}).id || THEMES.def) + '"]');
+          if (back) back.checked = true;
+          if (lock) lock.hidden = false;
+          track('open_colors_locked', {});
+          return;
+        }
+        const bg = (OWN && OWN.bg) || DEFAULT_OWN[0], accent = (OWN && OWN.accent) || DEFAULT_OWN[1];
+        setOwnColors(bg, accent, true);
+        if (edit) { edit.hidden = false; $('#tc-bg').value = bg; $('#tc-accent').value = accent; }
+        document.dispatchEvent(new CustomEvent('rm:custom-colors', { detail: { bg, accent } }));
+        track('set_colors', { theme: 'custom' });
+        return;
+      }
       const t = themeById(ev.target.value);
       if (!t) return;
+      if (edit) edit.hidden = true;
+      if (lock) lock.hidden = true;
       setTheme(t, true);
       track('set_colors', { theme: t.id });
     });
+    // The background and accent pickers: the page follows as they move, and keeps the pick when they let go.
+    let rafOwn = 0;
+    const own = save => {
+      // Read the pickers when it runs, so a frame queued while dragging can't undo a later pick.
+      cancelAnimationFrame(rafOwn);
+      if (!save) { rafOwn = requestAnimationFrame(() => setOwnColors($('#tc-bg').value, $('#tc-accent').value, false)); return; }
+      const bg = $('#tc-bg').value, accent = $('#tc-accent').value;
+      setOwnColors(bg, accent, true);
+      document.dispatchEvent(new CustomEvent('rm:custom-colors', { detail: { bg, accent } }));
+    };
+    ['#tc-bg', '#tc-accent'].forEach(id => { const i = $(id); if (i) { i.addEventListener('input', () => own(false)); i.addEventListener('change', () => own(true)); } });
     window.addEventListener('resize', () => { if (themeOpen()) placeThemePop(); });
     // A pick in another tab follows here.
-    window.addEventListener('storage', ev => { if (ev.key === 'rm_theme') setTheme(themeById(ev.newValue) || themeById(THEMES.def), false); });
+    window.addEventListener('storage', ev => {
+      if (ev.key !== 'rm_theme' && ev.key !== 'rm_theme_custom') return;
+      let id = null, x = null;
+      try { id = localStorage.getItem('rm_theme'); x = JSON.parse(localStorage.getItem('rm_theme_custom') || 'null'); } catch (err) { return; }
+      if (id === 'custom' && x) setOwnColors(x.bg, x.accent, false);
+      else if (ev.key === 'rm_theme') setTheme(themeById(id) || themeById(THEMES.def), false);
+    });
+    // Signing in or out, or becoming a supporter, changes what "Your own" offers.
+    document.addEventListener('rm:account', () => themeOptions());
+    document.addEventListener('rm:open-colors', openColors);
     btn.hidden = false;
   }
 
@@ -2867,6 +2966,11 @@
       venueName: e => (venue(e) || {}).name || '',
       artistNames: e => e.heads.concat(e.support).map(artist).filter(Boolean).map(a => a.name).filter(n => !NOT_NAMES.test(n)),
       lkey, akey, track,
+      theme: {
+        current: () => (currentTheme() || {}).id || null,
+        set: id => setTheme(themeById(id) || themeById(THEMES && THEMES.def), true),
+        custom: (bg, accent, save) => setOwnColors(bg, accent, save)
+      },
       when: (ms, tz) => tDate(ms, tz) + ', ' + tTime(ms, tz),
       openEvent: id => { if (!S.ds.eventById[id] || S.ds.source === 'demo') return false; openEvent(id); return true; }
     };

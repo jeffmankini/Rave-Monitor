@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadThemes, themeHead } from './themes.js';
+import { loadThemes, themeHead, KIT_SRC } from './themes.js';
 import { loadUpdates, updatesHtml } from './updates.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,7 +27,7 @@ const parts = {
   // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).
   __GEO_JSON__: JSON.stringify((({ lo, lakes }) => ({ lo, lakes }))(JSON.parse(read('site/geo.json')))), __DATA_JS__: read('site/demo-data.js'),
   __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_PROMOTERS = ${JSON.stringify(promoterInfo)};\nwindow.RM_VENUES = ${JSON.stringify(venueInfo)};\nwindow.RM_TZ = ${tzTable};\n` +
-    `window.RM_THEMES = ${JSON.stringify(themes)};\nwindow.RM_UPDATES_LATEST = ${JSON.stringify(updates[0].date)};\n` + read('site/app.js')
+    `window.RM_THEMES = ${JSON.stringify(themes)};\nwindow.RM_UPDATES_LATEST = ${JSON.stringify(updates[0].date)};\n` + KIT_SRC + '\n' + read('site/app.js')
 };
 // Link previews need absolute URLs; set SITE_URL when deploying somewhere else.
 const SITE_URL = (process.env.SITE_URL || 'https://ravemonitor.com').replace(/\/+$/, '');

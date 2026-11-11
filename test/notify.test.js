@@ -20,8 +20,10 @@ const EVENTS = [
   ev('ra:4', 'milwaukee', 'The Cooperage', NOW + 100 * H, { status: 'cancelled', genres: ['techno'] })
 ];
 const user = (id, over = {}) => ({ id, email: id + '@example.com', created_at: NOW - H, cities: '[]', genres: '[]', tz: 'America/Chicago', email_freq: 'instant', alerts: '{"follows":true,"saved":true,"picks":false}', mine: 1, unsub: 'u'.repeat(32), digest_at: 0, ...over });
+// u1 supports Rave Monitor ($5 a month), so their emails go right away; instant is a supporter perk.
+const SUPPORTER = { sub_status: 'active', sub_until: NOW + 30 * 24 * H };
 const USERS = [
-  user('u1', { cities: '["milwaukee"]', alerts: '{"follows":true,"saved":true,"picks":true}' }),
+  user('u1', { cities: '["milwaukee"]', alerts: '{"follows":true,"saved":true,"picks":true}', ...SUPPORTER }),
   user('u2', { email_freq: 'daily' }),
   user('u3', { email_freq: 'off', mine: 0, cities: '["milwaukee"]' })
 ];
@@ -107,6 +109,42 @@ test('emails: instant goes now, digests wait for 8am, changes never wait', () =>
   assert.deepEqual(planEmails({ unsent, users: done, now: Date.parse('2026-11-12T18:00:00Z') }).find(x => x.user.id === 'u2').items.map(i => i.id), [3]);
 });
 
+test('right away is for supporters: anyone else who chose it gets the daily digest', () => {
+  const n = (id, user_id, kind) => ({ id, user_id, kind, ref: 'ra:' + id, title: 'Night', body: '', data: '{}' });
+  const lapsed = user('u9', { sub_status: 'canceled', sub_until: NOW - 40 * 24 * H });
+  const unpaid = user('u8', { sub_status: 'active', sub_until: NOW - 5 * 24 * H });   // past the grace days
+  const late = user('u7', { sub_status: 'past_due', sub_until: NOW + 20 * 24 * H }); // Stripe still retrying: perks stay
+  const unsent = [n(1, 'u9', 'new_show'), n(2, 'u9', 'reminder'), n(3, 'u8', 'new_show'), n(4, 'u7', 'new_show')];
+  const e = planEmails({ unsent, users: [lapsed, unpaid, late], now: NOW });
+  assert.deepEqual(e.map(x => [x.user.id, x.freq, x.items.map(i => i.id)]), [['u9', 'instant', [2]], ['u7', 'instant', [4]]]);
+  // Their digest comes at 8am instead.
+  const at8 = planEmails({ unsent, users: [lapsed], now: Date.parse('2026-11-12T15:00:00Z') });
+  assert.deepEqual(at8.map(x => [x.freq, x.items.map(i => i.id)]), [['daily', [1, 2]]]);
+});
+
+test('scene alerts: supporters get every new night in their cities and genres, once', () => {
+  const fan = user('s1', { cities: '["milwaukee","chicago"]', genres: '["techno"]', scene: 1, ...SUPPORTER, alerts: '{"follows":true,"saved":true,"picks":false}' });
+  const free = user('s2', { cities: '["milwaukee"]', scene: 1, alerts: '{"follows":true,"saved":true,"picks":false}' });  // not a supporter
+  const evs = [
+    ev('n:1', 'milwaukee', 'Cactus Club', NOW + 30 * H, { genres: ['techno'] }),
+    ev('n:2', 'chicago', 'Smartbar', NOW + 50 * H, { genres: ['techno', 'house'] }),
+    ev('n:3', 'chicago', 'Sound-Bar', NOW + 60 * H, { genres: ['house'] }),         // not their genre
+    ev('n:4', 'detroit', 'TV Lounge', NOW + 40 * H, { genres: ['techno'] }),        // not their city
+    ev('n:5', 'milwaukee', 'Fuel Cafe', NOW + 20 * H, { genres: ['techno'], lineup: ['Ben UFO'] })  // a new show they follow
+  ];
+  const seen = seenAll(EVENTS);
+  const p = planAlerts({ events: evs, seen, users: [fan, free], follows: [{ user_id: 's1', kind: 'artist', key: 'ben ufo', label: 'Ben UFO' }], saves: [], now: NOW, cityName, venueOf });
+  const scene = p.alerts.filter(a => a.kind === 'scene');
+  assert.equal(scene.length, 1);
+  assert.equal(scene[0].user_id, 's1');
+  assert.equal(scene[0].title, '2 new nights in Milwaukee and Chicago');
+  assert.deepEqual(JSON.parse(scene[0].data).events.map(e => e.id), ['n:1', 'n:2']);
+  assert.ok(p.alerts.some(a => a.user_id === 's1' && a.kind === 'new_show' && a.ref === 'n:5'));
+  // Seen next time: nothing new.
+  const again = planAlerts({ events: evs, seen: seen.concat(p.seenNew), users: [fan], follows: [], saves: [], now: NOW + H, cityName, venueOf });
+  assert.equal(again.alerts.filter(a => a.kind === 'scene').length, 0);
+});
+
 test('venues match the directory, its other spellings and the curated list', () => {
   const rows = [['milwaukee-cafe-lounge', 'Cafe Lounge', 'milwaukee', 43, -87.9, 0, null, 5, 1, null, null, null, {}, [], ['cafe lounge room']]];
   const of = venueResolver(rows, [{ name: 'split/shift', match: ['splitshift'], city: 'milwaukee' }], cityName);
@@ -122,7 +160,7 @@ test('a run writes alerts once, emails them and keeps count', { skip }, async ()
     all: async (sql, params = []) => D.rows(sql, ...params),
     batch: async stmts => { D.db.exec('BEGIN'); try { for (const s of stmts) D.db.prepare(s.sql).run(...s.params); D.db.exec('COMMIT'); } catch (err) { D.db.exec('ROLLBACK'); throw err; } }
   };
-  for (const u of USERS) D.db.prepare('INSERT INTO users (id, email, created_at, seen_at, cities, genres, tz, email_freq, alerts, mine, unsub) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)').run(u.id, u.email, u.created_at, u.cities, u.genres, u.tz, u.email_freq, u.alerts, u.mine, u.unsub);
+  for (const u of USERS) D.db.prepare('INSERT INTO users (id, email, created_at, seen_at, cities, genres, tz, email_freq, alerts, mine, unsub, sub_status, sub_until) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(u.id, u.email, u.created_at, u.cities, u.genres, u.tz, u.email_freq, u.alerts, u.mine, u.unsub, u.sub_status || '', u.sub_until || 0);
   for (const f of FOLLOWS) D.db.prepare('INSERT INTO follows (user_id, kind, key, label, created_at) VALUES (?, ?, ?, ?, 0)').run(f.user_id, f.kind, f.key, f.label);
   for (const s of SAVES) D.db.prepare('INSERT INTO saves (user_id, event_id, title, created_at) VALUES (?, ?, ?, 0)').run(s.user_id, s.event_id, 'x');
   const outbox = [];

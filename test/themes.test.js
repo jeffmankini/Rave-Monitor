@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { loadThemes, themeHead, contrast, themeColors } from '../scripts/themes.js';
+import { loadThemes, themeHead, contrast, themeColors, kit } from '../scripts/themes.js';
 
 const cfg = JSON.parse(fs.readFileSync(new URL('../config/themes.json', import.meta.url), 'utf8'));
 const T = loadThemes(cfg);
@@ -47,20 +47,46 @@ test('the head applies a saved theme and ignores anything else', () => {
   assert.match(head, /:root\[data-theme="ember"\]\{--void:#0e0907;/);
   assert.match(head, /--ink-2-rgb:169,171,203/);
   const script = head.match(/<script>([\s\S]*)<\/script>/)[1];
-  const run = saved => {
-    const attrs = {}, meta = { content: '#070814', setAttribute: (k, v) => { meta[k] = v; } };
+  const run = (saved, custom) => {
+    const attrs = {}, meta = { content: '#070814', setAttribute: (k, v) => { meta[k] = v; } }, styles = [];
     vm.runInNewContext(script, {
-      localStorage: { getItem: () => saved },
-      document: { documentElement: { setAttribute: (k, v) => { attrs[k] = v; } }, querySelector: () => meta }
+      localStorage: { getItem: k => k === 'rm_theme' ? saved : k === 'rm_theme_custom' ? custom : null },
+      document: { documentElement: { setAttribute: (k, v) => { attrs[k] = v; } }, querySelector: () => meta, head: { appendChild: el => styles.push(el.textContent) }, createElement: () => ({}) }
     });
-    return [attrs['data-theme'] || null, meta.content];
+    return [attrs['data-theme'] || null, meta.content, styles];
   };
-  assert.deepEqual(run('lagoon'), ['lagoon', byId.lagoon.c.void]);
-  assert.deepEqual(run(null), [null, '#070814']);
-  assert.deepEqual(run('constructor'), [null, '#070814']);
-  assert.deepEqual(run('nope'), [null, '#070814']);
+  assert.deepEqual(run('lagoon'), ['lagoon', byId.lagoon.c.void, []]);
+  assert.deepEqual(run(null), [null, '#070814', []]);
+  assert.deepEqual(run('constructor'), [null, '#070814', []]);
+  assert.deepEqual(run('nope'), [null, '#070814', []]);
+  // A supporter's own colors: applied from local storage, only if it's nothing but color variables.
+  const own = kit.custom('#3a0d0d', '#ffd166');
+  const good = JSON.stringify({ bg: '#3a0d0d', accent: '#ffd166', void: own.void, css: kit.css(own) });
+  const [th, bg, st] = run('custom', good);
+  assert.equal(th, 'custom'); assert.equal(bg, own.void);
+  assert.match(st[0], /^:root\[data-theme="custom"\]\{--void:#[0-9a-f]{6};/);
+  for (const evil of [JSON.stringify({ void: own.void, css: '--void:#000000;} body{display:none' }), JSON.stringify({ void: 'red', css: kit.css(own) }), 'not json'])
+    assert.deepEqual(run('custom', evil), [null, '#070814', []]);
   // Storage switched off (Safari private mode, some embeds): nothing breaks.
   assert.doesNotThrow(() => vm.runInNewContext(script, { localStorage: { getItem: () => { throw new Error('denied'); } }, document: {} }));
+});
+
+test("supporters' own colors stay dark, readable and in their hue", () => {
+  const picks = [['#070814', '#f6ecd8'], ['#ff0000', '#ffffff'], ['#ffffff', '#000000'], ['#123456', '#1a1a1a'], ['#00ff88', '#ffd166'], ['#5b2a86', '#ff6bd6'], ['#000000', '#3987e5']];
+  for (const [bg, accent] of picks) {
+    const c = kit.custom(bg, accent), tag = bg + '/' + accent;
+    assert.ok(kit.lum(c.void) < 0.02, tag + ': the background stays dark');
+    assert.ok(contrast(c.ink, c.void) >= 12, tag + ': text on the page');
+    assert.ok(contrast(c.ink2, c.deck) >= 7, tag + ': secondary text on panels');
+    assert.ok(contrast(c.ink3, c.deck) >= 4.5, tag + ': quiet text on panels');
+    assert.ok(contrast(c.now, c.deck) >= 4.5, tag + ': the accent on panels');
+    assert.ok(contrast(c.nowInk, c.now) >= 4.5, tag + ': text on accent buttons');
+  }
+  // The hue carries over: a red background makes reddish panels.
+  const red = kit.rgb(kit.custom('#ff0000', '#ffffff').deck);
+  assert.ok(red[0] > red[1] && red[0] > red[2]);
+  // Nonsense falls back to Midnight-like colors rather than breaking.
+  assert.match(kit.custom('nope', 'nah').void, /^#[0-9a-f]{6}$/);
 });
 
 test('bad theme colors are refused', () => {

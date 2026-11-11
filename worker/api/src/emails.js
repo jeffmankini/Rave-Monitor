@@ -51,6 +51,7 @@ export const SECTIONS = [
   { kinds: ['cancelled', 'postponed', 'soldout'], title: 'Changes to shows you saved' },
   { kinds: ['reminder'], title: 'Coming up' },
   { kinds: ['new_show'], title: 'New from who you follow' },
+  { kinds: ['scene'], title: 'New in your scene' },
   { kinds: ['picks'], title: 'Picks for your week' }
 ];
 const PREFIX = { cancelled: 'Cancelled', postponed: 'Postponed', soldout: 'Sold out', reminder: 'Reminder', new_show: 'New show' };
@@ -74,7 +75,7 @@ ${why ? `<div style="color:${C.ink3};font-size:12px;line-height:1.5;margin-top:2
  */
 export function alertsEmail({ items, freq = 'instant', siteUrl = 'https://ravemonitor.com', settingsUrl, unsubUrl }) {
   const n = items.length;
-  const single = n === 1 && items[0].kind !== 'picks' ? items[0] : null;
+  const single = n === 1 && items[0].kind !== 'picks' && items[0].kind !== 'scene' ? items[0] : null;
   let subject;
   if (single) subject = `${PREFIX[single.kind] || 'Alert'}: ${single.data.title || single.title}`;
   else if (n === 1) subject = items[0].title;
@@ -90,7 +91,7 @@ export function alertsEmail({ items, freq = 'instant', siteUrl = 'https://ravemo
     html += `<h2 style="margin:18px 0 4px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:${C.ink2}">${esc(sec.title)}</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0">`;
     text += `\n${sec.title.toUpperCase()}\n`;
     for (const it of its) {
-      if (it.kind === 'picks') {
+      if (it.kind === 'picks' || it.kind === 'scene') {
         html += `<tr><td style="padding:6px 0 2px;color:${C.ink2};font-size:13px">${esc(it.body)}</td></tr>`;
         text += `${it.body}\n`;
         for (const ev of (it.data.events || [])) {
