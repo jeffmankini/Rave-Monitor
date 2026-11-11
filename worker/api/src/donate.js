@@ -53,6 +53,7 @@ export async function stripe(env, method, path, params, fetchImpl = fetch) {
     const e = new Error((data.error && (data.error.code || data.error.type)) || 'stripe_' + r.status);
     e.status = r.status;
     e.param = (data.error && data.error.param) || '';
+    e.detail = String((data.error && data.error.message) || '').slice(0, 200);
     throw e;
   }
   return data;
@@ -122,8 +123,10 @@ export async function donate(env, ctx, data) {
     const s = await stripe(env, 'POST', '/checkout/sessions', sessionParams({ amount, monthly: data.monthly === true, embedded, site: siteUrl(env), colors }), ctx.fetch);
     return ctx.out(embedded ? { ok: true, clientSecret: s.client_secret, publishableKey: pk } : { ok: true, url: s.url }, 200);
   } catch (err) {
-    console.log('donate: checkout failed', err.status || '', err.message, err.param);
-    return ctx.out({ ok: false, error: 'stripe' }, 502);
+    console.log('donate: checkout failed', err.status || '', err.message, err.param, err.detail);
+    // Stripe's reason (an error code, the parameter, its message: nothing about the visitor), to tell
+    // a setup problem in Stripe from a passing one.
+    return ctx.out({ ok: false, error: 'stripe', code: err.message, param: err.param || undefined, detail: err.detail || undefined }, 502);
   }
 }
 
