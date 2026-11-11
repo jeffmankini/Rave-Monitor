@@ -107,7 +107,7 @@ test('emails: instant goes now, digests wait for 8am, changes never wait', () =>
   assert.deepEqual(planEmails({ unsent, users: done, now: Date.parse('2026-11-12T18:00:00Z') }).find(x => x.user.id === 'u2').items.map(i => i.id), [3]);
 });
 
-test('right away: anyone who chose it gets everything at once, with no digest', () => {
+test('instant alerts: anyone who chose them gets everything at once, with no digest', () => {
   const n = (id, user_id, kind) => ({ id, user_id, kind, ref: 'ra:' + id, title: 'Night', body: '', data: '{}' });
   const fan = user('u9'), weekly = user('u8', { email_freq: 'weekly' });
   const unsent = [n(1, 'u9', 'new_show'), n(2, 'u9', 'reminder'), n(3, 'u8', 'new_show')];

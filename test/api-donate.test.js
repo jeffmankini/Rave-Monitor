@@ -163,7 +163,7 @@ test('monthly donors manage their gift on Stripe\'s portal', { skip }, async () 
   assert.equal((await call('GET', '/v1/donate/manage', undefined, { Origin: '' })).res.headers.get('Location'), SITE + '/contact/');
 });
 
-test('every perk is free: right-away emails, scene alerts, own colors, the calendar feed', { skip }, async () => {
+test('every perk is free: instant alerts, scene alerts, own colors, the calendar feed', { skip }, async () => {
   const { call, signIn, DB } = setup();
   const uid = await signIn();
   const me0 = (await call('GET', '/v1/me')).body;
@@ -173,9 +173,15 @@ test('every perk is free: right-away emails, scene alerts, own colors, the calen
   let me = (await call('GET', '/v1/me')).body.user;
   assert.deepEqual([me.freq, me.scene, me.customTheme], ['instant', true, { bg: '#3a0d0d', accent: '#ffd166' }]);
   assert.equal((await call('PATCH', '/v1/me', { customTheme: { bg: 'red', accent: '#fff' } })).body.error, 'bad_colors');
-  assert.equal((await call('PATCH', '/v1/me', { scene: false, customTheme: null, freq: 'daily' })).status, 200);
+  // The color theme follows the account: a preset's id, or custom for their own colors.
+  assert.equal(me.theme, null);
+  assert.equal((await call('PATCH', '/v1/me', { theme: 'ember' })).body.user.theme, 'ember');
+  assert.equal((await call('PATCH', '/v1/me', { theme: 'Ember; DROP' })).body.error, 'bad_theme');
+  assert.equal((await call('PATCH', '/v1/me', { theme: 'custom' })).body.user.theme, 'custom');
+  assert.equal((await call('GET', '/v1/me')).body.user.theme, 'custom');
+  assert.equal((await call('PATCH', '/v1/me', { scene: false, customTheme: null, theme: null, freq: 'daily' })).status, 200);
   me = (await call('GET', '/v1/me')).body.user;
-  assert.deepEqual([me.freq, me.scene, me.customTheme], ['daily', false, null]);
+  assert.deepEqual([me.freq, me.scene, me.customTheme, me.theme], ['daily', false, null, null]);
 
   // Calendar: a saved show and a new show from someone they follow.
   const start = new Date(NOW + 3 * 864e5).toISOString();

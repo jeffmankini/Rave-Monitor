@@ -7,8 +7,8 @@
 //    or are postponed;
 //  - once a week, people who picked cities get that week's picks there, in their genres;
 //  - people who asked for scene alerts get every new night in their cities and genres;
-// then emails what's new through Postmark: changes and reminders right away, new shows and picks as
-// each person chose (right away, a daily digest or a weekly one), each with one-click unsubscribe.
+// then emails what's new through Postmark: changes and reminders at once, new shows and picks as
+// each person chose (instant alerts, a daily digest or a weekly one), each with one-click unsubscribe.
 //
 // Only listings first seen since the last run count as new (seen_events), so a refresh never repeats
 // an alert, and the first run just takes note of what's there.

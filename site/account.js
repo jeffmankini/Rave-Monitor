@@ -50,6 +50,7 @@
       if ('calendar' in p) A.calendar = p.calendar || null;
     }
     header(); sync(document); share();
+    if (A.me) themeSync();
     if (dlg().open) render();
   }
   // What the rest of the page may want to know: whether someone's signed in, and their own colors.
@@ -281,16 +282,28 @@
   async function loadMe() {
     try { setMe(await api('GET', '/me')); } catch (err) { setMe(null); }
   }
-  // Your own colors follow you to a new device, unless this browser already has a pick of its own.
+  // Colors follow the account: the theme it has saved (a preset, or your own colors) shows on every
+  // device you sign in on. An account with none saved yet takes this browser's pick.
   function themeSync() {
-    const t = app() && app().theme;
-    if (!t || !A.me || !A.me.customTheme) return;
-    let picked = null;
-    try { picked = localStorage.getItem('rm_theme'); } catch (err) { picked = null; }
-    if (!picked) t.custom(A.me.customTheme.bg, A.me.customTheme.accent, true);
+    const t = app() && app().theme, me = A.me;
+    if (!t || !me) return;
+    const cur = t.current(), own = t.own(), mine = me.customTheme;
+    if (me.theme === 'custom' && mine) {
+      if (cur !== 'custom' || !own || own.bg !== mine.bg || own.accent !== mine.accent) t.custom(mine.bg, mine.accent, true);
+    } else if (me.theme && me.theme !== 'custom') {
+      if (cur !== me.theme && t.has(me.theme)) t.set(me.theme);
+    } else if (!me.theme) {
+      let picked = null;
+      try { picked = localStorage.getItem('rm_theme'); } catch (err) { picked = null; }
+      if (picked === 'custom' && own) patch({ local: { theme: 'custom', customTheme: own }, send: { theme: 'custom', customTheme: own }, quiet: true });
+      else if (picked && t.has(picked)) patch({ local: { theme: picked }, send: { theme: picked }, quiet: true });
+      // Saved by an earlier version: own colors without a theme.
+      else if (mine) { t.custom(mine.bg, mine.accent, true); patch({ local: { theme: 'custom' }, send: { theme: 'custom' }, quiet: true }); }
+    }
   }
-  // From the colors picker: new colors of your own are saved to the account too, when signed in.
-  document.addEventListener('rm:custom-colors', ev => { if (A.me) patch({ local: { customTheme: ev.detail }, send: { customTheme: ev.detail } }); });
+  // From the colors picker: every pick is saved to the account too, when signed in.
+  document.addEventListener('rm:theme', ev => { if (A.me && ev.detail && ev.detail.id) patch({ local: { theme: ev.detail.id }, send: { theme: ev.detail.id }, quiet: true }); });
+  document.addEventListener('rm:custom-colors', ev => { if (A.me) patch({ local: { theme: 'custom', customTheme: ev.detail }, send: { theme: 'custom', customTheme: ev.detail }, quiet: true }); });
 
   /* ---------- alerts ---------- */
   const KIND = { new_show: 'New show', reminder: 'Reminder', soldout: 'Sold out', cancelled: 'Cancelled', postponed: 'Postponed', picks: 'Picks', scene: 'Scene' };
@@ -389,7 +402,7 @@
     const cities = a ? a.cities().slice().sort((x, y) => x.name.localeCompare(y.name)) : [];
     const cname = id => (cities.find(c => c.id === id) || { name: id }).name;
     const genres = a ? a.genres() : [];
-    const freq = [['instant', 'Right away'], ['daily', 'Daily digest, mornings'], ['weekly', 'Weekly digest, Thursday mornings'], ['off', 'No emails']];
+    const freq = [['instant', 'Instant alerts'], ['daily', 'Daily digest, mornings'], ['weekly', 'Weekly digest, Thursday mornings'], ['off', 'No emails']];
     const chk = (name, on, label, hint) => '<label class="acct-chk"><input type="checkbox" data-acct-pref="' + name + '"' + (on ? ' checked' : '') + '><span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span></label>';
     return '<form class="acct-form acct-settings" id="acct-settings" onsubmit="return false">' +
       '<h3>Your cities</h3><p class="fine">For your weekly picks, and to keep new-show alerts close to home.</p>' +
@@ -403,7 +416,7 @@
       chk('saved', me.alerts.saved, 'Reminders and changes for shows you saved', 'The day before, and if a show sells out, is cancelled or is postponed.') +
       chk('picks', me.alerts.picks, 'Weekly picks in your cities') +
       chk('scene', me.scene, 'Scene alerts', 'Every new night in your cities' + (me.genres.length ? ' and genres' : '') + ', as soon as it\'s listed.' + (me.cities.length ? '' : ' Pick a city above for this to work.')) +
-      '<h3>Email</h3><p class="fine">Alerts always show here when you\'re signed in. Changes and reminders for saved shows are emailed right away unless you turn emails off.</p>' +
+      '<h3>Email</h3><p class="fine">Alerts always show here when you\'re signed in. Changes and reminders for saved shows always come as instant alerts, unless you turn emails off.</p>' +
       '<div class="acct-radios" role="radiogroup" aria-label="How often to email you">' + freq.map(f =>
         '<label class="acct-chk"><input type="radio" name="acct-freq" value="' + f[0] + '"' + (me.freq === f[0] ? ' checked' : '') + '><span>' + f[1] + (f[0] === 'instant' ? '<small>New shows emailed the moment we spot them.</small>' : '') + '</span></label>').join('') + '</div>' +
       '<p class="fine">Digests go out in your time zone (' + esc(me.tz) + ')' + (me.tz !== tz() ? '. <button type="button" class="linkish" data-acct-act="tz">Use this device\'s, ' + esc(tz()) + '</button>' : '') + '.</p>' +
@@ -413,14 +426,16 @@
       '<div class="acct-confirm" id="acct-confirm" hidden><p>Delete your account, your follows, saved shows and alerts? This can\'t be undone.</p><div class="acct-row"><button type="button" class="btn danger" data-acct-act="delete-yes">Delete everything</button><button type="button" class="btn" data-acct-act="delete-no">Keep my account</button></div></div>' +
       '</form>';
   }
-  let saveTimer = 0, patchQueue = {};
+  let saveTimer = 0, patchQueue = {}, patchLoud = false;
   function patch(change) {
     Object.assign(A.me, change.local || {});
     Object.assign(patchQueue, change.send);
+    // Settings say "Saved."; a color pick saves quietly.
+    if (!change.quiet) patchLoud = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      const body = patchQueue; patchQueue = {};
-      try { const r = await api('PATCH', '/me', body); A.me = r.user; share(); flash('Saved.'); }
+      const body = patchQueue, loud = patchLoud; patchQueue = {}; patchLoud = false;
+      try { const r = await api('PATCH', '/me', body); A.me = r.user; share(); if (loud) flash('Saved.'); }
       catch (err) {
         flash(err.status === 401 ? 'You were signed out.' : 'Couldn\'t save that. Try again in a moment.');
         if (err.status === 401) setMe(null); else loadMe();
@@ -492,7 +507,6 @@
     store.set('rm_supporter_preview', null);
     if (token) await verify(token); else await loadMe();
     if (A.me) await pending();
-    themeSync();
     if (want) open(['settings', 'shows'].includes(want) ? want : want === 'supporter' ? 'settings' : 'alerts');
     // The bell stays current while the page is open.
     setInterval(async () => {
@@ -509,5 +523,5 @@
     document.addEventListener('rm:ready', go, { once: true });
     setTimeout(go, 6000);
   }
-  document.addEventListener('rm:ready', () => { if (A.me) sync(document); });
+  document.addEventListener('rm:ready', () => { if (A.me) { sync(document); themeSync(); } });
 })();

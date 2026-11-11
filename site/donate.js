@@ -16,7 +16,7 @@
   const track = (n, p) => { const a = window.RM_APP; if (a && a.track) a.track(n, p); };
   // Stripe.js on the same release as the Worker's API version (worker/api/src/donate.js).
   const STRIPE_JS = 'https://js.stripe.com/endive/stripe.js';
-  const AMOUNTS = { once: [5, 10, 25, 50], monthly: [3, 5, 10, 25] }, START = { once: 10, monthly: 5 };
+  const AMOUNTS = { once: [1, 5, 10, 20], monthly: [1, 5, 10, 20] }, START = { once: 5, monthly: 5 };
   const ERR = {
     bad_amount: 'Pick an amount from $1 to $1,000.', rate_limited: 'Too many tries just now. Wait a minute, then try again.',
     not_configured: 'Donations aren\'t switched on yet. Please try again later.', origin: 'Donations only work on ravemonitor.com.'

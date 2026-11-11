@@ -2879,6 +2879,7 @@
       if (!t) return;
       if (edit) edit.hidden = true;
       setTheme(t, true);
+      document.dispatchEvent(new CustomEvent('rm:theme', { detail: { id: t.id } }));
       track('set_colors', { theme: t.id });
     });
     // The background and accent pickers: the page follows as they move, and keeps the pick when they let go.
@@ -2902,6 +2903,11 @@
       else if (ev.key === 'rm_theme') setTheme(themeById(id) || themeById(THEMES.def), false);
     });
     document.addEventListener('rm:open-colors', openColors);
+    // Signed in, the choice is kept on the account too (site/account.js), so it follows people around.
+    const note = $('.theme-note');
+    const sayWhere = () => { if (note) note.textContent = (window.RM_ACCT || {}).signedIn ? 'Saved to your account, so your colors follow you to every device.' : 'Saved in this browser, for every page.'; };
+    document.addEventListener('rm:account', sayWhere);
+    sayWhere();
     btn.hidden = false;
   }
 
@@ -2961,7 +2967,9 @@
       theme: {
         current: () => (currentTheme() || {}).id || null,
         set: id => setTheme(themeById(id) || themeById(THEMES && THEMES.def), true),
-        custom: (bg, accent, save) => setOwnColors(bg, accent, save)
+        custom: (bg, accent, save) => setOwnColors(bg, accent, save),
+        own: () => (OWN ? { bg: OWN.bg, accent: OWN.accent } : null),
+        has: id => !!themeById(id)
       },
       when: (ms, tz) => tDate(ms, tz) + ', ' + tTime(ms, tz),
       // The show on air now on an NTS channel ('NTS 1'), for the mini player (site/player.js).

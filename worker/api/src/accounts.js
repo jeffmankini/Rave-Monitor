@@ -27,6 +27,7 @@ const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[a-z]{2,}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;     // city and genre ids
 const SECRET_RE = /^[A-Za-z0-9_-]{20,100}$/;   // link and cookie secrets
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
+const THEME_RE = /^[a-z][a-z0-9-]{0,31}$/;      // a preset theme's id, or 'custom'
 
 const list = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
 const line = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -81,7 +82,7 @@ export function publicUser(u) {
   return {
     email: u.email, since: u.created_at, cities: parse(u.cities, []), genres: parse(u.genres, []), tz: u.tz,
     freq: u.email_freq, alerts: { follows: a.follows !== false, saved: a.saved !== false, picks: a.picks !== false }, mine: !!u.mine,
-    scene: !!u.scene,
+    scene: !!u.scene, theme: THEME_RE.test(u.theme || '') ? u.theme : null,
     customTheme: theme && COLOR_RE.test(theme.bg || '') && COLOR_RE.test(theme.accent || '') ? { bg: theme.bg, accent: theme.accent } : null
   };
 }
@@ -195,7 +196,11 @@ async function patchMe(request, env, ctx, me) {
   }
   // Scene alerts: every new night in their cities and genres (pipeline/notify.js).
   if ('scene' in d) { sets.push('scene = ?'); vals.push(d.scene ? 1 : 0); }
-  // Their own colors (the "Your own" theme), so they follow them to other devices.
+  // Their color theme, and their own colors (the "Your own" theme), so they follow them to other devices.
+  if ('theme' in d) {
+    if (d.theme !== null && !THEME_RE.test(String(d.theme))) return ctx.out({ ok: false, error: 'bad_theme' }, 400);
+    sets.push('theme = ?'); vals.push(d.theme);
+  }
   if ('customTheme' in d) {
     const t = d.customTheme;
     if (t === null) { sets.push('custom_theme = ?'); vals.push(null); }

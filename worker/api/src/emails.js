@@ -71,7 +71,7 @@ ${why ? `<div style="color:${C.ink3};font-size:12px;line-height:1.5;margin-top:2
 /**
  * Alerts as one email. items: notifications with data parsed ({ kind, title, body, data }).
  * freq: 'instant' | 'daily' | 'weekly' (how this person gets new-show alerts; changes and
- * reminders always go out right away, as 'instant').
+ * reminders always go out at once, as 'instant').
  */
 export function alertsEmail({ items, freq = 'instant', siteUrl = 'https://ravemonitor.com', settingsUrl, unsubUrl }) {
   const n = items.length;
@@ -107,8 +107,8 @@ export function alertsEmail({ items, freq = 'instant', siteUrl = 'https://ravemo
     }
     html += '</table>';
   }
-  const how = freq === 'daily' ? 'a daily email' : freq === 'weekly' ? 'a weekly email' : 'emails as alerts happen';
-  const footer = `You're getting this because you have a Rave Monitor account and chose ${how} for new shows; changes and reminders for shows you saved come right away.<br>
+  const how = freq === 'daily' ? 'a daily email' : freq === 'weekly' ? 'a weekly email' : 'instant alerts';
+  const footer = `You're getting this because you have a Rave Monitor account and chose ${how} for new shows; changes and reminders for shows you saved always come as instant alerts.<br>
 <a href="${esc(settingsUrl)}" style="color:${C.ink3}">Change what we send</a> · <a href="${esc(unsubUrl)}" style="color:${C.ink3}">Unsubscribe from all emails</a><br>Rave Monitor, by Geff Bohm · Milwaukee, WI`;
   const intro = single ? '' : `<p style="margin:0;color:${C.ink2};font-size:15px;line-height:1.55">${freq === 'weekly' ? 'Here is your week.' : freq === 'daily' ? 'Here is what is new since yesterday.' : 'Here is what just changed.'}</p>`;
   return {
