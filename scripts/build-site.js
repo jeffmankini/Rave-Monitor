@@ -27,7 +27,10 @@ const parts = {
   // The coarse world map and lakes go in the page; the detailed coastline is fetched after it (geo-hi.json).
   __GEO_JSON__: JSON.stringify((({ lo, lakes }) => ({ lo, lakes }))(JSON.parse(read('site/geo.json')))), __DATA_JS__: read('site/demo-data.js'),
   __APP_JS__: `window.RM_LABELS = ${JSON.stringify(labelNames)};\nwindow.RM_PROMOTERS = ${JSON.stringify(promoterInfo)};\nwindow.RM_VENUES = ${JSON.stringify(venueInfo)};\nwindow.RM_TZ = ${tzTable};\n` +
-    `window.RM_THEMES = ${JSON.stringify(themes)};\nwindow.RM_UPDATES_LATEST = ${JSON.stringify(updates[0].date)};\n` + KIT_SRC + '\n' + read('site/app.js')
+    `window.RM_THEMES = ${JSON.stringify(themes)};\nwindow.RM_UPDATES_LATEST = ${JSON.stringify(updates[0].date)};\n` + KIT_SRC + '\n' + read('site/app.js'),
+  // The mini player for the Streams tab and the Donate pop-up, in a script of their own so they work
+  // even if the map can't start.
+  __EXTRA_JS__: read('site/player.js') + '\n' + read('site/donate.js')
 };
 // Link previews need absolute URLs; set SITE_URL when deploying somewhere else.
 const SITE_URL = (process.env.SITE_URL || 'https://ravemonitor.com').replace(/\/+$/, '');
@@ -81,6 +84,8 @@ if (accountsApi && !/^(https:\/\/|http:\/\/localhost[:/])[^\s'"<>]+$/.test(accou
 // Sign-in uses the contact form's Turnstile widget; ACCOUNTS_TURNSTILE overrides it (empty for local testing).
 const accountsTs = process.env.ACCOUNTS_TURNSTILE !== undefined ? process.env.ACCOUNTS_TURNSTILE : turnstileKey;
 parts.__APP_JS__ = `window.RM_ACCOUNTS = ${accountsApi ? JSON.stringify({ api: accountsApi, turnstile: accountsTs }) : 'null'};\n` + parts.__APP_JS__;
+// Donations (site/donate.js) go through the same Worker; without it, the Donate button stays hidden.
+parts.__EXTRA_JS__ = `window.RM_DONATE = ${accountsApi ? JSON.stringify({ api: accountsApi }) : 'null'};\n` + parts.__EXTRA_JS__;
 parts.__ACCOUNT_JS__ = accountsApi ? read('site/account.js') : '';
 html = html.replace('__ACCOUNTS_ABOUT__', () => accountsApi ? '    <p>If you make an account, we keep your email address, what you follow and save, your settings and your alerts, to show them to you here and to email the alerts you ask for (sent through Postmark). There\'s no password: each sign-in is a link we email you. You can delete everything from your account\'s settings, and ask us for a copy of it any time.</p>' : '');
 for (const [k, v] of Object.entries(parts)) {

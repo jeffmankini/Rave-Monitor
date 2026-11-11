@@ -22,7 +22,7 @@
 
   // Follows of labels and promoters are one set of names, as the alerts compare them.
   const fk = (kind, key) => (kind === 'label' || kind === 'promoter' ? 'crew' : kind) + '|' + key;
-  const A = { me: null, follows: new Map(), saves: new Map(), unread: 0, items: null, view: 'alerts', ts: null, sentTo: '', reason: '', note: '', flash: '', billing: null, calendar: null };
+  const A = { me: null, follows: new Map(), saves: new Map(), unread: 0, items: null, view: 'alerts', ts: null, sentTo: '', reason: '', note: '', flash: '', calendar: null };
   const following = (kind, key) => A.follows.has(fk(kind, key));
 
   async function api(method, path, body) {
@@ -40,10 +40,7 @@
     history.replaceState(history.state, '', u.pathname + (u.search ? u.search : '') + u.hash);
   }
 
-  // In Stripe's test mode, supporting only shows in a browser that opened ?preview=supporters.
-  const preview = () => store.get('rm_supporter_preview') === 1;
   function setMe(p) {
-    if (p && 'billing' in p) A.billing = p.billing && (!p.billing.test || preview()) ? p.billing : null;
     if (!p || !p.user) { A.me = null; A.follows = new Map(); A.saves = new Map(); A.unread = 0; A.items = null; A.calendar = null; }
     else {
       A.me = p.user;
@@ -55,10 +52,9 @@
     header(); sync(document); share();
     if (dlg().open) render();
   }
-  const supporter = () => !!(A.me && A.me.supporter);
-  // What the colors picker (app.js) needs to know: whether supporting is on, and whether this is a supporter.
+  // What the rest of the page may want to know: whether someone's signed in, and their own colors.
   function share() {
-    window.RM_ACCT = { billing: !!A.billing, signedIn: !!A.me, supporter: supporter(), customTheme: (A.me && A.me.customTheme) || null };
+    window.RM_ACCT = { signedIn: !!A.me, customTheme: (A.me && A.me.customTheme) || null };
     document.dispatchEvent(new CustomEvent('rm:account'));
   }
 
@@ -75,14 +71,13 @@
       ab.innerHTML = '<span class="acct-i" aria-hidden="true">' + esc((A.me.email || '?')[0].toUpperCase()) + '</span>' + (A.unread ? '<span class="badge">' + (A.unread > 99 ? '99+' : A.unread) + '</span>' : '');
       ab.setAttribute('aria-label', A.unread ? 'Your account, ' + A.unread + ' new alerts' : 'Your account');
       ab.classList.add('in');
-      ab.classList.toggle('sup', supporter());
       bb.hidden = false;
       bb.innerHTML = ICON.bell + (A.unread ? '<span class="badge">' + (A.unread > 99 ? '99+' : A.unread) + '</span>' : '');
       bb.setAttribute('aria-label', A.unread ? 'Alerts, ' + A.unread + ' new' : 'Alerts');
     } else {
       ab.innerHTML = ICON.user + '<span class="acct-l">Sign in</span>';
       ab.setAttribute('aria-label', 'Sign in');
-      ab.classList.remove('in', 'sup');
+      ab.classList.remove('in');
       bb.hidden = true;
     }
   }
@@ -158,7 +153,6 @@
     if (!p || !A.me || Date.now() - (p.at || 0) > 3600e3) return;
     if (p.t === 'follow' && !following(p.kind, p.key)) await toggleFollow(p.kind, p.key, p.name, p.city);
     if (p.t === 'save' && !A.saves.has(p.id)) await toggleSave(p.id);
-    if (p.t === 'supporter') { open('supporter'); return true; }
   }
 
   document.addEventListener('click', ev => {
@@ -190,13 +184,11 @@
     if (A.view === 'signin') { const i = $('#acct-email'); if (i) i.focus(); }
   }
 
-  const TABS = [['alerts', 'Alerts'], ['shows', 'Your shows'], ['following', 'Following'], ['settings', 'Settings'], ['supporter', 'Supporter']];
-  const tabs = () => TABS.filter(t => t[0] !== 'supporter' || A.billing || supporter() || (A.me && A.me.billingAccount));
+  const TABS = [['alerts', 'Alerts'], ['shows', 'Your shows'], ['following', 'Following'], ['settings', 'Settings']];
   function render() {
     const body = $('#acct-body');
     if (!body) return;
     if (!A.me) { body.innerHTML = A.view === 'sent' ? sentView() : signinView(); if (A.view === 'signin') mountTurnstile(); return; }
-    const TABS = tabs();
     const v = TABS.some(t => t[0] === A.view) ? A.view : 'alerts';
     A.view = v;
     body.innerHTML = '<h2 id="acct-title">Your account</h2><p class="acct-sub">' + esc(A.me.email) + '</p>' +
@@ -204,7 +196,7 @@
       '<div class="acct-tabs" role="tablist" aria-label="Account">' + TABS.map(t => '<button type="button" role="tab" data-acct-tab="' + t[0] + '" aria-selected="' + (t[0] === v) + '">' + t[1] +
         (t[0] === 'alerts' && A.unread ? ' <span class="badge">' + A.unread + '</span>' : '') + '</button>').join('') + '</div>' +
       '<p class="acct-flash" id="acct-flash" role="status"' + (A.flash ? '' : ' hidden') + '>' + esc(A.flash) + '</p>' +
-      '<div class="acct-pane" role="tabpanel">' + ({ alerts: alertsView, shows: showsView, following: followingView, settings: settingsView, supporter: supporterView }[v])() + '</div>';
+      '<div class="acct-pane" role="tabpanel">' + ({ alerts: alertsView, shows: showsView, following: followingView, settings: settingsView }[v])() + '</div>';
     if (v === 'alerts') loadAlerts();
   }
 
@@ -289,22 +281,16 @@
   async function loadMe() {
     try { setMe(await api('GET', '/me')); } catch (err) { setMe(null); }
   }
-  // Supporters' own colors follow them to a new device; someone who stops supporting goes back to a preset.
+  // Your own colors follow you to a new device, unless this browser already has a pick of its own.
   function themeSync() {
     const t = app() && app().theme;
-    if (!t || !A.me) return;
+    if (!t || !A.me || !A.me.customTheme) return;
     let picked = null;
     try { picked = localStorage.getItem('rm_theme'); } catch (err) { picked = null; }
-    if (supporter() && A.me.customTheme && !picked) t.custom(A.me.customTheme.bg, A.me.customTheme.accent, true);
-    else if (!supporter() && t.current() === 'custom') t.set(null);
+    if (!picked) t.custom(A.me.customTheme.bg, A.me.customTheme.accent, true);
   }
-  // From the colors picker: a supporter's new colors, or someone asking how to get them.
-  document.addEventListener('rm:custom-colors', ev => { if (supporter()) patch({ local: { customTheme: ev.detail }, send: { customTheme: ev.detail } }); });
-  document.addEventListener('rm:supporter', () => {
-    if (A.me) return open('supporter');
-    store.set('rm_pending', { t: 'supporter', at: Date.now() });
-    open('signin', 'Sign in first, then you can become a supporter: $5 a month for right-away emails, scene alerts, a calendar feed and your own colors.');
-  });
+  // From the colors picker: new colors of your own are saved to the account too, when signed in.
+  document.addEventListener('rm:custom-colors', ev => { if (A.me) patch({ local: { customTheme: ev.detail }, send: { customTheme: ev.detail } }); });
 
   /* ---------- alerts ---------- */
   const KIND = { new_show: 'New show', reminder: 'Reminder', soldout: 'Sold out', cancelled: 'Cancelled', postponed: 'Postponed', picks: 'Picks', scene: 'Scene' };
@@ -360,11 +346,22 @@
     }
     return out.slice(0, 100);
   }
+  // The calendar feed: saved shows and new shows from who you follow, in Google, Apple or Outlook Calendar.
+  function calendarBox() {
+    if (!A.calendar) return '<div class="acct-cal"><p class="fine">Put these in your calendar: your saved shows and new shows from who you follow, kept up to date in Google, Apple or Outlook Calendar.</p>' +
+      '<div class="acct-row"><button type="button" class="btn" data-acct-act="cal">Get your calendar address</button></div></div>';
+    const webcal = A.calendar.replace(/^https:/, 'webcal:');
+    return '<div class="acct-cal"><label for="acct-cal-url">Your calendar address</label><input id="acct-cal-url" type="text" readonly value="' + esc(A.calendar) + '">' +
+      '<div class="acct-row"><button type="button" class="btn" data-acct-act="cal-copy">Copy</button>' +
+      '<a class="btn" href="https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(webcal) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+      '<a class="btn" href="' + esc(webcal) + '">Apple Calendar</a></div>' +
+      '<p class="fine">In Outlook, add a calendar "from the internet" and paste the address. Anyone with it can see the shows, so keep it to yourself. <button type="button" class="linkish" data-acct-act="cal-reset">Make a new address</button> if it gets out.</p></div>';
+  }
   function showsView() {
     const a = app(), list = yourShows();
     const past = Array.from(A.saves.values()).filter(s => !(a && a.event(s.id)));
-    if (!list.length && !past.length) return '<p class="acct-empty">Nothing here yet. Follow artists, venues and promoters from their cards, or save shows from their details, and their upcoming nights collect here.</p>';
-    return (list.length ? '<ul class="acct-list">' + list.map(x => '<li><button type="button" class="linkish aa-t" data-acct-ev="' + esc(x.e.id) + '">' + esc(x.e.title) + '</button>' +
+    if (!list.length && !past.length) return '<p class="acct-empty">Nothing here yet. Follow artists, venues and promoters from their cards, or save shows from their details, and their upcoming nights collect here.</p>' + calendarBox();
+    return calendarBox() + (list.length ? '<ul class="acct-list">' + list.map(x => '<li><button type="button" class="linkish aa-t" data-acct-ev="' + esc(x.e.id) + '">' + esc(x.e.title) + '</button>' +
       '<p>' + esc(a.when(x.e.start, (a.city(x.e.cityId) || {}).tz) + ' · ' + a.venueName(x.e) + ', ' + (a.city(x.e.cityId) || {}).name) + '</p><p class="aa-why">' + esc(x.why.join(' · ')) + '</p></li>').join('') + '</ul>' : '') +
       (past.length ? '<h3>Saved shows no longer listed</h3><ul class="acct-list">' + past.map(s => '<li><b>' + esc(s.title) + '</b><p>' + esc([s.venue, s.start ? new Date(s.start).toLocaleDateString() : ''].filter(Boolean).join(' · ')) + '</p>' +
         '<div class="acct-row">' + (s.url ? '<a class="btn" href="' + esc(s.url) + '" target="_blank" rel="noopener">Listing</a>' : '') + '<button class="btn" type="button" data-save="' + esc(s.id) + '"><span>Saved</span></button></div></li>').join('') + '</ul>' : '');
@@ -393,10 +390,7 @@
     const cname = id => (cities.find(c => c.id === id) || { name: id }).name;
     const genres = a ? a.genres() : [];
     const freq = [['instant', 'Right away'], ['daily', 'Daily digest, mornings'], ['weekly', 'Weekly digest, Thursday mornings'], ['off', 'No emails']];
-    const sup = supporter(), tag = A.billing && !sup ? ' <span class="sup-tag">Supporters</span>' : '';
-    // Right away is for supporters; anyone else who had chosen it gets the daily digest.
-    const eff = me.freq === 'instant' && !sup ? 'daily' : me.freq;
-    const chk = (name, on, label, hint, locked) => '<label class="acct-chk' + (locked ? ' locked' : '') + '"><input type="checkbox" data-acct-pref="' + name + '"' + (on ? ' checked' : '') + (locked ? ' disabled' : '') + '><span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span></label>';
+    const chk = (name, on, label, hint) => '<label class="acct-chk"><input type="checkbox" data-acct-pref="' + name + '"' + (on ? ' checked' : '') + '><span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span></label>';
     return '<form class="acct-form acct-settings" id="acct-settings" onsubmit="return false">' +
       '<h3>Your cities</h3><p class="fine">For your weekly picks, and to keep new-show alerts close to home.</p>' +
       '<ul class="acct-chips">' + me.cities.map(id => '<li><span>' + esc(cname(id)) + '</span><button type="button" class="btn" data-acct-city-del="' + esc(id) + '" aria-label="Remove ' + esc(cname(id)) + '">Remove</button></li>').join('') + '</ul>' +
@@ -408,79 +402,17 @@
       chk('mine', me.mine, 'Only new shows in your cities', me.cities.length ? '' : 'Pick a city above for this to apply. Venues you follow always count.') +
       chk('saved', me.alerts.saved, 'Reminders and changes for shows you saved', 'The day before, and if a show sells out, is cancelled or is postponed.') +
       chk('picks', me.alerts.picks, 'Weekly picks in your cities') +
-      (A.billing || sup ? chk('scene', sup && me.scene, 'Scene alerts' + tag, sup ? (me.cities.length ? 'Every new night in your cities' + (me.genres.length ? ' and genres' : '') + ', as soon as it\'s listed.' : 'Pick a city above for this to work.') : 'Every new night in your cities and genres. <button type="button" class="linkish" data-acct-act="supporter">Become a supporter</button>', !sup) : '') +
+      chk('scene', me.scene, 'Scene alerts', 'Every new night in your cities' + (me.genres.length ? ' and genres' : '') + ', as soon as it\'s listed.' + (me.cities.length ? '' : ' Pick a city above for this to work.')) +
       '<h3>Email</h3><p class="fine">Alerts always show here when you\'re signed in. Changes and reminders for saved shows are emailed right away unless you turn emails off.</p>' +
-      '<div class="acct-radios" role="radiogroup" aria-label="How often to email you">' + freq.filter(f => f[0] !== 'instant' || A.billing || sup).map(f => {
-        const locked = f[0] === 'instant' && !sup;
-        return '<label class="acct-chk' + (locked ? ' locked' : '') + '"><input type="radio" name="acct-freq" value="' + f[0] + '"' + (eff === f[0] ? ' checked' : '') + (locked ? ' disabled' : '') + '><span>' + f[1] + (locked ? tag + '<small>New shows emailed the moment we spot them. <button type="button" class="linkish" data-acct-act="supporter">Become a supporter</button></small>' : '') + '</span></label>';
-      }).join('') + '</div>' +
+      '<div class="acct-radios" role="radiogroup" aria-label="How often to email you">' + freq.map(f =>
+        '<label class="acct-chk"><input type="radio" name="acct-freq" value="' + f[0] + '"' + (me.freq === f[0] ? ' checked' : '') + '><span>' + f[1] + (f[0] === 'instant' ? '<small>New shows emailed the moment we spot them.</small>' : '') + '</span></label>').join('') + '</div>' +
       '<p class="fine">Digests go out in your time zone (' + esc(me.tz) + ')' + (me.tz !== tz() ? '. <button type="button" class="linkish" data-acct-act="tz">Use this device\'s, ' + esc(tz()) + '</button>' : '') + '.</p>' +
       '<h3>Your account</h3><div class="acct-row">' +
       '<button type="button" class="btn" data-acct-act="signout">Sign out</button>' +
       '<button type="button" class="btn danger" data-acct-act="delete">Delete your account</button></div>' +
-      '<div class="acct-confirm" id="acct-confirm" hidden><p>Delete your account, your follows, saved shows and alerts?' + (sup || me.billingAccount ? ' Your supporter subscription ends too, straight away.' : '') + ' This can\'t be undone.</p><div class="acct-row"><button type="button" class="btn danger" data-acct-act="delete-yes">Delete everything</button><button type="button" class="btn" data-acct-act="delete-no">Keep my account</button></div></div>' +
+      '<div class="acct-confirm" id="acct-confirm" hidden><p>Delete your account, your follows, saved shows and alerts? This can\'t be undone.</p><div class="acct-row"><button type="button" class="btn danger" data-acct-act="delete-yes">Delete everything</button><button type="button" class="btn" data-acct-act="delete-no">Keep my account</button></div></div>' +
       '</form>';
   }
-  /* ---------- supporter: $5 a month through Stripe ---------- */
-  const day = t => t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  const PERKS = [
-    ['Right-away emails', 'New shows from who you follow, emailed the moment we spot them instead of in a digest.'],
-    ['Scene alerts', 'Every new night in your cities and genres, not just from who you follow.'],
-    ['A calendar feed', 'Your saved shows and new shows from who you follow, in Google, Apple or Outlook Calendar.'],
-    ['Your own colors', 'Pick a background and an accent, and the whole site and the map follow.']
-  ];
-  function supporterView() {
-    const me = A.me, s = me.supporter;
-    if (!s) {
-      return '<div class="sup-card">' + (A.billing && A.billing.test ? '<p class="acct-note">Preview, in Stripe\'s test mode: pay with the card 4242 4242 4242 4242, any future date and any CVC. No real money moves.</p>' : '') +
-        '<h3>Support Rave Monitor</h3><p class="sup-price">' + esc((A.billing && A.billing.price) || '$5 a month') + '</p>' +
-        '<p>Rave Monitor is free, and made by one person. Supporters keep it running, and get:</p>' +
-        '<ul class="sup-perks">' + PERKS.map(p => '<li><b>' + p[0] + '</b><span>' + p[1] + '</span></li>').join('') + '</ul>' +
-        (A.billing ? '<button type="button" class="btn primary" data-acct-act="checkout">Become a supporter</button>' : '<p class="fine">Supporting isn\'t open right now. Check back soon.</p>') +
-        '<p class="fine">You pay by card on Stripe\'s page. Cancel any time in a couple of clicks; the perks last to the end of the month you\'ve paid for. Everything else on Rave Monitor stays free.</p>' +
-        (me.billingAccount && A.billing ? '<p class="fine">Supported before? <button type="button" class="linkish" data-acct-act="portal">See your past payments</button>.</p>' : '') + '</div>';
-    }
-    const status = s.late ? '<p class="acct-note">Your last payment didn\'t go through. <button type="button" class="linkish" data-acct-act="portal">Update your card</button> to keep your perks.</p>'
-      : '<p>' + (s.since ? 'Supporting since ' + esc(day(s.since)) + '. ' : '') + (s.ending ? 'You\'ve cancelled: your perks run to ' + esc(day(s.until)) + ', and you won\'t be charged again.' : 'Renews on ' + esc(day(s.until)) + '.') + '</p>';
-    const cal = A.calendar
-      ? '<div class="sup-cal"><label for="sup-cal-url">Your calendar address</label><input id="sup-cal-url" type="text" readonly value="' + esc(A.calendar) + '">' +
-        '<div class="acct-row"><button type="button" class="btn" data-acct-act="cal-copy">Copy</button>' +
-        '<a class="btn" href="https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(A.calendar.replace(/^https:/, 'webcal:')) + '" target="_blank" rel="noopener">Google Calendar</a>' +
-        '<a class="btn" href="' + esc(A.calendar.replace(/^https:/, 'webcal:')) + '">Apple Calendar</a></div>' +
-        '<p class="fine">In Outlook, add a calendar "from the internet" and paste the address. Anyone with it can see the shows, so keep it to yourself. <button type="button" class="linkish" data-acct-act="cal-reset">Make a new address</button> if it gets out.</p></div>'
-      : '<button type="button" class="btn" data-acct-act="cal">Get your calendar address</button>';
-    return '<div class="sup-card on"><h3>You\'re a supporter. Thank you!</h3>' + status +
-      '<ul class="sup-perks">' +
-      '<li><b>Right-away emails</b><span>' + (me.freq === 'instant' ? 'On: new shows are emailed the moment we spot them.' : 'Off. <button type="button" class="linkish" data-acct-act="instant">Email me right away</button>') + '</span></li>' +
-      '<li><b>Scene alerts</b><span>' + (me.scene ? 'On, for ' + (me.cities.length ? esc(me.cities.length === 1 ? (app() ? app().cityName(me.cities[0]) : me.cities[0]) : me.cities.length + ' cities') : 'your cities (pick some in Settings)') + '. <button type="button" class="linkish" data-acct-act="scene-off">Turn off</button>'
-        : 'Off. <button type="button" class="linkish" data-acct-act="scene-on">Turn on</button>' + (me.cities.length ? '' : ' (then pick your cities in Settings)')) + '</span></li>' +
-      '<li><b>Calendar feed</b><span>Your saved shows and new shows from who you follow.</span>' + cal + '</li>' +
-      '<li><b>Your own colors</b><span>' + (me.customTheme ? 'Saved to your account, so they follow you to other devices.' : 'Pick a background and an accent.') + ' <button type="button" class="linkish" data-acct-act="colors">Open colors</button></span></li>' +
-      '</ul><div class="acct-row"><button type="button" class="btn" data-acct-act="portal">Manage or cancel</button></div>' +
-      '<p class="fine">Payments, receipts and cancelling are on Stripe\'s pages.</p></div>';
-  }
-  async function goStripe(path, btn) {
-    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Opening Stripe…'; }
-    try {
-      const r = await api('POST', path, {});
-      track(path === '/billing/checkout' ? 'begin_checkout' : 'open_billing', {});
-      location.href = r.url;
-    } catch (err) {
-      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || btn.textContent; }
-      flash(err.message === 'already' ? 'You\'re already a supporter.' : err.status === 401 ? 'You were signed out.' : 'Stripe didn\'t answer just now. Try again in a moment.');
-      if (err.status === 401) setMe(null);
-    }
-  }
-  // Back from Checkout: Stripe tells the API in a moment, so look a few times.
-  async function welcomeBack() {
-    for (let i = 0; i < 15 && !supporter(); i++) {
-      await new Promise(r => setTimeout(r, i ? 2000 : 600));
-      try { setMe(await api('GET', '/me')); } catch (err) { /* try again */ }
-    }
-    if (supporter()) { A.note = 'Thank you for supporting Rave Monitor! Your perks are on.'; open('supporter'); track('supporter_welcome', {}); }
-    else { open('supporter'); flash('Thanks! Your payment is on its way through; your perks switch on in a minute or two.'); }
-  }
-
   let saveTimer = 0, patchQueue = {};
   function patch(change) {
     Object.assign(A.me, change.local || {});
@@ -488,9 +420,9 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       const body = patchQueue; patchQueue = {};
-      try { const r = await api('PATCH', '/me', body); A.me = r.user; share(); flash('Saved.'); if (dlg().open && A.view === 'supporter') render(); }
+      try { const r = await api('PATCH', '/me', body); A.me = r.user; share(); flash('Saved.'); }
       catch (err) {
-        flash(err.message === 'supporters_only' ? 'That\'s for supporters.' : err.status === 401 ? 'You were signed out.' : 'Couldn\'t save that. Try again in a moment.');
+        flash(err.status === 401 ? 'You were signed out.' : 'Couldn\'t save that. Try again in a moment.');
         if (err.status === 401) setMe(null); else loadMe();
       }
     }, 350);
@@ -519,22 +451,16 @@
     if (a === 'again') { A.view = 'signin'; render(); return; }
     if (a === 'tz') { patch({ local: { tz: tz() }, send: { tz: tz() } }); render(); return; }
     if (a === 'signout') { try { await api('POST', '/auth/signout', {}); } catch (err) { /* signed out anyway */ } setMe(null); dlg().close(); flash('You\'re signed out.'); track('sign_out', {}); return; }
-    if (a === 'supporter') { A.view = 'supporter'; A.flash = ''; render(); return; }
-    if (a === 'checkout') return goStripe('/billing/checkout', act);
-    if (a === 'portal') return goStripe('/billing/portal', act);
-    if (a === 'instant') { patch({ local: { freq: 'instant' }, send: { freq: 'instant' } }); render(); return; }
-    if (a === 'scene-on' || a === 'scene-off') { patch({ local: { scene: a === 'scene-on' }, send: { scene: a === 'scene-on' } }); render(); return; }
     if (a === 'cal' || a === 'cal-reset') {
       try { const r = await api('POST', '/me/calendar', a === 'cal-reset' ? { reset: true } : {}); A.calendar = r.url; render(); flash(a === 'cal-reset' ? 'New address made. Update it in your calendar app; the old one has stopped working.' : 'Here\'s your calendar address.'); track('calendar_link', {}); }
       catch (err) { flash('Couldn\'t get the address just now. Try again in a moment.'); }
       return;
     }
     if (a === 'cal-copy') {
-      const i = $('#sup-cal-url');
+      const i = $('#acct-cal-url');
       try { await navigator.clipboard.writeText(A.calendar); flash('Copied.'); } catch (err) { if (i) { i.focus(); i.select(); } flash('Select the address and copy it.'); }
       return;
     }
-    if (a === 'colors') { dlg().close(); document.dispatchEvent(new CustomEvent('rm:open-colors')); return; }
     if (a === 'delete') { $('#acct-confirm').hidden = false; $('[data-acct-act="delete-no"]').focus(); return; }
     if (a === 'delete-no') { $('#acct-confirm').hidden = true; return; }
     if (a === 'delete-yes') {
@@ -560,15 +486,14 @@
   async function start() {
     header();
     const p = new URLSearchParams(location.search);
-    const token = p.get('signin'), want = p.get('account'), paid = p.get('checkout') === 'done';
-    if (p.get('preview') === 'supporters') store.set('rm_supporter_preview', 1);
-    else if (p.get('preview') === 'off') store.set('rm_supporter_preview', null);
+    const token = p.get('signin'), want = p.get('account');
+    // Left over from the supporter tier: links that still carry these, and the preview switch.
     strip('signin'); strip('account'); strip('checkout'); strip('preview');
+    store.set('rm_supporter_preview', null);
     if (token) await verify(token); else await loadMe();
     if (A.me) await pending();
     themeSync();
-    if (paid && A.me) welcomeBack();
-    else if (want) open(['settings', 'shows', 'supporter'].includes(want) ? want : 'alerts');
+    if (want) open(['settings', 'shows'].includes(want) ? want : want === 'supporter' ? 'settings' : 'alerts');
     // The bell stays current while the page is open.
     setInterval(async () => {
       if (!A.me || document.hidden) return;

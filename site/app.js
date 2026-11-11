@@ -12,7 +12,7 @@
   // head already set from the visitor's pick; the canvas map and the street map take theirs from here.
   const THEMES = window.RM_THEMES && Array.isArray(window.RM_THEMES.list) && window.RM_THEMES.list.length ? window.RM_THEMES : null;
   const themeById = id => (THEMES && THEMES.list.find(t => t.id === id)) || null;
-  // Supporters' own colors (site/themekit.js works out the rest from a background and an accent),
+  // Your own colors (site/themekit.js works out the rest from a background and an accent),
   // as the head applied them from local storage.
   const KIT = window.RM_THEMEKIT || null;
   const ownFrom = (bg, accent) => KIT ? { id: 'custom', name: 'Your own', bg, accent, c: KIT.custom(bg, accent) } : null;
@@ -515,8 +515,16 @@
     if (x.t0 > t) return 'soon';
     return t - x.t0 < 12 * HOUR ? 'due' : 'past';
   }
+  // What the mini player (site/player.js) can play here: YouTube streams that allow embedding, and the
+  // NTS channel a show is on while it's on air. Anything else opens on its own site.
+  function playId(x, st) {
+    if (x.kind === 'video') return x.embed === false ? '' : x.id;
+    const ch = String(x.channel || '').match(/^NTS ([12])$/);
+    return st === 'live' && ch ? 'nts:' + ch[1] : '';
+  }
   function streamRow(x, st) {
     const radio = x.kind === 'radio', G = x.genres && x.genres.length ? RM.GENRE[x.genres[0]] : null;
+    const pid = playId(x, st), P = window.RM_PLAYER, on = !!(pid && P && P.current() === pid);
     const bits = [];
     if (x.tags && x.tags.length) bits.push(x.tags.slice(0, 3).join(', '));
     if (x.rerun) bits.push('Repeat');
@@ -524,12 +532,14 @@
     else if (st === 'due') bits.push('scheduled for ' + tTime(x.t0));
     else bits.push('in ' + dur(x.t0 - S.now));
     const chip = st === 'live' ? '<span class="st st-live"><i></i>' + (radio ? 'On air' : 'Live') + '</span>' : st === 'due' ? '<span class="st st-warn"><i></i>Due</span>' : '';
-    return '<li><a class="erow strow" href="' + esc(x.url) + '" target="_blank" rel="noopener" data-track="stream_click" data-p-platform="' + esc(x.platform) + '" data-p-channel="' + esc(cut(x.channel)) + '" data-p-stream_status="' + esc(st) + '">' +
+    const play = pid ? ' data-play="' + esc(pid) + '" data-play-title="' + esc(x.title) + '" data-play-channel="' + esc(x.channel) + '" data-play-status="' + esc(st) + '" data-play-start="' + x.t0 + '"' + (radio && isFinite(x.t1) ? ' data-play-until="' + x.t1 + '"' : '') : '';
+    return '<li><a class="erow strow' + (on ? ' playing' : '') + '" href="' + esc(x.url) + '" target="_blank" rel="noopener"' + play + ' data-track="' + (pid ? 'stream_play' : 'stream_click') + '" data-p-platform="' + esc(x.platform) + '" data-p-channel="' + esc(cut(x.channel)) + '" data-p-stream_status="' + esc(st) + '">' +
       '<div class="when"><b>' + tTime(x.t0) + '</b><span>' + tDay(x.t0) + '</span></div>' +
       '<div class="what"><span class="title">' + esc(x.title) + '</span><div class="sub"><span>' + esc([x.channel, x.location || x.city].filter(Boolean).join(', ')) + '</span></div>' +
       '<div class="sub2">' + bits.map(b => '<span>' + esc(b) + '</span>').join('') + '</div></div>' +
       '<div class="side">' + chip + (G ? '<i class="gdot" style="--c:' + G.color + '" title="' + esc(G.name) + '"></i>' : '') +
-      '<span class="viewers">' + (radio ? (st === 'live' ? 'Listen' : 'Details') : 'Watch') + ' &#8599;</span></div></a></li>';
+      (pid ? '<span class="viewers play"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg><span class="pl-l">' + (on ? 'Playing' : radio ? 'Listen' : 'Watch') + '</span></span>'
+        : '<span class="viewers">' + (radio ? (st === 'live' ? 'Listen' : 'Details') : 'Watch') + ' &#8599;</span>') + '</div></a></li>';
   }
   function renderStreams() {
     const t = S.now, list = S.streams;
@@ -552,7 +562,7 @@
       (live.length ? '<ol class="rows">' + live.map(x => streamRow(x, x.st)).join('') + '</ol>' : '<p class="fine">Nothing streaming live for this filter.</p>') +
       '<h3 class="subhead">Coming up</h3>' +
       (soon.length ? '<ol class="rows">' + soon.slice(0, 30).map(x => streamRow(x, 'soon')).join('') + '</ol>' : '<p class="fine">No club shows or streams scheduled for this filter yet.</p>') +
-      '<p class="fine">NTS shows follow the station\'s schedule; repeats are marked. ' +
+      '<p class="fine">Live NTS shows and YouTube streams play here, in a small player that stays open while you look around. NTS shows follow the station\'s schedule; repeats are marked. ' +
       (yt && (yt.ok || yt.stale) ? 'YouTube streams from Boiler Room, Cercle, HÖR and others are checked every few hours. ' : '') + 'Times are in your time zone.</p>';
     meta('streams', live.filter(x => x.st === 'live').length + ' live');
   }
@@ -2648,12 +2658,6 @@
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
       if (a === 'about') { ev.preventDefault(); openAbout(); return; }
       if (a === 'updates') { ev.preventDefault(); openUpdates(); return; }
-      if (a === 'supporter') {
-        const pop = $('#theme-pop');
-        if (themeOpen()) { if (POP) pop.hidePopover(); else { pop.hidden = true; $('#theme-btn').setAttribute('aria-expanded', 'false'); } }
-        document.dispatchEvent(new CustomEvent('rm:supporter'));
-        return;
-      }
       if (a === 'area-all') { MapView.home(true); return; }
     }
     const opt = t.closest('#results [role="option"]');
@@ -2798,24 +2802,22 @@
     MapView.restyle();
   }
   const swatch = c => '--sv:' + c.void + ';--sl:' + c.land + ';--sn:' + c.now + ';--sk:' + c.line;
-  const acct = () => window.RM_ACCT || {};
   const DEFAULT_OWN = ['#3b0a1e', '#ffffff'];
-  // The six presets, then "Your own" when supporting is switched on (or for a supporter).
+  // The six presets, then "Your own": a background and an accent of the visitor's choosing.
   function themeOptions() {
     const box = $('#theme-opts');
     if (!box || !THEMES) return;
-    const cur = currentTheme(), a = acct(), own = a.billing || a.supporter;
+    const cur = currentTheme();
     box.innerHTML = THEMES.list.map(t => '<label class="topt"><input type="radio" name="rm-theme" value="' + esc(t.id) + '"' + (t === cur ? ' checked' : '') + '>' +
       '<span class="tsw" aria-hidden="true" style="' + swatch(t.c) + '"></span><span class="tn">' + esc(t.name) + '</span></label>').join('') +
-      (own ? '<label class="topt"><input type="radio" name="rm-theme" value="custom"' + (cur && cur.id === 'custom' ? ' checked' : '') + '>' +
-        '<span class="tsw' + (OWN ? '' : ' blank') + '" id="tsw-own" aria-hidden="true" style="' + (OWN ? swatch(OWN.c) : '') + '"></span><span class="tn">Your own' + (a.supporter ? '' : ' <span class="sup-tag">Supporters</span>') + '</span></label>' : '');
-    const edit = $('#theme-edit'), lock = $('#theme-lock');
+      '<label class="topt"><input type="radio" name="rm-theme" value="custom"' + (cur && cur.id === 'custom' ? ' checked' : '') + '>' +
+        '<span class="tsw' + (OWN ? '' : ' blank') + '" id="tsw-own" aria-hidden="true" style="' + (OWN ? swatch(OWN.c) : '') + '"></span><span class="tn">Your own</span></label>';
+    const edit = $('#theme-edit');
     if (edit) {
-      edit.hidden = !(own && a.supporter && cur && cur.id === 'custom');
+      edit.hidden = !(cur && cur.id === 'custom');
       $('#tc-bg').value = (OWN && OWN.bg) || DEFAULT_OWN[0];
       $('#tc-accent').value = (OWN && OWN.accent) || DEFAULT_OWN[1];
     }
-    if (lock) lock.hidden = true;
   }
   function paintOwnSwatch() {
     const sw = $('#tsw-own');
@@ -2863,16 +2865,9 @@
       document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !pop.hidden) { shut(); btn.focus(); } });
     }
     box.addEventListener('change', ev => {
-      const edit = $('#theme-edit'), lock = $('#theme-lock');
+      const edit = $('#theme-edit');
       if (ev.target.value === 'custom') {
-        // Your own colors: supporters pick them here; anyone else hears how to get them.
-        if (!acct().supporter) {
-          const back = box.querySelector('input[value="' + ((currentTheme() || {}).id || THEMES.def) + '"]');
-          if (back) back.checked = true;
-          if (lock) lock.hidden = false;
-          track('open_colors_locked', {});
-          return;
-        }
+        // Your own colors: the last ones picked here, or a starting point, then the two pickers below.
         const bg = (OWN && OWN.bg) || DEFAULT_OWN[0], accent = (OWN && OWN.accent) || DEFAULT_OWN[1];
         setOwnColors(bg, accent, true);
         if (edit) { edit.hidden = false; $('#tc-bg').value = bg; $('#tc-accent').value = accent; }
@@ -2883,7 +2878,6 @@
       const t = themeById(ev.target.value);
       if (!t) return;
       if (edit) edit.hidden = true;
-      if (lock) lock.hidden = true;
       setTheme(t, true);
       track('set_colors', { theme: t.id });
     });
@@ -2907,8 +2901,6 @@
       if (id === 'custom' && x) setOwnColors(x.bg, x.accent, false);
       else if (ev.key === 'rm_theme') setTheme(themeById(id) || themeById(THEMES.def), false);
     });
-    // Signing in or out, or becoming a supporter, changes what "Your own" offers.
-    document.addEventListener('rm:account', () => themeOptions());
     document.addEventListener('rm:open-colors', openColors);
     btn.hidden = false;
   }
@@ -2972,6 +2964,8 @@
         custom: (bg, accent, save) => setOwnColors(bg, accent, save)
       },
       when: (ms, tz) => tDate(ms, tz) + ', ' + tTime(ms, tz),
+      // The show on air now on an NTS channel ('NTS 1'), for the mini player (site/player.js).
+      onAir: ch => { const t = Date.now(), x = S.streams.find(s => s.kind === 'radio' && s.channel === ch && s.t0 <= t && t < s.t1); return x ? { title: x.title, until: x.t1, url: x.url } : null; },
       openEvent: id => { if (!S.ds.eventById[id] || S.ds.source === 'demo') return false; openEvent(id); return true; }
     };
     document.dispatchEvent(new CustomEvent('rm:ready'));

@@ -6,10 +6,9 @@
 //  - shows people saved get a reminder the day before, and an alert when they sell out, are cancelled
 //    or are postponed;
 //  - once a week, people who picked cities get that week's picks there, in their genres;
-//  - supporters who asked for scene alerts get every new night in their cities and genres;
+//  - people who asked for scene alerts get every new night in their cities and genres;
 // then emails what's new through Postmark: changes and reminders right away, new shows and picks as
-// each person chose (a daily digest or a weekly one, or right away for supporters), each with
-// one-click unsubscribe.
+// each person chose (right away, a daily digest or a weekly one), each with one-click unsubscribe.
 //
 // Only listings first seen since the last run count as new (seen_events), so a refresh never repeats
 // an alert, and the first run just takes note of what's there.
@@ -28,7 +27,6 @@ import { slug } from './lib/util.js';
 import { akey, lkey } from '../worker/api/src/keys.js';
 import { alertsEmail, when } from '../worker/api/src/emails.js';
 import { postmark, sendBatch, message } from '../worker/api/src/postmark.js';
-import { isSupporter } from '../worker/api/src/billing.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOUR = 36e5, DAY = 24 * HOUR;
@@ -172,10 +170,10 @@ export function planAlerts({ events, seen, users, follows, saves, now, cityName,
     }
   }
 
-  // Scene alerts, for supporters: every new night in their cities (and genres), as one alert a run,
-  // leaving out the ones they just got as new shows.
+  // Scene alerts: every new night in their cities (and genres), as one alert a run, leaving out the
+  // ones they just got as new shows.
   for (const { u, p } of people.values()) {
-    if (!u.scene || !p.cities.length || !isSupporter(u, now)) continue;
+    if (!u.scene || !p.cities.length) continue;
     const got = alerted.get(u.id) || new Set();
     const list = fresh.filter(e => p.cities.includes(e.cityId) && Date.parse(e.start) > now && !GONE.includes(e.status) && !got.has(e.id) &&
       (!p.genres.length || (e.genres || []).some(g => p.genres.includes(g)))).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
@@ -244,8 +242,7 @@ export function planEmails({ unsent, users, now }) {
     if (p.freq === 'off') continue;
     const urgent = items.filter(n => URGENT.includes(n.kind)), rest = items.filter(n => !URGENT.includes(n.kind));
     let freq = 'instant', send = urgent, digest = false;
-    // Everything right away is a supporter perk; anyone else who chose it gets the daily digest.
-    if (p.freq === 'instant' && isSupporter(u, now)) send = items;
+    if (p.freq === 'instant') send = items;
     else if (rest.length) {
       const f = p.freq === 'weekly' ? 'weekly' : 'daily';
       const t = digestTimes(now, p.tz);

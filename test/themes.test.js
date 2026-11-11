@@ -59,7 +59,7 @@ test('the head applies a saved theme and ignores anything else', () => {
   assert.deepEqual(run(null), [null, '#070814', []]);
   assert.deepEqual(run('constructor'), [null, '#070814', []]);
   assert.deepEqual(run('nope'), [null, '#070814', []]);
-  // A supporter's own colors: applied from local storage, only if it's nothing but color variables.
+  // Your own colors: applied from local storage, only if it's nothing but color variables.
   const own = kit.custom('#3a0d0d', '#ffd166');
   const good = JSON.stringify({ bg: '#3a0d0d', accent: '#ffd166', void: own.void, css: kit.css(own) });
   const [th, bg, st] = run('custom', good);
@@ -71,7 +71,7 @@ test('the head applies a saved theme and ignores anything else', () => {
   assert.doesNotThrow(() => vm.runInNewContext(script, { localStorage: { getItem: () => { throw new Error('denied'); } }, document: {} }));
 });
 
-test("supporters' own colors stay dark, readable and in their hue", () => {
+test('your own colors stay dark, readable and in their hue', () => {
   const picks = [['#070814', '#f6ecd8'], ['#ff0000', '#ffffff'], ['#ffffff', '#000000'], ['#123456', '#1a1a1a'], ['#00ff88', '#ffd166'], ['#5b2a86', '#ff6bd6'], ['#000000', '#3987e5']];
   for (const [bg, accent] of picks) {
     const c = kit.custom(bg, accent), tag = bg + '/' + accent;

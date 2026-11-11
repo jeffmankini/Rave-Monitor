@@ -10,13 +10,15 @@ name: Deploy the API Worker
 #   CONTACT_TO             the verified Email Routing destination address messages go to
 #   TURNSTILE_SECRET       the Turnstile widget's secret key
 #   POSTMARK_TOKEN         for accounts: the Postmark server's API token (sign-in links and alerts)
-#   STRIPE_SECRET_KEY      for supporters ($5 a month): a Stripe restricted key (rk_test_… first, then
-#                          rk_live_…) with Write on Checkout Sessions, Customers, Customer portal, Products,
-#                          Prices and Webhook Endpoints, and Read on Subscriptions. The deploy makes the
-#                          price, the portal settings and the webhook (its signing secret goes straight
-#                          into the Worker). After changing the key, run this workflow by hand.
+#   STRIPE_SECRET_KEY      for donations (once or monthly): a Stripe restricted key (rk_live_…) with Write
+#                          on Checkout Sessions, Products, Prices, Customer portal, Webhook Endpoints and
+#                          Payment Method Domains, and Read on Subscriptions. The deploy makes the donation product and turns on the
+#                          customer portal's login page, where monthly donors change or cancel.
+#   STRIPE_PUBLISHABLE_KEY optional: the publishable key (pk_live_…) in the same mode. With it, Stripe's
+#                          checkout opens inside the site's Donate pop-up; without it, on Stripe's own page.
+#                          After changing either key, run this workflow by hand.
 # Without D1 access it deploys the contact form alone; without POSTMARK_TOKEN sign-in stays off;
-# without STRIPE_SECRET_KEY supporters stay off.
+# without STRIPE_SECRET_KEY donations stay off.
 on:
   push:
     branches: [main]
@@ -39,7 +41,7 @@ jobs:
         with:
           node-version: 22
       - name: Test the Worker
-        run: node --test test/api-contact.test.js test/api-accounts.test.js test/api-billing.test.js test/keys.test.js
+        run: node --test test/api-contact.test.js test/api-accounts.test.js test/api-donate.test.js test/keys.test.js
       - name: Check the secrets are set
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -139,9 +141,11 @@ jobs:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
           POSTMARK_TOKEN: ${{ secrets.POSTMARK_TOKEN }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           jq -n '{CONTACT_TO: env.CONTACT_TO, TURNSTILE_SECRET: env.TURNSTILE_SECRET} + (if (env.POSTMARK_TOKEN // "") != "" then {POSTMARK_TOKEN: env.POSTMARK_TOKEN} else {} end)
-            + (if (env.STRIPE_SECRET_KEY // "") != "" then {STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY} else {} end)' > "$RUNNER_TEMP/secrets.json"
+            + (if (env.STRIPE_SECRET_KEY // "") != "" then {STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY} else {} end)
+            + (if (env.STRIPE_PUBLISHABLE_KEY // "") != "" then {STRIPE_PUBLISHABLE_KEY: env.STRIPE_PUBLISHABLE_KEY} else {} end)' > "$RUNNER_TEMP/secrets.json"
           npx --yes wrangler@4 secret bulk "$RUNNER_TEMP/secrets.json"
           rm -f "$RUNNER_TEMP/secrets.json"
           [ -n "$POSTMARK_TOKEN" ] || echo "::notice::POSTMARK_TOKEN isn't set, so sign-in stays off. Add the Postmark server's API token as a secret to switch it on."
@@ -158,78 +162,85 @@ jobs:
             -d '{"From":"Rave Monitor <hello@ravemonitor.com>","To":"test@blackhole.postmarkapp.com","Subject":"Rave Monitor setup check","TextBody":"A setup check from the API Worker deploy.","MessageStream":"outbound","Tag":"setup-check"}')
           if [ "$(echo "$sent" | jq -r .ErrorCode)" = "0" ]; then echo "Postmark accepts mail from hello@ravemonitor.com."
           else echo "::error::Postmark won't send from hello@ravemonitor.com yet: $(echo "$sent" | jq -r '.Message // "no answer"'). Check that ravemonitor.com is verified (DKIM and Return-Path) under Sender Signatures."; fi
-      - name: Set up Stripe (supporters)
+      - name: Set up Stripe (donations)
         continue-on-error: true
         working-directory: worker/api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
-          [ -n "$STRIPE_SECRET_KEY" ] || { echo "No STRIPE_SECRET_KEY, so supporters stay off."; exit 0; }
+          [ -n "$STRIPE_SECRET_KEY" ] || { echo "No STRIPE_SECRET_KEY, so donations stay off."; exit 0; }
           case "$STRIPE_SECRET_KEY" in
             sk_test_*|rk_test_*) mode=test;; sk_live_*|rk_live_*) mode=live;;
-            *) echo "::error::STRIPE_SECRET_KEY should be a restricted key (rk_test_… or rk_live_…) or a secret key, not the publishable pk_ one."; exit 1;;
+            *) echo "::error::STRIPE_SECRET_KEY should be a restricted key (rk_live_…) or a secret key, not the publishable pk_ one."; exit 1;;
           esac
-          MODE=$(echo "$mode" | tr a-z A-Z)
           echo "Stripe key: $mode mode"
-          s() { curl -s -u "$STRIPE_SECRET_KEY:" "$@"; }
+          case "$STRIPE_PUBLISHABLE_KEY" in
+            "") echo "::notice::No STRIPE_PUBLISHABLE_KEY, so checkout opens on Stripe's page instead of inside the Donate pop-up. Add the publishable key (pk_${mode}_…) as a secret to keep donors on the site.";;
+            pk_${mode}_*) echo "Publishable key: $mode mode, so checkout opens inside the Donate pop-up.";;
+            *) echo "::warning::STRIPE_PUBLISHABLE_KEY isn't a $mode-mode publishable key (pk_${mode}_…), so it's ignored and checkout opens on Stripe's page.";;
+          esac
+          # The same API version as worker/api/src/donate.js.
+          s() { curl -s -u "$STRIPE_SECRET_KEY:" -H 'Stripe-Version: 2026-10-28.endive' "$@"; }
           ok() { echo "$1" | jq -e 'has("error") | not' > /dev/null; }
           fail() { echo "::error::$1: $(echo "$2" | jq -r '.error.message // "no answer"')"; exit 1; }
           api=https://api.stripe.com/v1
-          # 1. The price: $5 a month, found by its lookup key.
-          prices=$(s -G "$api/prices" -d 'lookup_keys[]=rm_supporter_monthly' -d active=true)
-          ok "$prices" || fail "The key can't read prices (it needs Prices: Write)" "$prices"
-          price=$(echo "$prices" | jq -r '.data[0].id // empty')
-          if [ -z "$price" ]; then
-            prod=$(s "$api/products" -d 'name=Rave Monitor Supporter' -d 'description=Instant alerts, scene alerts, a calendar feed and your own colors on ravemonitor.com' -d 'metadata[app]=ravemonitor')
-            ok "$prod" || fail "The key can't create the product (it needs Products: Write)" "$prod"
-            made=$(s "$api/prices" -d "product=$(echo "$prod" | jq -r .id)" -d unit_amount=500 -d currency=usd -d 'recurring[interval]=month' -d lookup_key=rm_supporter_monthly -d 'nickname=Supporter, monthly' -d 'metadata[app]=ravemonitor')
-            ok "$made" || fail "The key can't create the price (it needs Prices: Write)" "$made"
-            echo "Created the Supporter price, \$5 a month: $(echo "$made" | jq -r .id)"
+          # 1. The product every gift is for. Its id is fixed, so the Worker needs no lookup.
+          prod=$(s "$api/products/rm_donation")
+          if ok "$prod"; then
+            [ "$(echo "$prod" | jq -r .active)" = "true" ] || s "$api/products/rm_donation" -d active=true > /dev/null
+            echo "Donation product: in place."
           else
-            echo "Supporter price: $price, $(echo "$prices" | jq -r '.data[0] | "\(.unit_amount / 100) \(.currency | ascii_upcase) a \(.recurring.interval)"')"
+            made=$(s "$api/products" -d id=rm_donation -d 'name=Donation to Rave Monitor' -d 'description=Keeps Rave Monitor free for everyone.' \
+              -d 'images[]=https://ravemonitor.com/apple-touch-icon.png' -d 'metadata[app]=ravemonitor')
+            ok "$made" || fail "The key can't create the donation product (it needs Products: Write)" "$made"
+            echo "Created the donation product."
           fi
-          # 2. The customer portal: cancel at the end of the paid month, change the card, see invoices.
+          # 2. The customer portal: monthly donors sign in with their email to change their card or cancel.
           confs=$(s -G "$api/billing_portal/configurations" -d active=true -d limit=50)
           ok "$confs" || fail "The key can't read the customer portal settings (it needs Customer portal: Write)" "$confs"
-          if [ -z "$(echo "$confs" | jq -r '[.data[] | select(.metadata.app == "ravemonitor")][0].id // empty')" ]; then
-            conf=$(s "$api/billing_portal/configurations" \
-              -d 'business_profile[headline]=Rave Monitor supporter' \
-              -d 'business_profile[privacy_policy_url]=https://ravemonitor.com/privacy-policy/' \
-              -d 'business_profile[terms_of_service_url]=https://ravemonitor.com/terms-of-service/' \
-              -d 'default_return_url=https://ravemonitor.com/?account=supporter' \
-              -d 'features[subscription_cancel][enabled]=true' -d 'features[subscription_cancel][mode]=at_period_end' \
-              -d 'features[payment_method_update][enabled]=true' -d 'features[invoice_history][enabled]=true' \
-              -d 'metadata[app]=ravemonitor')
-            ok "$conf" || fail "The key can't create the customer portal settings (it needs Customer portal: Write)" "$conf"
-            echo "Created the customer portal settings."
-          else echo "Customer portal settings: in place."; fi
-          # 3. The webhook. Stripe shows its signing secret once, when it's made, so it goes straight into
-          #    the Worker; with no secret stored for this mode, the webhook is made again.
-          url=https://api.ravemonitor.com/v1/billing/webhook
-          ev=(-d 'enabled_events[]=checkout.session.completed' -d 'enabled_events[]=customer.subscription.created' -d 'enabled_events[]=customer.subscription.updated' -d 'enabled_events[]=customer.subscription.deleted')
-          hooks=$(s -G "$api/webhook_endpoints" -d limit=100)
-          ok "$hooks" || fail "The key can't read webhooks (it needs Webhook Endpoints: Write)" "$hooks"
-          ids=$(echo "$hooks" | jq -r --arg u "$url" '.data[] | select(.url == $u) | .id')
-          stored=$(npx --yes wrangler@4 secret list 2>/dev/null | grep -c "STRIPE_WEBHOOK_SECRET_$MODE" || true)
-          if [ -n "$ids" ] && [ "$stored" != "0" ]; then
-            for id in $ids; do s "$api/webhook_endpoints/$id" "${ev[@]}" -d disabled=false > /dev/null; done
-            echo "Webhook: in place."
+          conf=$(echo "$confs" | jq -r '([.data[] | select(.metadata.app == "ravemonitor")][0].id) // ([.data[] | select(.is_default)][0].id) // empty')
+          portal=(-d 'business_profile[headline]=Your monthly donation to Rave Monitor'
+            -d 'business_profile[privacy_policy_url]=https://ravemonitor.com/privacy-policy/'
+            -d 'business_profile[terms_of_service_url]=https://ravemonitor.com/terms-of-service/'
+            -d 'default_return_url=https://ravemonitor.com/'
+            -d 'features[subscription_cancel][enabled]=true' -d 'features[subscription_cancel][mode]=immediately' -d 'features[subscription_cancel][proration_behavior]=none'
+            -d 'features[payment_method_update][enabled]=true' -d 'features[invoice_history][enabled]=true'
+            -d 'login_page[enabled]=true' -d 'metadata[app]=ravemonitor')
+          if [ -n "$conf" ]; then r=$(s "$api/billing_portal/configurations/$conf" "${portal[@]}"); else r=$(s "$api/billing_portal/configurations" "${portal[@]}"); fi
+          ok "$r" || fail "The key can't change the customer portal settings (it needs Customer portal: Write)" "$r"
+          echo "Customer portal: in place, with its login page $(echo "$r" | jq -r 'if .login_page.enabled then "on" else "OFF" end')."
+          # 3. Apple Pay, Google Pay and Link inside the pop-up need the site's domain registered with Stripe.
+          dom=$(s -G "$api/payment_method_domains" -d domain_name=ravemonitor.com)
+          if ok "$dom"; then
+            [ "$(echo "$dom" | jq '.data | length')" != "0" ] || dom=$(s "$api/payment_method_domains" -d domain_name=ravemonitor.com | jq '{data: [.]}')
+            echo "Payment method domain ravemonitor.com: $(echo "$dom" | jq -r '.data[0] | "Apple Pay \(.apple_pay.status // "?"), Google Pay \(.google_pay.status // "?"), Link \(.link.status // "?")"')"
           else
-            for id in $ids; do s -X DELETE "$api/webhook_endpoints/$id" > /dev/null; done
-            hook=$(s "$api/webhook_endpoints" -d "url=$url" "${ev[@]}" -d 'description=Rave Monitor supporters' -d 'metadata[app]=ravemonitor')
-            ok "$hook" || fail "The key can't create the webhook (it needs Webhook Endpoints: Write)" "$hook"
-            secret=$(echo "$hook" | jq -r .secret)
-            echo "::add-mask::$secret"
-            printf '%s' "$secret" | npx --yes wrangler@4 secret put "STRIPE_WEBHOOK_SECRET_$MODE"
-            echo "Created the webhook and gave its signing secret to the Worker."
+            echo "::notice::The key can't register ravemonitor.com for wallets (it needs Payment Method Domains: Write). Card payments work anyway; for Apple Pay in the pop-up, add ravemonitor.com under Settings > Payment method domains in Stripe."
           fi
-          # 4. What the Worker does with the key at checkout and in the webhook.
-          for check in "subscriptions:Subscriptions: Read" "customers:Customers: Write" "checkout/sessions:Checkout Sessions: Write"; do
-            r=$(s -G "$api/${check%%:*}" -d limit=1)
-            if ok "$r"; then echo "Key can use ${check%%:*}"; else echo "::error::The key can't use ${check%%:*} (it needs ${check#*:}): $(echo "$r" | jq -r .error.message)"; fi
+          # 4. What's left of the supporter tier: its price and product are archived, its webhook goes.
+          old=$(s -G "$api/prices" -d 'lookup_keys[]=rm_supporter_monthly' -d active=true)
+          for id in $(echo "$old" | jq -r '.data[]?.id'); do
+            s "$api/prices/$id" -d active=false > /dev/null
+            p=$(echo "$old" | jq -r --arg id "$id" '.data[] | select(.id == $id) | .product')
+            [ -n "$p" ] && s "$api/products/$p" -d active=false > /dev/null
+            echo "Archived the old supporter price $id and its product."
           done
+          hooks=$(s -G "$api/webhook_endpoints" -d limit=100)
+          for id in $(echo "$hooks" | jq -r '.data[]? | select(.url == "https://api.ravemonitor.com/v1/billing/webhook") | .id'); do
+            s -X DELETE "$api/webhook_endpoints/$id" > /dev/null && echo "Removed the old supporter webhook $id."
+          done
+          stored=$(npx --yes wrangler@4 secret list 2>/dev/null || true)
+          for k in STRIPE_WEBHOOK_SECRET_TEST STRIPE_WEBHOOK_SECRET_LIVE; do
+            if echo "$stored" | grep -q "\"$k\""; then npx --yes wrangler@4 secret delete "$k" > /dev/null 2>&1 && echo "Removed the Worker's $k."; fi
+          done
+          subs=$(s -G "$api/subscriptions" -d status=all -d limit=100)
+          if ok "$subs"; then echo "Subscriptions ($mode mode, monthly donations): $(echo "$subs" | jq '.data | length')"; fi
+          # 5. What the Worker does with the key.
+          r=$(s -G "$api/checkout/sessions" -d limit=1)
+          if ok "$r"; then echo "Key can use checkout/sessions"; else echo "::error::The key can't use Checkout Sessions (it needs Checkout Sessions: Write): $(echo "$r" | jq -r .error.message)"; fi
       - name: Check it answers
         run: |
           for i in 1 2 3 4 5 6; do

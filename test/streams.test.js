@@ -45,7 +45,7 @@ async function mockApis({ yt = 'ok' } = {}) {
       return json(200, { items: [
         { id: 'v1', snippet: { title: 'Boiler Room: Someone techno set', liveBroadcastContent: 'live', channelTitle: 'Boiler Room' }, liveStreamingDetails: { actualStartTime: iso(-0.4), concurrentViewers: '1234' } },
         { id: 'v2', snippet: { title: 'Old upload', liveBroadcastContent: 'none' } },
-        { id: 'v3', snippet: { title: 'Sunrise set at the lake', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(20) } },
+        { id: 'v3', snippet: { title: 'Sunrise set at the lake', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(20) }, status: { embeddable: false } },
         { id: 'v4', snippet: { title: 'Placeholder stream', liveBroadcastContent: 'upcoming' }, liveStreamingDetails: { scheduledStartTime: iso(-200) } }
       ] });
     }
@@ -120,6 +120,9 @@ test('builds streams.json from NTS and YouTube, saving NTS genres between runs',
     assert.deepEqual(yt.map(s => s.id).sort(), ['yt:v1', 'yt:v3']);
     assert.deepEqual(yt.find(s => s.id === 'yt:v3').genres, ['house']);
     assert.equal(yt.find(s => s.id === 'yt:v3').city, 'Paris');
+    // The mini player only plays what the channel lets other sites embed.
+    assert.deepEqual(yt.map(s => [s.id, s.embed]).sort(), [['yt:v1', true], ['yt:v3', false]]);
+    assert.ok(api.asked.some(u => u.startsWith('/yt/videos') && u.includes('part=snippet,liveStreamingDetails,status')));
     assert.deepEqual(out.sources.map(s => [s.id, s.ok, s.n]), [['nts', true, 6], ['youtube', true, 2]]);
     assert.deepEqual(out.sources[1].seen, { live: 1, upcoming: 2 });
     assert.ok(warnings.some(w => w.includes('Placeholder stream') && w.includes('long past')), 'left-out streams are explained');

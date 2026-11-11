@@ -4,6 +4,7 @@
 //   - live and scheduled streams from the YouTube channels in config/streams.json. This needs a free
 //     YOUTUBE_KEY (YouTube Data API v3) and is skipped without one. A run costs about 1 unit of the
 //     10,000 free daily units per channel, because it reads each channel's uploads list, not search.
+//     Each stream says whether its channel lets other sites embed it (the site's mini player).
 //
 //   node pipeline/streams.js
 //   node pipeline/streams.js --out public --cache cache
@@ -130,6 +131,8 @@ export function ytStream(v, ch = {}, now = Date.now(), cfg = {}, why = () => {})
     title, status, start: new Date(t).toISOString(), end: null,
     viewers: Number(live.concurrentViewers) || null,
     url: `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`,
+    // Whether the channel lets other sites play it, for the site's mini player.
+    embed: !(v.status && v.status.embeddable === false),
     genres: fromTitle.length ? fromTitle : (ch.genres || []).filter(g => FAMILIES.includes(g)),
     city: ch.city || null
   };
@@ -156,7 +159,7 @@ export async function collectYouTube(cfg = {}, key, { now = Date.now(), warn = (
   if (channels.length && failed === channels.length) throw new Error('YouTube: no channel could be read');
   const ids = [...byVideo.keys()], items = [], seen = { live: 0, upcoming: 0 }, left = [];
   for (let i = 0; i < ids.length; i += 50) {
-    const data = await fetchJson(`${YT_API()}/videos?part=snippet,liveStreamingDetails&id=${ids.slice(i, i + 50).join(',')}&key=${k}`, {}, { label: 'YouTube videos' });
+    const data = await fetchJson(`${YT_API()}/videos?part=snippet,liveStreamingDetails,status&id=${ids.slice(i, i + 50).join(',')}&key=${k}`, {}, { label: 'YouTube videos' });
     for (const v of (data && data.items) || []) {
       const st = v.snippet && v.snippet.liveBroadcastContent;
       if (st in seen) seen[st]++;

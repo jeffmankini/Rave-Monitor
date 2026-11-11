@@ -6,13 +6,14 @@
 // step after each refresh (pipeline/notify.js); this Worker only reads them and marks them read.
 //
 // Only hashes of sign-in links and session cookies are stored. Logs carry error codes, never
-// addresses. Writes must come from the site's own pages (ALLOWED_ORIGINS).
+// addresses. Writes must come from the site's own pages (ALLOWED_ORIGINS). Donations (donate.js) go
+// through here too, with no account needed.
 
 import { verifyTurnstile } from './handler.js';
 import { sendEmail, message } from './postmark.js';
 import { signInEmail } from './emails.js';
 import { followKey } from './keys.js';
-import { isSupporter, billingOn, stripeMode, checkout, portal, webhook, forgetCustomer } from './billing.js';
+import { donateOn, publishableKey, donate, donation, manage } from './donate.js';
 import { calendarFeed } from './calendar.js';
 
 const DAY = 864e5;
@@ -75,21 +76,16 @@ const parse = (s, fallback) => { try { return JSON.parse(s); } catch (err) { ret
 
 /** What the site gets to know about the signed-in person. */
 export function publicUser(u) {
-  const a = parse(u.alerts, {}), sup = isSupporter(u);
+  const a = parse(u.alerts, {});
   const theme = parse(u.custom_theme, null);
   return {
     email: u.email, since: u.created_at, cities: parse(u.cities, []), genres: parse(u.genres, []), tz: u.tz,
     freq: u.email_freq, alerts: { follows: a.follows !== false, saved: a.saved !== false, picks: a.picks !== false }, mine: !!u.mine,
-    // Supporters: until when their perks run, and whether they've cancelled (or a payment failed).
-    supporter: sup ? { since: u.supporter_since || null, until: u.sub_until || null, ending: !!u.sub_cancel_at_end, late: u.sub_status === 'past_due' } : null,
-    billingAccount: !!u.stripe_customer, scene: !!u.scene && sup,
+    scene: !!u.scene,
     customTheme: theme && COLOR_RE.test(theme.bg || '') && COLOR_RE.test(theme.accent || '') ? { bg: theme.bg, accent: theme.accent } : null
   };
 }
-/** Billing as the site sees it: off, or on with the price to show (and whether it's Stripe's test mode,
- *  which the site only shows to a browser that opened the preview link). */
-const billingInfo = env => billingOn(env) ? { price: env.SUPPORTER_PRICE || '$5 a month', ...(stripeMode(env.STRIPE_SECRET_KEY) === 'test' ? { test: true } : {}) } : null;
-const calUrl = (ctx, user) => isSupporter(user) && user.cal_token ? ctx.api + '/v1/cal/' + user.cal_token + '.ics' : null;
+const calUrl = (ctx, user) => user.cal_token ? ctx.api + '/v1/cal/' + user.cal_token + '.ics' : null;
 
 async function mePayload(env, user, ctx) {
   const [f, s, n] = await env.DB.batch([
@@ -98,7 +94,7 @@ async function mePayload(env, user, ctx) {
     env.DB.prepare('SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL').bind(user.id)
   ]);
   return {
-    user: publicUser(user), billing: billingInfo(env), calendar: ctx ? calUrl(ctx, user) : null,
+    user: publicUser(user), calendar: ctx ? calUrl(ctx, user) : null,
     follows: f.results.map(r => ({ kind: r.kind, key: r.key, label: r.label, city: r.city || null, at: r.created_at })),
     saves: s.results.map(r => ({ id: r.event_id, title: r.title, start: r.start, city: r.city, venue: r.venue, url: r.url, at: r.created_at })),
     unread: (n.results[0] || {}).n || 0
@@ -193,22 +189,17 @@ async function patchMe(request, env, ctx, me) {
   if ('cities' in d) { sets.push('cities = ?'); vals.push(JSON.stringify(idList(d.cities, 12))); }
   if ('genres' in d) { sets.push('genres = ?'); vals.push(JSON.stringify(idList(d.genres, 12))); }
   if ('tz' in d) { const tz = validTz(d.tz); if (tz) { sets.push('tz = ?'); vals.push(tz); } }
-  const sup = isSupporter(me.user);
   if ('freq' in d) {
     if (!FREQS.includes(d.freq)) return ctx.out({ ok: false, error: 'bad_freq' }, 400);
-    // Emails the moment there's something new are a supporter perk.
-    if (d.freq === 'instant' && !sup) return ctx.out({ ok: false, error: 'supporters_only' }, 403);
     sets.push('email_freq = ?'); vals.push(d.freq);
   }
-  if ('scene' in d) {
-    if (d.scene && !sup) return ctx.out({ ok: false, error: 'supporters_only' }, 403);
-    sets.push('scene = ?'); vals.push(d.scene ? 1 : 0);
-  }
+  // Scene alerts: every new night in their cities and genres (pipeline/notify.js).
+  if ('scene' in d) { sets.push('scene = ?'); vals.push(d.scene ? 1 : 0); }
+  // Their own colors (the "Your own" theme), so they follow them to other devices.
   if ('customTheme' in d) {
     const t = d.customTheme;
     if (t === null) { sets.push('custom_theme = ?'); vals.push(null); }
     else {
-      if (!sup) return ctx.out({ ok: false, error: 'supporters_only' }, 403);
       if (!t || !COLOR_RE.test(t.bg || '') || !COLOR_RE.test(t.accent || '')) return ctx.out({ ok: false, error: 'bad_colors' }, 400);
       sets.push('custom_theme = ?'); vals.push(JSON.stringify({ bg: t.bg.toLowerCase(), accent: t.accent.toLowerCase() }));
     }
@@ -227,8 +218,6 @@ async function deleteMe(request, env, ctx, me) {
   const d = await readJson(request);
   if (!d || d.confirm !== 'delete') return ctx.out({ ok: false, error: 'confirm' }, 400);
   const id = me.user.id;
-  // A supporter's subscription ends with the account (their Stripe customer is deleted).
-  if (!(await forgetCustomer(env, me.user, ctx.fetch))) return ctx.out({ ok: false, error: 'billing' }, 502);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM notifications WHERE user_id = ?').bind(id),
     env.DB.prepare('DELETE FROM follows WHERE user_id = ?').bind(id),
@@ -254,9 +243,8 @@ async function exportMe(env, ctx, me) {
   return new Response(JSON.stringify(body, null, 2), { status: 200, headers: { ...ctx.cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="rave-monitor-account.json"' } });
 }
 
-/** POST /v1/me/calendar: the calendar feed's address (a new one with reset: true). Supporters only. */
+/** POST /v1/me/calendar: the calendar feed's address (a new one with reset: true). */
 async function calendarAddress(request, env, ctx, me) {
-  if (!isSupporter(me.user)) return ctx.out({ ok: false, error: 'supporters_only' }, 403);
   const d = (await readJson(request)) || {};
   let token = me.user.cal_token;
   if (!token || d.reset) {
@@ -380,14 +368,21 @@ export async function handleAccounts(request, env, deps = {}) {
   const ip = request.headers.get('CF-Connecting-IP') || '';
   const ctx = { ip, cors, api: url.origin, fetch: deps.fetch, out: (body, status, extra) => json(body, status, { ...cors, ...(extra || {}) }) };
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (!env.DB) return ctx.out({ ok: false, error: 'not_configured' }, 503);
   if (env.API_LIMITER) {
     const { success } = await env.API_LIMITER.limit({ key: ip || 'unknown' });
     if (!success) return ctx.out({ ok: false, error: 'rate_limited' }, 429);
   }
+  // Donations need no account or database. The two GETs are links (Stripe's way back, the portal).
+  if (path === '/v1/donate/manage' && request.method === 'GET') return manage(env, ctx);
+  if (path === '/v1/donate/session' && request.method === 'GET') return donation(env, ctx, url.searchParams.get('id'));
+  if (path === '/v1/donate' && request.method === 'POST') {
+    if (!originOk) return ctx.out({ ok: false, error: 'origin' }, 403);
+    const d = await readJson(request);
+    return d ? donate(env, ctx, d) : ctx.out({ ok: false, error: 'bad_request' }, 400);
+  }
+  if (!env.DB) return ctx.out({ ok: false, error: 'not_configured' }, 503);
   if (path === '/v1/unsubscribe' && (request.method === 'GET' || request.method === 'POST')) return unsubscribe(request, env, url);
-  // From Stripe and from calendar apps: no session, no Origin.
-  if (path === '/v1/billing/webhook' && request.method === 'POST') return webhook(request, env, ctx);
+  // From calendar apps: no session, no Origin.
   const cal = request.method === 'GET' && path.match(/^\/v1\/cal\/([A-Za-z0-9_-]+)\.ics$/);
   if (cal) return calendarFeed(env, cal[1]);
   // Anything that changes something must come from the site itself.
@@ -396,14 +391,13 @@ export async function handleAccounts(request, env, deps = {}) {
   const route = request.method + ' ' + path;
   if (route === 'POST /v1/auth/start') return authStart(request, env, ctx);
   if (route === 'POST /v1/auth/verify') return authVerify(request, env, ctx);
-  if (route === 'GET /v1/health') return ctx.out({ ok: true, signIn: !!(env.POSTMARK_TOKEN || devMode(env)), billing: billingOn(env) }, 200);
+  if (route === 'GET /v1/health') return ctx.out({ ok: true, signIn: !!(env.POSTMARK_TOKEN || devMode(env)), donate: donateOn(env), donateInPopup: !!publishableKey(env) }, 200);
 
-  const known = ['POST /v1/auth/signout', 'GET /v1/me', 'PATCH /v1/me', 'DELETE /v1/me', 'GET /v1/me/export', 'POST /v1/me/calendar', 'POST /v1/follows', 'POST /v1/saves', 'GET /v1/notifications', 'POST /v1/notifications/read',
-    'POST /v1/billing/checkout', 'POST /v1/billing/portal'];
+  const known = ['POST /v1/auth/signout', 'GET /v1/me', 'PATCH /v1/me', 'DELETE /v1/me', 'GET /v1/me/export', 'POST /v1/me/calendar', 'POST /v1/follows', 'POST /v1/saves', 'GET /v1/notifications', 'POST /v1/notifications/read'];
   if (!known.includes(route)) return ctx.out({ ok: false, error: 'not_found' }, 404);
   const me = await session(request, env);
   // Every page asks on load; signed out isn't an error there (and keeps browsers' consoles quiet).
-  if (!me && route === 'GET /v1/me') return ctx.out({ ok: true, user: null, billing: billingInfo(env) }, 200);
+  if (!me && route === 'GET /v1/me') return ctx.out({ ok: true, user: null }, 200);
   if (!me) return ctx.out({ ok: false, error: 'signed_out' }, 401, route === 'POST /v1/auth/signout' ? { 'Set-Cookie': setCookie('', 0) } : undefined);
   const renew = me.renew ? { 'Set-Cookie': me.renew } : undefined;
   switch (route) {
@@ -415,8 +409,6 @@ export async function handleAccounts(request, env, deps = {}) {
     case 'DELETE /v1/me': return deleteMe(request, env, ctx, me);
     case 'GET /v1/me/export': return exportMe(env, ctx, me);
     case 'POST /v1/me/calendar': return calendarAddress(request, env, ctx, me);
-    case 'POST /v1/billing/checkout': return checkout(env, ctx, me);
-    case 'POST /v1/billing/portal': return portal(env, ctx, me);
     case 'POST /v1/follows': return follow(request, env, ctx, me);
     case 'POST /v1/saves': return save(request, env, ctx, me);
     case 'GET /v1/notifications': return notifications(url, env, ctx, me);

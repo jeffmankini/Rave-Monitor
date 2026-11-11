@@ -1,6 +1,6 @@
 // Color themes (config/themes.json) for scripts/build-site.js: the full set of colors for each,
 // the CSS that applies them, and the small script that applies the visitor's choice before the page
-// draws (a preset, or a supporter's own colors). The color math is site/themekit.js, which the page
+// draws (a preset, or the visitor's own colors). The color math is site/themekit.js, which the page
 // uses too; test/themes.test.js checks the colors read well.
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -34,7 +34,7 @@ export function loadThemes(cfg) {
 
 // What goes in each page's head, after its theme-color tag: the themes' variables (the default on
 // :root, the others on :root[data-theme=…], which wins over a page's own :root), then the choice.
-// A supporter's own colors come from local storage (rm_theme_custom: the CSS the page worked out,
+// The visitor's own colors come from local storage (rm_theme_custom: the CSS the page worked out,
 // checked to be nothing but color variables).
 export function themeHead(T) {
   const def = T.list.find(t => t.id === T.def);

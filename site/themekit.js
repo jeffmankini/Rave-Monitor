@@ -1,4 +1,4 @@
-/* Rave Monitor's color math, shared by the page (supporters' own colors), the build (the preset
+/* Rave Monitor's color math, shared by the page (visitors' own colors), the build (the preset
  * themes in config/themes.json, through scripts/themes.js) and the tests. Plain browser script:
  * it sets window.RM_THEMEKIT. */
 (function (root) {
@@ -52,7 +52,7 @@
   }
 
   /**
-   * Supporters' own colors from two picks: a background and an accent. The background sets the hue
+   * A visitor's own colors from two picks: a background and an accent. The background sets the hue
    * and stays dark, like every theme, so the map and the listing colors keep working; panels, lines
    * and text are stepped up from it. The accent is brightened until it reads on the panels, and the
    * text on accent buttons is whichever of dark or white reads better.

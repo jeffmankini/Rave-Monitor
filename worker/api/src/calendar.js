@@ -1,8 +1,7 @@
-// The calendar feed, a supporter perk: GET /v1/cal/<secret>.ics, for Google, Apple or Outlook
-// Calendar to subscribe to. It holds the person's upcoming saved shows and the new shows the alerts
-// step found from who they follow. Calendar apps can't sign in, so the address itself is the secret;
-// it can be reset from the account. When someone stops supporting, the feed empties.
-import { isSupporter } from './billing.js';
+// The calendar feed: GET /v1/cal/<secret>.ics, for Google, Apple or Outlook Calendar to subscribe to.
+// It holds the person's upcoming saved shows and the new shows the alerts step found from who they
+// follow. Calendar apps can't sign in, so the address itself is the secret; it can be reset from the
+// account, and it stops working when the account is deleted.
 
 const DAY = 864e5, HOUR = 36e5;
 const text = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
@@ -23,7 +22,6 @@ const cityName = id => String(id || '').split('-').map(w => w ? w[0].toUpperCase
 
 /** The feed's events: saved shows first (they win over the same show from an alert). */
 export async function calendarEvents(env, user, now = Date.now()) {
-  if (!isSupporter(user, now)) return [];
   const [saves, alerts] = await env.DB.batch([
     env.DB.prepare('SELECT event_id, title, start, venue, city, url FROM saves WHERE user_id = ? AND start > ? ORDER BY start LIMIT 500').bind(user.id, new Date(now - DAY).toISOString()),
     env.DB.prepare("SELECT ref, body, data FROM notifications WHERE user_id = ? AND kind = 'new_show' AND created_at > ? ORDER BY id DESC LIMIT 500").bind(user.id, now - 180 * DAY)

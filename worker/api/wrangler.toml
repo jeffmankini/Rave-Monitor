@@ -44,5 +44,5 @@ SITE_URL = "https://ravemonitor.com"
 MAIL_FROM = "hello@ravemonitor.com"
 MAIL_FROM_NAME = "Rave Monitor"
 POSTMARK_STREAM = "outbound"
-# Supporters (src/billing.js): the price as the site shows it. The deploy makes the Stripe price itself.
-SUPPORTER_PRICE = "$5 a month"
+# Donations (src/donate.js) use two secrets the deploy sets: STRIPE_SECRET_KEY and, for checkout inside
+# the site's pop-up, STRIPE_PUBLISHABLE_KEY.
