@@ -1,0 +1,24 @@
+name: Check electronic filter (temporary)
+# Temporary: prints how Ticketmaster classifies each saved listing and its artists, to tune the
+# electronic-music filter. Runs only on this branch; the branch is deleted afterwards.
+on:
+  push:
+    branches: [check-electronic-filter]
+permissions:
+  contents: read
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore saved scrapes
+        uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: scrapes-none
+          restore-keys: scrapes-
+      - name: Print Ticketmaster classifications
+        run: node scripts/tm-dump.mjs cache/ticketmaster.json
