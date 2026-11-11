@@ -84,6 +84,8 @@ export function sessionParams({ amount, monthly, embedded, site, colors }) {
     // The account has Stripe's merchant of record (Managed Payments) on by default, which is for selling
     // digital products; a donation isn't one, so it goes through as an ordinary payment.
     managed_payments: { enabled: false },
+    // Pay-later plans don't fit a gift (and their terms tend to rule donations out).
+    excluded_payment_method_types: ['klarna', 'affirm', 'afterpay_clearpay', 'zip'],
     branding_settings: {
       display_name: 'Rave Monitor', border_style: 'rounded',
       background_color: colors ? colors.bg : undefined, button_color: colors ? colors.accent : undefined
