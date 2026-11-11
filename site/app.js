@@ -1615,9 +1615,34 @@
     }
     return out;
   }
+  /* ---------- search counts: what people look for, counted for Rave Monitor's own dashboard ---------- */
+  // What was typed, the kind and name of the result picked, and the city in view, sent without cookies
+  // to the accounts API, which keeps only daily counts (worker/api/src/insights.js): nothing about who
+  // searched. Off for demo data and in browsers that send Global Privacy Control.
+  const SEARCH_LOG = window.RM_ACCOUNTS && window.RM_ACCOUNTS.api ? window.RM_ACCOUNTS.api + '/log/search' : '';
+  const searchesSent = new Set();
+  let missTimer = 0;
+  function areaCity() {
+    if (!S.area || !D.L || !D.L.win || !D.L.win.length) return '';
+    const top = RM.cityCounts(D.L.win)[0];
+    return top ? top.id : '';
+  }
+  function countSearch(q, r, n) {
+    if (!SEARCH_LOG || S.ds.source === 'demo' || navigator.globalPrivacyControl) return;
+    const term = String(q || '').trim().replace(/\s+/g, ' ').toLowerCase().slice(0, 80);
+    if (term.length < 2) return;
+    const sig = term + '|' + (r ? r.kind + '|' + r.label : '');
+    if (searchesSent.has(sig)) return;
+    searchesSent.add(sig);
+    const body = JSON.stringify({ q: term, kind: r ? r.kind : '', pick: r ? cut(r.label, 80) : '', city: areaCity(), results: n });
+    try { fetch(SEARCH_LOG, { method: 'POST', body, credentials: 'omit', keepalive: true, headers: { 'Content-Type': 'text/plain;charset=UTF-8' } }).catch(() => {}); } catch (err) { /* counting must never get in the way */ }
+  }
   function renderResults(q) {
     const box = $('#results'), input = $('#q');
     results = searchItems(q); activeIdx = results.length ? 0 : -1;
+    // A search that finds nothing is counted once the typing stops, so the misses show what people want that isn't listed.
+    clearTimeout(missTimer);
+    if (!results.length && norm(q).trim().length >= 2) missTimer = setTimeout(() => { if (!results.length && $('#q').value === q) countSearch(q, null, 0); }, 1500);
     if (norm(q).trim().length < 2) { hideResults(); return; }
     let html = '', lastG = null;
     if (!results.length) html = '<div class="empty">No matches. Try a city, a genre, a DJ or a record label.</div>';
@@ -1639,6 +1664,7 @@
   }
   function chooseResult(i) {
     const r = results[i]; if (!r) return;
+    countSearch($('#q').value, r, results.length);
     hideResults(); $('#q').blur();
     track('select_search_result', { result_type: r.kind, result: cut(r.label) });
     const ds = S.ds;

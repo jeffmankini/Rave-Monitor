@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Admin · Rave Monitor</title>
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#070814">
+__THEME_HEAD__
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+/* Rave Monitor's admin dashboard: counts from the accounts API (worker/api/src/insights.js), for the
+   emails in the Worker's ADMIN_EMAILS secret only. No email addresses or one person's data are shown. */
+:root { color-scheme: dark; --void: #070814; --deck: #0c0f22; --deck-2: #13183a; --line: #1f2547; --ink: #eceaf6; --ink-2: #a9abcb; --ink-3: #7c7fa3; --now: #f6ecd8; --now-ink: #15131f; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--void); color: var(--ink-2); font: 14px/1.45 "Archivo", "Helvetica Neue", Arial, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--ink); }
+a:hover, a:focus-visible { color: var(--now); }
+:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.top { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.brand svg { width: 22px; height: 22px; color: var(--now); }
+.brand span { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.tag { padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--ink-3); font-size: 12px; line-height: 22px; }
+.back { margin-left: auto; color: var(--ink-3); font-size: 13px; text-decoration: none; }
+main { max-width: 1180px; margin: 0 auto; padding: 22px 20px 48px; }
+h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 600; font-size: 20px; color: var(--ink); margin: 0; }
+h2 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 600; font-size: 13px; letter-spacing: .01em; color: var(--ink); margin: 0; }
+.note { max-width: 560px; margin: 40px auto; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--deck); }
+.note p { margin: 8px 0 0; }
+.btn { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck-2); color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.btn.primary { background: var(--now); border-color: var(--now); color: var(--now-ink); }
+.bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 14px 0 18px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--deck); border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; height: 28px; padding: 0 11px; border-radius: 7px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.seg button[aria-checked="true"] { background: var(--now); color: var(--now-ink); font-weight: 650; }
+.stamp { color: var(--ink-3); font-size: 12px; }
+.refresh { height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--deck); font-size: 13px; }
+#dash.loading .grid, #dash.loading .tiles { opacity: .5; transition: opacity .2s; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.tile { background: var(--deck); padding: 12px 14px; }
+.tile .k { color: var(--ink-3); font-size: 12px; }
+.tile .v { margin-top: 2px; color: var(--ink); font-size: 28px; font-weight: 600; line-height: 1.15; }
+.tile .d { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; margin-top: 14px; }
+.card { background: var(--deck); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 16px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.card header small { color: var(--ink-3); font-size: 12px; }
+.empty { color: var(--ink-3); font-size: 13px; padding: 6px 0; }
+.sec { margin: 26px 0 0; color: var(--ink-3); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+/* Ranked lists: name, a bar from one baseline, the value at its tip. */
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rank li { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.rank .nm { min-width: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank .nm small { color: var(--ink-3); margin-left: 6px; }
+.rank .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+.rank .track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* The bar leaves 56px for its value, so the number always fits at its tip. */
+.rank .fill { height: 12px; border-radius: 0 4px 4px 0; background: var(--ink-2); min-width: 2px; flex: none; width: calc((100% - 56px) * var(--r)); }
+.rank .val { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cols { position: relative; }
+.cols svg { display: block; width: 100%; overflow: visible; }
+.cols .g { stroke: var(--line); stroke-width: 1; }
+.cols .ax { fill: var(--ink-3); font: 11px "Archivo", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+/* The full-height slot behind each column takes the pointer; the column and labels let it through. */
+.cols .c { fill: var(--ink-2); pointer-events: none; }
+.cols .lbl, .cols .ax { pointer-events: none; }
+.cols .c.now { fill: var(--now); }
+.cols .hit { fill: transparent; }
+.cols .hit:hover + .c, .cols .hit:focus + .c { fill: var(--ink); }
+.cols .lbl { fill: var(--ink); font: 600 11px "Archivo", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.tip { position: fixed; z-index: 10; pointer-events: none; padding: 7px 10px; border-radius: 8px; background: var(--deck-2); border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.5); font-size: 12px; color: var(--ink-2); }
+.tip b { display: block; color: var(--ink); font-size: 14px; font-weight: 650; }
+details.tbl { margin-top: 8px; }
+details.tbl summary { color: var(--ink-3); font-size: 12px; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--ink-3); font-weight: 600; font-size: 12px; }
+td { color: var(--ink); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td small { color: var(--ink-3); }
+.exports { display: grid; gap: 10px; }
+.exports div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.exports div:first-child { border-top: 0; }
+.exports p { margin: 0; max-width: 64ch; }
+.exports b { color: var(--ink); }
+footer { border-top: 1px solid var(--line); padding: 16px 20px 26px; text-align: center; font-size: 12px; color: var(--ink-3); }
+@media (max-width: 640px) { .grid { grid-template-columns: minmax(0, 1fr); } .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tile .v { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { #dash.loading .grid, #dash.loading .tiles { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" style="fill:var(--void)"/></svg><span>Rave Monitor</span></a>
+  <span class="tag">Admin</span>
+  <a class="back" href="/">Back to the map</a>
+</header>
+<main>
+  <div class="note" id="state" role="status"><p>Loading…</p></div>
+  <div id="dash" hidden>
+    <h1>Dashboard</h1>
+    <div class="bar-row">
+      <div class="seg" role="radiogroup" aria-label="Period" id="period">
+        <button type="button" role="radio" data-days="7" aria-checked="false">7 days</button>
+        <button type="button" role="radio" data-days="30" aria-checked="true">30 days</button>
+        <button type="button" role="radio" data-days="90" aria-checked="false">90 days</button>
+        <button type="button" role="radio" data-days="365" aria-checked="false">12 months</button>
+      </div>
+      <button type="button" class="refresh" id="refresh">Refresh</button>
+      <span class="stamp" id="stamp" aria-live="polite"></span>
+    </div>
+    <div class="tiles" id="tiles"></div>
+
+    <p class="sec">Accounts</p>
+    <div class="grid">
+      <section class="card wide"><header><h2>New accounts</h2><small id="signups-sub"></small></header><div id="signups"></div></section>
+      <section class="card"><header><h2>Email settings</h2><small>all accounts</small></header><div id="freq"></div></section>
+      <section class="card"><header><h2>Alerts written</h2><small id="alerts-sub"></small></header><div id="alert-kinds"></div></section>
+    </div>
+
+    <p class="sec">Searches</p>
+    <div class="grid">
+      <section class="card wide"><header><h2>Searches</h2><small id="searches-sub"></small></header><div id="search-days"></div></section>
+      <section class="card"><header><h2>Top searches</h2><small>share that found nothing</small></header><div id="search-top"></div></section>
+      <section class="card"><header><h2>Searches that found nothing</h2><small>what people want that isn't listed</small></header><div id="search-misses"></div></section>
+      <section class="card"><header><h2>Most-picked results</h2><small>what people chose from search</small></header><div id="search-picks"></div></section>
+    </div>
+
+    <p class="sec">Follows</p>
+    <div class="grid">
+      <section class="card"><header><h2>Most-followed artists</h2><small id="fa-sub"></small></header><div id="f-artist"></div></section>
+      <section class="card"><header><h2>Most-followed venues</h2><small id="fv-sub"></small></header><div id="f-venue"></div></section>
+      <section class="card"><header><h2>Most-followed promoters</h2><small id="fp-sub"></small></header><div id="f-promoter"></div></section>
+      <section class="card"><header><h2>Most-followed record labels</h2><small id="fl-sub"></small></header><div id="f-label"></div></section>
+    </div>
+
+    <p class="sec">Cities and genres</p>
+    <div class="grid">
+      <section class="card"><header><h2>Cities people pick</h2><small>accounts</small></header><div id="cities"></div></section>
+      <section class="card"><header><h2>Genres people pick</h2><small>accounts</small></header><div id="genres"></div></section>
+      <section class="card wide"><header><h2>Most-followed artists by city</h2><small>by the cities people picked</small></header><div id="by-city"></div></section>
+    </div>
+
+    <p class="sec">Saved shows</p>
+    <div class="grid">
+      <section class="card wide"><header><h2>Most-saved upcoming shows</h2><small id="saves-sub"></small></header><div id="saves"></div></section>
+    </div>
+
+    <p class="sec">Research exports</p>
+    <div class="grid">
+      <section class="card wide">
+        <header><h2>Downloads (CSV)</h2><small>every row covers at least 10 people</small></header>
+        <div class="exports" id="exports"></div>
+      </section>
+    </div>
+  </div>
+</main>
+<footer>Counts only: this page never shows an email address or what one person follows, saves or searches.</footer>
+<div class="tip" id="tip" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const API = '__ACCOUNTS_API__';
+  const CITY = __CITY_NAMES__;
+  const GENRE = __GENRES__;
+  const KIND = { artist: 'Artist', venue: 'Venue', promoter: 'Promoter', label: 'Label', city: 'City', genre: 'Genre', event: 'Show', osm: 'Venue (no listings yet)' };
+  const FREQ = { instant: 'Instant alerts', daily: 'Daily digest', weekly: 'Weekly digest', off: 'No emails' };
+  const ALERT = { new_show: 'New shows', reminder: 'Reminders', soldout: 'Sold out', cancelled: 'Cancelled', postponed: 'Postponed', picks: 'Weekly picks', scene: 'Scene alerts' };
+  const EXPORTS = [
+    ['follows', 'Who people follow', 'Each artist, venue, promoter and record label with its followers, and how many are new in the period.'],
+    ['interest', 'Scene interest', 'How many people picked each city and genre together.'],
+    ['cities', 'Cities', 'How many people picked each city.'],
+    ['saves', 'Saved shows', 'Each show with how many people saved it.'],
+    ['searches', 'Searches', 'What people searched for in the period, and how often nothing matched.']
+  ];
+  const $ = s => document.querySelector(s);
+  const nf = new Intl.NumberFormat('en-US');
+  const fmt = n => nf.format(Math.round(+n || 0));
+  const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '0%';
+  const cityName = id => CITY[id] || id;
+  let days = 30, data = null;
+
+  // Elements from text only (names here come from people's searches and follows).
+  function el(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') e.className = v; else if (k === 'style') e.setAttribute('style', v); else e.setAttribute(k, v);
+    }
+    for (const c of kids.flat(Infinity)) if (c !== null && c !== undefined && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    return e;
+  }
+  const put = (id, ...kids) => { const box = $(id); box.replaceChildren(...kids.flat()); };
+  const empty = text => el('p', { class: 'empty' }, text);
+
+  /* ---------- states ---------- */
+  function state(html) { $('#dash').hidden = true; const s = $('#state'); s.hidden = false; s.replaceChildren(...html); }
+  function signedOut() {
+    state([el('h1', null, 'Admin'), el('p', null, 'Sign in on the map with your admin email address, then come back to this page.'),
+      el('p', null, el('a', { class: 'btn primary', href: '/?account=settings' }, 'Sign in on the map'))]);
+  }
+  function notAdmin() {
+    state([el('h1', null, 'Admin'), el('p', null, 'This page is only for Rave Monitor\'s admins. You\'re signed in with an address that isn\'t on the list.'),
+      el('p', null, el('a', { class: 'btn', href: '/' }, 'Back to the map'))]);
+  }
+  function failed(why) {
+    state([el('h1', null, 'Admin'), el('p', null, 'The numbers didn\'t load (' + why + '). Try again in a moment.'),
+      el('p', null, el('button', { class: 'btn', type: 'button', id: 'retry' }, 'Try again'))]);
+    $('#retry').addEventListener('click', () => load());
+  }
+
+  async function load() {
+    const dash = $('#dash');
+    if (data) dash.classList.add('loading');
+    let r;
+    try { r = await fetch(API + '/admin/stats?days=' + days, { credentials: 'include', cache: 'no-store' }); }
+    catch (err) { dash.classList.remove('loading'); return failed('no connection'); }
+    if (r.status === 401) return signedOut();
+    if (r.status === 403) return notAdmin();
+    let body = null;
+    try { body = await r.json(); } catch (err) { body = null; }
+    dash.classList.remove('loading');
+    if (!r.ok || !body || !body.ok) return failed((body && body.error) || ('error ' + r.status));
+    data = body;
+    $('#state').hidden = true; dash.hidden = false;
+    render();
+  }
+
+  /* ---------- charts ---------- */
+  // Days (or weeks, or months for a year) with nothing in them still get a column.
+  function buckets(series, valueKey) {
+    const by = new Map(series.map(r => [r.day, r]));
+    const out = [], start = new Date(data.from + 'T00:00:00Z'), end = new Date(data.to + 'T00:00:00Z');
+    const unit = days <= 31 ? 'day' : days <= 120 ? 'week' : 'month';
+    const key = d => unit === 'day' ? d.toISOString().slice(0, 10) : unit === 'week' ? weekStart(d) : d.toISOString().slice(0, 7);
+    const label = k => unit === 'month' ? new Date(k + '-01T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+      : new Date(k + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const map = new Map();
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const k = key(d);
+      if (!map.has(k)) map.set(k, { key: k, label: (unit === 'week' ? 'Week of ' : '') + label(k), v: 0, extra: 0 });
+      const row = by.get(d.toISOString().slice(0, 10));
+      if (row) { const b = map.get(k); b.v += +row[valueKey] || 0; b.extra += +(row.misses || row.emailed || 0); }
+    }
+    map.forEach(v => out.push(v));
+    return { unit, list: out };
+  }
+  function weekStart(d) { const x = new Date(d); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return x.toISOString().slice(0, 10); }
+  function niceMax(m) { if (m <= 4) return Math.max(1, Math.ceil(m)); const p = Math.pow(10, Math.floor(Math.log10(m))); const s = [1, 2, 2.5, 5, 10].find(f => f * p >= m); return s * p; }
+
+  // A column chart of one measure: hairline grid, columns from one baseline, today (or this week) in the accent.
+  function columns(box, b, noun, extraNoun) {
+    const W = Math.max(280, box.clientWidth || 600), H = 170, padL = 34, padB = 22, padT = 14;
+    const n = b.list.length, max = niceMax(Math.max(1, ...b.list.map(x => x.v)));
+    const slot = (W - padL) / n, bw = Math.max(2, Math.min(24, slot - 2));
+    const y = v => padT + (H - padT - padB) * (1 - v / max);
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `${noun} per ${b.unit}, ${b.list[0] ? b.list[0].label : ''} to ${b.list[n - 1] ? b.list[n - 1].label : ''}; the table below has every value.`);
+    const mk = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; svg.appendChild(e); return e; };
+    for (const t of [0, max / 2, max]) {
+      mk('line', { class: 'g', x1: padL, x2: W, y1: y(t), y2: y(t) });
+      mk('text', { class: 'ax', x: padL - 6, y: y(t) + 4, 'text-anchor': 'end' }, fmt(t));
+    }
+    const peak = b.list.reduce((a, x, i) => x.v > (b.list[a] || { v: -1 }).v ? i : a, 0);
+    b.list.forEach((x, i) => {
+      const cx = padL + slot * i + (slot - bw) / 2, top = y(x.v), h = Math.max(0, y(0) - top);
+      const hit = mk('rect', { class: 'hit', x: padL + slot * i, y: padT, width: slot, height: H - padT - padB, tabindex: '0', role: 'img',
+        'aria-label': `${x.label}: ${fmt(x.v)} ${noun.toLowerCase()}` + (extraNoun ? `, ${fmt(x.extra)} ${extraNoun}` : '') });
+      // Rounded at the data end only: a path with 4px corners on top, square at the baseline.
+      const r = Math.min(4, bw / 2, h);
+      const d = h ? `M${cx},${y(0)}V${top + r}Q${cx},${top} ${cx + r},${top}H${cx + bw - r}Q${cx + bw},${top} ${cx + bw},${top + r}V${y(0)}Z` : '';
+      mk('path', { class: 'c' + (i === n - 1 ? ' now' : ''), d });
+      const show = ev => tipShow(ev, fmt(x.v) + ' ' + noun.toLowerCase(), x.label + (extraNoun ? ' · ' + fmt(x.extra) + ' ' + extraNoun : ''), hit);
+      hit.addEventListener('pointermove', show); hit.addEventListener('focus', show);
+      hit.addEventListener('pointerleave', tipHide); hit.addEventListener('blur', tipHide);
+    });
+    // Labels only where they help: the busiest column and the latest one.
+    for (const i of new Set([peak, n - 1])) {
+      const x = b.list[i]; if (!x || !x.v) continue;
+      mk('text', { class: 'lbl', x: padL + slot * i + slot / 2, y: y(x.v) - 5, 'text-anchor': 'middle' }, fmt(x.v));
+    }
+    const ticks = n <= 8 ? b.list.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
+    for (const i of ticks) mk('text', { class: 'ax', x: padL + slot * i + slot / 2, y: H - 6, 'text-anchor': i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }, b.list[i].label);
+    const wrap = el('div', { class: 'cols' });
+    wrap.appendChild(svg);
+    const tbl = el('details', { class: 'tbl' }, el('summary', null, 'Table'),
+      el('table', null, el('thead', null, el('tr', null, el('th', null, b.unit === 'day' ? 'Day' : b.unit === 'week' ? 'Week' : 'Month'), el('th', { class: 'n' }, noun), extraNoun ? el('th', { class: 'n' }, extraNoun[0].toUpperCase() + extraNoun.slice(1)) : null)),
+        el('tbody', null, b.list.slice().reverse().map(x => el('tr', null, el('td', null, x.label), el('td', { class: 'n' }, fmt(x.v)), extraNoun ? el('td', { class: 'n' }, fmt(x.extra)) : null)))));
+    box.replaceChildren(wrap, tbl);
+  }
+  function tipShow(ev, strong, sub, target) {
+    const t = $('#tip'); t.replaceChildren(el('b', null, strong), sub); t.hidden = false;
+    const rect = target.getBoundingClientRect();
+    const x = ev.clientX || rect.left + rect.width / 2, y = ev.clientY || rect.top;
+    const w = t.offsetWidth, h = t.offsetHeight;
+    t.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + 'px';
+    t.style.top = Math.max(8, y - h - 12) + 'px';
+  }
+  function tipHide() { $('#tip').hidden = true; }
+
+  // A ranked list: name, a bar from one baseline, the value (and a note) at its tip.
+  function ranked(items, opts) {
+    const o = opts || {};
+    if (!items.length) return empty(o.none || 'Nothing yet.');
+    const max = Math.max(1, ...items.map(x => x.n));
+    return el('ol', { class: 'rank' }, items.map(x => el('li', null,
+      el('span', { class: 'nm', title: [x.name, x.sub, x.note].filter(Boolean).join(' · ') }, x.color ? el('i', { class: 'dot', style: 'background:' + x.color }) : null, x.name, x.sub || x.note ? el('small', null, [x.sub, x.note].filter(Boolean).join(' · ')) : null),
+      el('span', { class: 'track' }, el('span', { class: 'fill', style: `--r:${(x.n / max).toFixed(4)}` }), el('span', { class: 'val' }, fmt(x.n))))));
+  }
+
+  function tile(k, v, d) { return el('div', { class: 'tile' }, el('div', { class: 'k' }, k), el('div', { class: 'v' }, v), d ? el('div', { class: 'd' }, d) : null); }
+
+  /* ---------- the page ---------- */
+  function render() {
+    const s = data, T = s.totals, inP = days === 365 ? 'in 12 months' : 'in ' + days + ' days';
+    const fk = Object.fromEntries((s.follows.kinds || []).map(k => [k.kind, k]));
+    const follows = (s.follows.kinds || []).reduce((a, k) => a + k.n, 0), followsNew = (s.follows.kinds || []).reduce((a, k) => a + k.recent, 0);
+    const st = s.searches.totals || {};
+    $('#stamp').textContent = 'Updated ' + new Date(s.generatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' · days are in UTC';
+    put('#tiles',
+      tile('Accounts', fmt(T.users), '+' + fmt(T.new_users) + ' ' + inP),
+      tile('Active', fmt(T.active), 'signed in ' + inP),
+      tile('Get alert emails', fmt(T.emails_on), pct(T.emails_on, T.users) + ' of accounts'),
+      tile('Scene alerts on', fmt(T.scene_on), pct(T.scene_on, T.users) + ' of accounts'),
+      tile('Calendar feeds', fmt(T.calendars)),
+      tile('Follows', fmt(follows), '+' + fmt(followsNew) + ' ' + inP),
+      tile('Saved shows', fmt((s.saves.totals || {}).n), fmt((s.saves.totals || {}).people) + ' people'),
+      tile('Searches', fmt(st.n), pct(st.misses, st.n) + ' found nothing'));
+
+    $('#signups-sub').textContent = fmt(T.new_users) + ' ' + inP;
+    columns($('#signups'), buckets(s.signups, 'n'), 'New accounts');
+    put('#freq', ranked((s.freq || []).map(f => ({ name: FREQ[f.k] || f.k, n: f.n }))));
+    const alerts = (s.alerts.kinds || []).reduce((a, k) => a + k.n, 0);
+    $('#alerts-sub').textContent = fmt(alerts) + ' ' + inP;
+    put('#alert-kinds', ranked((s.alerts.kinds || []).map(k => ({ name: ALERT[k.kind] || k.kind, n: k.n })), { none: 'No alerts in this period.' }));
+
+    $('#searches-sub').textContent = fmt(st.n) + ' ' + inP + ' · ' + fmt(st.terms) + ' different searches';
+    columns($('#search-days'), buckets(s.searches.byDay, 'n'), 'Searches', 'found nothing');
+    put('#search-top', ranked((s.searches.top || []).slice(0, 20).map(q => ({ name: q.q, n: q.n, note: q.misses ? pct(q.misses, q.n) + ' nothing' : '' })), { none: 'No searches counted yet.' }));
+    put('#search-misses', ranked((s.searches.misses || []).slice(0, 20).map(q => ({ name: q.q, n: q.n })), { none: 'Every search found something.' }));
+    put('#search-picks', ranked((s.searches.picks || []).slice(0, 20).map(p => ({ name: p.pick, sub: KIND[p.kind] || p.kind, n: p.n })), { none: 'Nothing picked yet.' }));
+
+    for (const [kind, sub] of [['artist', '#fa-sub'], ['venue', '#fv-sub'], ['promoter', '#fp-sub'], ['label', '#fl-sub']]) {
+      const k = fk[kind];
+      $(sub).textContent = k ? fmt(k.n) + ' follows · ' + fmt(k.people) + ' people · +' + fmt(k.recent) + ' ' + inP : 'none yet';
+      put('#f-' + kind, ranked(((s.follows.top || {})[kind] || []).slice(0, 15).map(a => ({ name: a.name, sub: a.city ? cityName(a.city) : '', n: a.n, note: a.recent ? '+' + fmt(a.recent) + ' new' : '' })), { none: 'No follows yet.' }));
+    }
+
+    put('#cities', ranked((s.cities || []).slice(0, 15).map(c => ({ name: cityName(c.id), n: c.n })), { none: 'No cities picked yet.' }));
+    put('#genres', ranked((s.genres || []).map(g => ({ name: (GENRE[g.id] || {}).name || g.id, color: (GENRE[g.id] || {}).color, n: g.n })), { none: 'No genres picked yet.' }));
+    const byCity = s.follows.artistsByCity || {};
+    const topCities = (s.cities || []).map(c => c.id).filter(id => byCity[id]).slice(0, 8);
+    put('#by-city', topCities.length ? el('table', null,
+      el('thead', null, el('tr', null, el('th', null, 'City'), el('th', null, 'Most-followed artists (followers)'))),
+      el('tbody', null, topCities.map(id => el('tr', null, el('td', null, cityName(id)), el('td', null, byCity[id].map((a, i) => [i ? ', ' : '', a.name, ' ', el('small', null, '(' + fmt(a.n) + ')')]))))))
+      : empty('No artist follows yet.'));
+
+    const sv = s.saves.totals || {};
+    $('#saves-sub').textContent = fmt(sv.n) + ' saves · +' + fmt(sv.recent) + ' ' + inP;
+    put('#saves', (s.saves.top || []).length ? el('table', null,
+      el('thead', null, el('tr', null, el('th', null, 'Show'), el('th', null, 'Where'), el('th', null, 'When'), el('th', { class: 'n' }, 'Saves'))),
+      el('tbody', null, s.saves.top.map(x => el('tr', null, el('td', null, x.title), el('td', null, [x.venue, x.city ? cityName(x.city) : ''].filter(Boolean).join(', ')),
+        el('td', null, x.start ? new Date(x.start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''), el('td', { class: 'n' }, fmt(x.n)))))) : empty('No upcoming shows saved.'));
+
+    put('#exports', EXPORTS.map(([table, title, about]) => el('div', null,
+      el('p', null, el('b', null, title), ' — ', about),
+      el('a', { class: 'btn', href: API + '/admin/export?table=' + table + '&days=' + days, download: '' }, 'Download CSV'))));
+  }
+
+  /* ---------- controls ---------- */
+  document.querySelectorAll('#period button').forEach(b => b.addEventListener('click', () => {
+    days = +b.dataset.days;
+    document.querySelectorAll('#period button').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+    load();
+  }));
+  $('#period').addEventListener('keydown', ev => {
+    if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+    const bs = [...document.querySelectorAll('#period button')], i = bs.findIndex(b => b.getAttribute('aria-checked') === 'true');
+    const next = bs[(i + (ev.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+    next.focus(); next.click(); ev.preventDefault();
+  });
+  $('#refresh').addEventListener('click', () => load());
+  let rz = 0;
+  addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (data) render(); }, 200); });
+  load();
+})();
+</script>
+</body>
+</html>

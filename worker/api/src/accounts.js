@@ -8,6 +8,7 @@
 // Only hashes of sign-in links and session cookies are stored. Logs carry error codes, never
 // addresses. Writes must come from the site's own pages (ALLOWED_ORIGINS). Donations (donate.js) go
 // through here too, with no account needed.
+// Search counts and the admins' dashboard are in insights.js.
 
 import { verifyTurnstile } from './handler.js';
 import { sendEmail, message } from './postmark.js';
@@ -15,6 +16,7 @@ import { signInEmail } from './emails.js';
 import { followKey } from './keys.js';
 import { donateOn, publishableKey, donate, donation, manage } from './donate.js';
 import { calendarFeed } from './calendar.js';
+import { logSearch, adminStats, adminExport } from './insights.js';
 
 const DAY = 864e5;
 const LINK_TTL = 15 * 60e3;
@@ -394,11 +396,13 @@ export async function handleAccounts(request, env, deps = {}) {
   if (request.method !== 'GET' && !originOk) return ctx.out({ ok: false, error: 'origin' }, 403);
 
   const route = request.method + ' ' + path;
+  // A search on the map, counted with nothing about who searched (insights.js); the site sends it without cookies.
+  if (route === 'POST /v1/log/search') return logSearch(env, ctx, await readJson(request));
   if (route === 'POST /v1/auth/start') return authStart(request, env, ctx);
   if (route === 'POST /v1/auth/verify') return authVerify(request, env, ctx);
   if (route === 'GET /v1/health') return ctx.out({ ok: true, signIn: !!(env.POSTMARK_TOKEN || devMode(env)), donate: donateOn(env), donateInPopup: !!publishableKey(env) }, 200);
 
-  const known = ['POST /v1/auth/signout', 'GET /v1/me', 'PATCH /v1/me', 'DELETE /v1/me', 'GET /v1/me/export', 'POST /v1/me/calendar', 'POST /v1/follows', 'POST /v1/saves', 'GET /v1/notifications', 'POST /v1/notifications/read'];
+  const known = ['POST /v1/auth/signout', 'GET /v1/me', 'PATCH /v1/me', 'DELETE /v1/me', 'GET /v1/me/export', 'POST /v1/me/calendar', 'POST /v1/follows', 'POST /v1/saves', 'GET /v1/notifications', 'POST /v1/notifications/read', 'GET /v1/admin/stats', 'GET /v1/admin/export'];
   if (!known.includes(route)) return ctx.out({ ok: false, error: 'not_found' }, 404);
   const me = await session(request, env);
   // Every page asks on load; signed out isn't an error there (and keeps browsers' consoles quiet).
@@ -418,6 +422,9 @@ export async function handleAccounts(request, env, deps = {}) {
     case 'POST /v1/saves': return save(request, env, ctx, me);
     case 'GET /v1/notifications': return notifications(url, env, ctx, me);
     case 'POST /v1/notifications/read': return markRead(request, env, ctx, me);
+    // The admins' dashboard (/admin/) and research downloads: only for the emails in ADMIN_EMAILS.
+    case 'GET /v1/admin/stats': return adminStats(url, env, ctx, me);
+    case 'GET /v1/admin/export': return adminExport(url, env, ctx, me);
   }
   return ctx.out({ ok: false, error: 'not_found' }, 404);
 }

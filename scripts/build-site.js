@@ -99,6 +99,16 @@ fs.mkdirSync(dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'index.html'), html);
 fs.writeFileSync(path.join(dist, 'geo-hi.json'), JSON.stringify(JSON.parse(read('site/geo.json')).hi));
 const pageTpl = withTheme(read('site/page.html'), 'site/page.html').split('__SITE_URL__').join(SITE_URL).replace('__HEAD_START__', () => head).replace('__LEGAL_LINKS__', () => footerLinks);
+// The admins' dashboard (/admin/): counts from the accounts API, which only answers the emails in the
+// Worker's ADMIN_EMAILS secret. Not linked anywhere or in the sitemap, and the page asks not to be indexed.
+if (accountsApi) {
+  const cityNames = Object.fromEntries(JSON.parse(read('config/cities.json')).cities.map(c => [c.id, c.name]));
+  const genres = Object.fromEntries([...read('site/demo-data.js').matchAll(/\{ id: '([a-z]+)', name: '([^']+)', bpm: '[^']*', color: '(#[0-9a-f]{6})'/g)].map(m => [m[1], { name: m[2], color: m[3] }]));
+  if (Object.keys(genres).length < 8) throw new Error('admin page: the genre list in site/demo-data.js changed shape');
+  fs.mkdirSync(path.join(dist, 'admin'), { recursive: true });
+  fs.writeFileSync(path.join(dist, 'admin', 'index.html'), withTheme(read('site/admin.html'), 'site/admin.html')
+    .split('__ACCOUNTS_API__').join(accountsApi).replace('__CITY_NAMES__', () => JSON.stringify(cityNames).replace(/</g, '\\u003c')).replace('__GENRES__', () => JSON.stringify(genres)));
+} else fs.rmSync(path.join(dist, 'admin'), { recursive: true, force: true });
 // The archive page; its data (archive/data/) is written by pipeline/archive-export.js after this.
 fs.mkdirSync(path.join(dist, 'archive'), { recursive: true });
 fs.writeFileSync(path.join(dist, 'archive', 'index.html'), withTheme(read('site/archive.html'), 'site/archive.html').split('__SITE_URL__').join(SITE_URL).split('__REPO_URL__').join(REPO_URL)

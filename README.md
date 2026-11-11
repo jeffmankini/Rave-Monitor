@@ -138,6 +138,16 @@ Accounts are off until `config/site.json` has `accountsApi`. Turning them on:
 
 Alerts are kept for 180 days; expired sessions and sign-in links are deleted by the alerts step. How it works: the API Worker (`worker/api/src/accounts.js`) emails a sign-in link that works once, for 15 minutes; the link's page trades it for an HttpOnly session cookie on `api.ravemonitor.com`. Only hashes of links and sessions are stored, and there are no passwords. Sign-in asks for Turnstile, and every route is rate limited. The alerts step only counts listings first seen since its last run as new (`seen_events`), compares names the way the site does (`worker/api/src/keys.js`), and sends changes and reminders at once and new shows on each person's schedule: as instant alerts, or in a digest (8am in their time zone for daily ones, Thursdays for weekly ones). An address Postmark won't deliver to has its emails turned off. Locally: `npx wrangler dev` in `worker/api` with `--var DEV_MODE:1 --var SITE_URL:http://localhost:8778 --var ALLOWED_ORIGINS:http://localhost:8778` shows sign-in links instead of emailing them, and `ACCOUNTS_API=http://localhost:8787/v1 ACCOUNTS_TURNSTILE= npm run site` builds the site against it.
 
+## Admin dashboard and search counts
+
+`/admin/` is a private dashboard of Rave Monitor's own numbers: accounts and sign-ups, alert settings, the most-followed artists, venues, promoters and record labels (overall and by the cities people pick), the most-saved upcoming shows, the cities and genres people pick, the alerts written, and what people search for on the map, including the searches that found nothing (what people want that isn't listed). Pick 7, 30 or 90 days, or 12 months. It shows counts only: never an email address or what one person follows, saves or searches.
+
+- **Who can open it:** the email addresses in the GitHub Actions secret `ADMIN_EMAILS` (comma-separated), which the API Worker's deploy passes on. They sign in on the map as usual and then open `/admin/`; anyone else gets "not an admin". The page isn't linked anywhere, isn't in the sitemap and asks not to be indexed.
+- **Search counts:** when someone picks a search result, or types something that finds nothing, the map sends what was typed (lowercased, at most 60 characters), the kind and name of the result picked and the city in view, without cookies, to `POST /v1/log/search`. The Worker keeps only daily counts in D1 (`search_daily`), with no account, IP address or cookie, and drops anything that looks like an email address, a phone number or a link. Rows go after 400 days. Browsers that send Global Privacy Control, and the demo, aren't counted.
+- **Research exports:** the dashboard's downloads are CSV files of follows, city-and-genre interest, cities, saved shows and searches, aggregated so every row covers at least 10 people (or 10 searches), whatever is asked for; names that look like spreadsheet formulas are written so they can't run. Use these, not the database, for research or anything shared outside Rave Monitor, and keep the privacy policy's wording on aggregated data in step.
+
+How it works: `worker/api/src/insights.js` (`GET /v1/admin/stats`, `GET /v1/admin/export`, `POST /v1/log/search`), `site/admin.html` (built to `/admin/` when accounts are on), and the counting in `site/app.js` (`countSearch`).
+
 ## Donations
 
 The Donate button opens a pop-up (`site/donate.js`) where people give once or every month: $1, $5, $10 or $20, or their own amount from $1 to $1,000. Payment happens in Stripe Checkout, inside the pop-up (Stripe's embedded checkout, with Stripe.js loaded only then) or, without a publishable key, on Stripe's own page and back. Nothing about donors is kept by Rave Monitor and a gift isn't tied to an account; Stripe holds the payments and, for monthly gifts, the subscriptions. Monthly donors change or cancel from the pop-up's "Change or cancel a monthly gift" link, which leads to Stripe's customer portal login page (Stripe emails them a link).
@@ -205,7 +215,7 @@ pipeline/lib/      normalize, merge duplicates, Apify client, helpers
 pipeline/sources/  one adapter per source
 pipeline/sample/   sample input in each platform's format
 site/              the map: index.html, app.js, account.js, player.js (the stream player), donate.js, demo engine, map shapes, archive and contact pages
-worker/api/        the Cloudflare Worker behind api.ravemonitor.com: the contact form, accounts, donations (Stripe) and the calendar feed
+worker/api/        the Cloudflare Worker behind api.ravemonitor.com: the contact form, accounts, donations (Stripe), the calendar feed, search counts and the admin dashboard's numbers
 scripts/           build-site.js (assembles dist/, with themes.js and updates.js), serve.js (local preview), make-tz.js (site/tz.json)
 test/              node --test
 ```

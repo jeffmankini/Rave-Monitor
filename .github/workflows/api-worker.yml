@@ -17,6 +17,8 @@ name: Deploy the API Worker
 #   STRIPE_PUBLISHABLE_KEY optional: the publishable key (pk_live_…) in the same mode. With it, Stripe's
 #                          checkout opens inside the site's Donate pop-up; without it, on Stripe's own page.
 #                          After changing either key, run this workflow by hand.
+#   ADMIN_EMAILS           optional: who can open the admin dashboard (/admin/), comma-separated email
+#                          addresses. They sign in on the map as usual; everyone else gets "not an admin".
 # Without D1 access it deploys the contact form alone; without POSTMARK_TOKEN sign-in stays off;
 # without STRIPE_SECRET_KEY donations stay off.
 on:
@@ -41,7 +43,7 @@ jobs:
         with:
           node-version: 22
       - name: Test the Worker
-        run: node --test test/api-contact.test.js test/api-accounts.test.js test/api-donate.test.js test/keys.test.js
+        run: node --test test/api-contact.test.js test/api-accounts.test.js test/api-donate.test.js test/api-insights.test.js test/keys.test.js
       - name: Check the secrets are set
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -142,10 +144,12 @@ jobs:
           POSTMARK_TOKEN: ${{ secrets.POSTMARK_TOKEN }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
         run: |
           jq -n '{CONTACT_TO: env.CONTACT_TO, TURNSTILE_SECRET: env.TURNSTILE_SECRET} + (if (env.POSTMARK_TOKEN // "") != "" then {POSTMARK_TOKEN: env.POSTMARK_TOKEN} else {} end)
             + (if (env.STRIPE_SECRET_KEY // "") != "" then {STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY} else {} end)
-            + (if (env.STRIPE_PUBLISHABLE_KEY // "") != "" then {STRIPE_PUBLISHABLE_KEY: env.STRIPE_PUBLISHABLE_KEY} else {} end)' > "$RUNNER_TEMP/secrets.json"
+            + (if (env.STRIPE_PUBLISHABLE_KEY // "") != "" then {STRIPE_PUBLISHABLE_KEY: env.STRIPE_PUBLISHABLE_KEY} else {} end)
+            + (if (env.ADMIN_EMAILS // "") != "" then {ADMIN_EMAILS: env.ADMIN_EMAILS} else {} end)' > "$RUNNER_TEMP/secrets.json"
           npx --yes wrangler@4 secret bulk "$RUNNER_TEMP/secrets.json"
           rm -f "$RUNNER_TEMP/secrets.json"
           [ -n "$POSTMARK_TOKEN" ] || echo "::notice::POSTMARK_TOKEN isn't set, so sign-in stays off. Add the Postmark server's API token as a secret to switch it on."
