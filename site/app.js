@@ -2939,6 +2939,15 @@
       document.dispatchEvent(new CustomEvent('rm:custom-colors', { detail: { bg, accent } }));
     };
     ['#tc-bg', '#tc-accent'].forEach(id => { const i = $(id); if (i) { i.addEventListener('input', () => own(false)); i.addEventListener('change', () => own(true)); } });
+    // Shuffle: each press puts a new pair in the pickers (a fresh hue, the next way of pairing it) and keeps it.
+    let shuffled = null;
+    const shuffleBtn = $('#tc-shuffle');
+    if (shuffleBtn && KIT && KIT.shuffle) shuffleBtn.addEventListener('click', () => {
+      const bg = $('#tc-bg'), accent = $('#tc-accent');
+      shuffled = KIT.shuffle(shuffled && shuffled.bg === bg.value && shuffled.accent === accent.value ? shuffled : { bg: bg.value });
+      bg.value = shuffled.bg; accent.value = shuffled.accent;
+      own(true);
+    });
     window.addEventListener('resize', () => { if (themeOpen()) placeThemePop(); });
     // A pick in another tab follows here.
     window.addEventListener('storage', ev => {

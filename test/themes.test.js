@@ -95,3 +95,34 @@ test('bad theme colors are refused', () => {
   assert.throws(() => loadThemes({ default: 'gone', themes: cfg.themes }), /default theme "gone"/);
   assert.throws(() => loadThemes({ default: 'midnight', themes: [cfg.themes[0], cfg.themes[0]] }), /listed twice/);
 });
+
+test('Shuffle picks dark backgrounds with an accent that goes with them and reads as picked', () => {
+  // A seeded random, so the test runs the same every time.
+  let seed = 7;
+  const random = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  const gap = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+  const turns = { opposite: [180], split: [150, 210], triad: [120, 240], neighbour: [-40, 40], tint: [0, 180] };
+  const order = Object.keys(turns);
+  let last = { bg: '#3b0a1e' };
+  for (let i = 0; i < 400; i++) {
+    const pick = kit.shuffle(last, random), tag = `${i}: ${pick.bg}/${pick.accent} (${pick.pairing})`;
+    assert.match(pick.bg, /^#[0-9a-f]{6}$/); assert.match(pick.accent, /^#[0-9a-f]{6}$/);
+    const c = kit.custom(pick.bg, pick.accent);
+    assert.ok(kit.lum(c.void) < 0.02, tag + ': the background stays dark');
+    assert.equal(c.now, pick.accent, tag + ': the accent reads on the panels as picked, nothing brightened');
+    assert.ok(contrast(c.now, c.void) >= 4.5 && contrast(c.now, c.deck) >= 4.5, tag + ': the accent reads');
+    assert.ok(contrast(c.nowInk, c.now) >= 4.5, tag + ': text on accent buttons');
+    const [h, s] = kit.toHsl(pick.bg), [ah] = kit.toHsl(pick.accent);
+    assert.ok(s > 30, tag + ': the background has a hue, not grey');
+    // The accent sits where its pairing puts it on the wheel (within the small random nudge).
+    assert.ok(turns[pick.pairing].some(t => gap(ah, h + t) <= 12), tag + ': accent hue');
+    if (i > 0) {
+      assert.equal(pick.pairing, order[(order.indexOf(last.pairing) + 1) % order.length], tag + ': the next pairing in turn');
+      assert.ok(gap(h, kit.toHsl(last.bg)[0]) >= 60, tag + ': a new hue each press');
+    }
+    last = pick;
+  }
+  // Without a previous pick (or with nonsense) it still works.
+  assert.match(kit.shuffle(null, random).bg, /^#[0-9a-f]{6}$/);
+  assert.match(kit.shuffle({ bg: 'nope' }).accent, /^#[0-9a-f]{6}$/);
+});

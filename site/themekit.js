@@ -72,10 +72,47 @@
     return complete(core);
   }
 
+  /*
+   * Shuffle, for "Your own": a random background and an accent that goes with it. Each press picks a
+   * background hue well round the wheel from the last one and the next way of pairing in turn: the
+   * opposite hue, its two neighbours across the wheel, a third of the way round, a close neighbour, or
+   * a pale tint (of the background's hue or its opposite, the look of the presets). The accent is
+   * lifted until it reads on the panels, so custom() keeps it as it is.
+   */
+  const PAIRINGS = [
+    { name: 'opposite', turns: [180], pale: false },
+    { name: 'split', turns: [150, 210], pale: false },
+    { name: 'triad', turns: [120, 240], pale: false },
+    { name: 'neighbour', turns: [-40, 40], pale: false },
+    { name: 'tint', turns: [0, 180], pale: true }
+  ];
+  const hueGap = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+  /** { bg, accent, pairing }. last: the previous result (or { bg } for the colors showing); random: like Math.random. */
+  function shuffle(last, random) {
+    const r = typeof random === 'function' ? random : Math.random;
+    const any = list => list[Math.min(list.length - 1, Math.floor(r() * list.length))];
+    const prev = last && HEX.test(last.bg || '') ? toHsl(last.bg) : null;
+    const at = last ? PAIRINGS.findIndex(p => p.name === last.pairing) : -1;
+    const pairing = at >= 0 ? PAIRINGS[(at + 1) % PAIRINGS.length] : any(PAIRINGS);
+    // Hues are read back from the colors themselves: this dark, rounding to #rrggbb moves them a little.
+    let bg = '', h = 0;
+    for (let i = 0; i < 24; i++) {
+      bg = fromHsl(r() * 360, 42 + r() * 20, 6 + r() * 3); h = toHsl(bg)[0];
+      if (!prev || prev[1] <= 8 || hueGap(h, prev[0]) >= 60) break;
+    }
+    const ah = (h + any(pairing.turns) + (r() - 0.5) * 16 + 360) % 360;
+    const s = pairing.pale ? 60 + r() * 30 : 78 + r() * 22;
+    let l = pairing.pale ? 86 + r() * 6 : 58 + r() * 10;
+    const deck = custom(bg, '#ffffff').deck;
+    let accent = fromHsl(ah, s, l);
+    for (let i = 0; i < 12 && contrast(accent, deck) < 4.6; i++) { l = Math.min(l + 3, 94); accent = fromHsl(ah, s, l); }
+    return { bg, accent, pairing: pairing.name };
+  }
+
   // The CSS variables a theme sets, and the same colors as r,g,b for see-through versions.
   const VARS = { void: '--void', deck: '--deck', deck2: '--deck-2', land: '--land', line: '--line', ink: '--ink', ink2: '--ink-2', ink3: '--ink-3', now: '--now', nowInk: '--now-ink', tint: '--tint', grip: '--grip', dashed: '--dashed' };
   const RGB_VARS = { void: '--void-rgb', deck: '--deck-rgb', ink: '--ink-rgb', ink2: '--ink-2-rgb', now: '--now-rgb' };
   const css = c => Object.keys(VARS).map(k => VARS[k] + ':' + c[k] + ';').join('') + Object.keys(RGB_VARS).map(k => RGB_VARS[k] + ':' + rgb(c[k]).join(',') + ';').join('');
 
-  root.RM_THEMEKIT = { HEX, CORE, rgb, hex, mix, lum, contrast, toHsl, fromHsl, complete, custom, css };
+  root.RM_THEMEKIT = { HEX, CORE, rgb, hex, mix, lum, contrast, toHsl, fromHsl, complete, custom, shuffle, css };
 })(typeof window !== 'undefined' ? window : globalThis);

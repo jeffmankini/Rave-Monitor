@@ -1,6 +1,7 @@
 {
   "_about": "What's new: the changes visitors see, newest first. Shown in the map page's What's new panel (footer) and on /updates/. kind is new, better or fixed. Keep each one to a sentence or two, in plain words; test/updates.test.js checks the order and the fields.",
   "updates": [
+    { "date": "2026-11-11", "kind": "new", "title": "Shuffle colors", "text": "In Colors, Your own has a Shuffle button that picks a random background and an accent that goes with it. Press it again for another pair." },
     { "date": "2026-11-10", "kind": "new", "title": "Local DJs", "text": "DJs from Milwaukee and Chicago are in search even when they have nothing listed, so you can follow them and hear as soon as a night is announced." },
     { "date": "2026-11-10", "kind": "fixed", "title": "Follow stars in lineups", "text": "The stars for following artists sit beside their names in a lineup again, instead of piling up in the corner of the screen." },
     { "date": "2026-11-10", "kind": "better", "title": "Geff Bohm's links", "text": "Search Geff Bohm to find his RA, SoundCloud, Instagram and Facebook pages as well as his website, and follow him for alerts." },
