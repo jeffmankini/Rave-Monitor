@@ -1,11 +1,11 @@
 {
  "updatedAt": "2026-11-11",
- "events": 1998,
+ "events": 1999,
  "firstEvent": "2026-11-05T00:30:00.000Z",
- "lastEvent": "2026-12-11T23:00:00.000Z",
+ "lastEvent": "2026-12-12T02:30:00.000Z",
  "months": {
   "2026-11": 1698,
-  "2026-12": 300
+  "2026-12": 301
  },
  "cities": {
   "london": 264,
@@ -15,7 +15,7 @@
   "glasgow": 102,
   "berlin": 88,
   "bristol": 87,
-  "chicago": 79,
+  "chicago": 80,
   "leeds": 77,
   "amsterdam": 74,
   "melbourne": 59,
@@ -57,7 +57,7 @@
  "genres": {
   "electronic": 637,
   "house": 530,
-  "misc": 426,
+  "misc": 427,
   "techno": 301,
   "afro": 258,
   "garage": 176,
@@ -72,6 +72,6 @@
   "Skiddle": 489,
   "Posh": 68,
   "Luma": 24,
-  "Partiful": 19
+  "Partiful": 20
  }
 }
