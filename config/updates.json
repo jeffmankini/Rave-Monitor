@@ -1,6 +1,7 @@
 {
   "_about": "What's new: the changes visitors see, newest first. Shown in the map page's What's new panel (footer) and on /updates/. kind is new, better or fixed. Keep each one to a sentence or two, in plain words; test/updates.test.js checks the order and the fields.",
   "updates": [
+    { "date": "2026-11-10", "kind": "fixed", "title": "Follow stars in lineups", "text": "The stars for following artists sit beside their names in a lineup again, instead of piling up in the corner of the screen." },
     { "date": "2026-11-10", "kind": "better", "title": "Geff Bohm's links", "text": "Search Geff Bohm to find his RA, SoundCloud, Instagram and Facebook pages as well as his website, and follow him for alerts." },
     { "date": "2026-11-10", "kind": "new", "title": "BRKS", "text": "Chicago DJ BRKS is in search: follow for an alert as soon as a show is listed, with links to BRKS on YouTube, Spotify, SoundCloud and Instagram." },
     { "date": "2026-11-10", "kind": "better", "title": "Easier city picking", "text": "In your account's settings, start typing a city's name and pick it from the list." },

@@ -704,37 +704,37 @@ dialog::backdrop { overflow: hidden; overscroll-behavior: contain; }
 .dlg .don-fine { color: var(--ink-3); font-size: var(--s-12); }
 
 /* ---------- the mini player (site/player.js): streams keep playing while you look around ---------- */
-.mini {
+aside.mini {
   position: fixed; z-index: 28; left: 16px; bottom: 44px; width: min(360px, calc(100vw - 32px)); overflow: hidden;
   border-radius: 12px; border: 1px solid var(--line); background: var(--deck); color: var(--ink); box-shadow: 0 18px 50px rgba(0,0,0,.55);
 }
 .mini-bar { display: flex; align-items: center; gap: 4px; min-height: 54px; padding: 8px 8px 8px 12px; }
 .mini-dot { flex: none; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--now); animation: rm-pulse 1.8s ease-in-out infinite; }
-.mini.paused .mini-dot { animation: none; background: var(--ink-3); }
+aside.mini.paused .mini-dot { animation: none; background: var(--ink-3); }
 .mini-meta { flex: 1; min-width: 0; display: grid; line-height: 1.3; }
 .mini-meta b { font-size: var(--s-13); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-meta span { font-size: var(--s-12); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mini.loading .mini-meta span::after { content: ' · tuning in…'; }
+aside.mini.loading .mini-meta span::after { content: ' · tuning in…'; }
 .mini-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--ink-2); text-decoration: none; }
 .mini-btn[hidden] { display: none; }
 .mini-btn:hover, .mini-btn:focus-visible { border-color: var(--line); background: var(--deck-2); color: var(--now); }
 .mini-btn svg { width: 18px; height: 18px; }
 #mini-play { border-radius: 50%; background: var(--now); color: var(--now-ink); }
-#mini-play .i-play, .mini.paused #mini-play .i-pause { display: none; }
-.mini.paused #mini-play .i-play { display: block; }
+#mini-play .i-play, aside.mini.paused #mini-play .i-pause { display: none; }
+aside.mini.paused #mini-play .i-play { display: block; }
 #mini-size svg { transition: transform .2s; }
-.mini.small #mini-size svg { transform: rotate(180deg); }
+aside.mini.small #mini-size svg { transform: rotate(180deg); }
 .mini-screen { aspect-ratio: 16 / 9; background: #000; }
-.mini-screen:empty, .mini.radio .mini-screen { display: none; }
+.mini-screen:empty, aside.mini.radio .mini-screen { display: none; }
 /* Folded: the video goes out of sight and keeps playing. */
-.mini.small .mini-screen { aspect-ratio: auto; height: 0; }
+aside.mini.small .mini-screen { aspect-ratio: auto; height: 0; }
 .mini-screen iframe { display: block; width: 100%; height: 100%; border: 0; }
 @keyframes rm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 a.strow .viewers.play { display: inline-flex; align-items: center; gap: 5px; color: var(--now); font-weight: 650; }
 a.strow .viewers.play svg { width: 10px; height: 10px; }
 a.strow.playing { background: rgba(var(--now-rgb), .07); }
 @media (prefers-reduced-motion: reduce) { .mini-dot { animation: none; } #mini-size svg { transition: none; } }
-@media (forced-colors: active) { .mini { border-color: CanvasText; } .mini-dot { background: CanvasText; forced-color-adjust: none; } }
+@media (forced-colors: active) { aside.mini { border-color: CanvasText; } .mini-dot { background: CanvasText; forced-color-adjust: none; } }
 
 /* ---------- what's new (config/updates.json), opened from the footer ---------- */
 .upd-day { display: grid; gap: 8px; }
@@ -914,7 +914,7 @@ a.strow.playing { background: rgba(var(--now-rgb), .07); }
   body.has-mini .mapfab { bottom: calc(28px + var(--mini-h, 56px) + env(safe-area-inset-bottom)); }
 
   /* The mini player runs across the bottom. */
-  .mini { left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; }
+  aside.mini { left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; }
   .mini-btn { width: 42px; height: 42px; }
   body.has-mini.narrow .sitefoot { padding-bottom: calc(96px + var(--mini-h, 56px) + env(safe-area-inset-bottom)); }
 
