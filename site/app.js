@@ -2598,7 +2598,7 @@
       if (!c || !c.name) return;
       const a = ds.artistById[artistId(c.name)];
       a.curated = true; a.home = c.city || null;
-      a.links = [['Website', c.url], ['YouTube', c.youtube], ['Spotify', c.spotify], ['SoundCloud', c.soundcloud], ['Instagram', c.instagram]].filter(l => /^https:\/\//.test(l[1] || ''));
+      a.links = [['Website', c.url], ['RA', c.ra], ['YouTube', c.youtube], ['Spotify', c.spotify], ['SoundCloud', c.soundcloud], ['Instagram', c.instagram], ['Facebook', c.facebook]].filter(l => /^https:\/\//.test(l[1] || ''));
     });
     return ds;
   }

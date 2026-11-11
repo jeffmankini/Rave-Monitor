@@ -7,7 +7,8 @@ const { artists } = read('config/artists.json');
 const cities = new Set(read('config/cities.json').cities.map(c => c.id));
 // Each link field and the address it should point at (url is the artist's own site, anywhere).
 const HOSTS = { url: /^https:\/\/[^/]+/, youtube: /^https:\/\/(www\.)?youtube\.com\//, spotify: /^https:\/\/open\.spotify\.com\/artist\//,
-  soundcloud: /^https:\/\/soundcloud\.com\//, instagram: /^https:\/\/(www\.)?instagram\.com\// };
+  soundcloud: /^https:\/\/soundcloud\.com\//, instagram: /^https:\/\/(www\.)?instagram\.com\//, ra: /^https:\/\/ra\.co\/dj\//,
+  facebook: /^https:\/\/(www\.)?facebook\.com\// };
 
 test('curated artists have a name, a known city and well-formed links', () => {
   const names = new Set();
