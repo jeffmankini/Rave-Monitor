@@ -20,6 +20,7 @@ __HEAD_START__
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#070814">
+__THEME_HEAD__
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
 :root { color-scheme: dark; --void: #070814; --deck: #0c0f22; --deck-2: #13183a; --line: #1f2547; --ink: #eceaf6; --ink-2: #a9abcb; --ink-3: #7c7fa3; --now: #f6ecd8; --now-ink: #15131f; }
@@ -56,7 +57,7 @@ h1 { font-family: "Unbounded", "Archivo", system-ui, sans-serif; font-weight: 80
 .title:hover, .title:focus-visible { text-decoration: underline; color: var(--now); }
 .chip { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 650; line-height: 18px; vertical-align: 2px; background: var(--deck-2); color: var(--ink-2); }
 .chip.crit { background: rgba(230,103,103,.18); color: #f29a9a; }
-.chip.soon { background: rgba(246,236,216,.14); color: var(--now); }
+.chip.soon { background: rgba(var(--now-rgb),.14); color: var(--now); }
 .place, .lineup, .meta { margin-top: 3px; font-size: 13.5px; }
 .pick { border: 0; padding: 0; background: none; color: var(--ink-2); font: inherit; cursor: pointer; text-align: left; }
 .pick:hover, .pick:focus-visible { color: var(--now); text-decoration: underline; }
@@ -102,7 +103,7 @@ footer a { color: var(--ink-2); }
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg><span>Rave Monitor</span></a>
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" style="fill:var(--void)"/></svg><span>Rave Monitor</span></a>
   <a class="back" href="/">Back to the map</a>
 </header>
 <main>

@@ -1,0 +1,41 @@
+{
+  "_about": "Color themes visitors can pick from the palette button in the header. The choice is kept in the browser (localStorage rm_theme) and applies to every page. Each theme sets the page's colors; map colors (parks, buildings, roads, labels) are worked out from them unless the theme's map block sets them. Keep text readable: test/themes.test.js checks the contrast.",
+  "default": "midnight",
+  "themes": [
+    {
+      "id": "midnight", "name": "Midnight",
+      "void": "#070814", "deck": "#0c0f22", "deck2": "#13183a", "land": "#171c3a", "line": "#1f2547",
+      "ink": "#eceaf6", "ink2": "#a9abcb", "ink3": "#7c7fa3", "now": "#f6ecd8", "nowInk": "#15131f", "tint": "#a0aae6",
+      "map": {
+        "sphere": "#0a0c1d", "shade": "#02030c", "green": "#15283d", "park": "#15293f", "building": "#1f2650", "runway": "#262e5c",
+        "motorway": "#b8bce4", "waterLabel": "#555d93", "streetLabel": "#8d90b5", "venueLabel": "#6f7398", "ring": "#8b8fa8",
+        "grip": "#3a4170", "dashed": "#4a4f7c"
+      }
+    },
+    {
+      "id": "ember", "name": "Ember",
+      "void": "#0e0907", "deck": "#170f0b", "deck2": "#24170f", "land": "#271a12", "line": "#3b281c",
+      "ink": "#f6ede7", "ink2": "#cfb8ab", "ink3": "#a08577", "now": "#ffb547", "nowInk": "#1d1104", "tint": "#f0b393"
+    },
+    {
+      "id": "acid", "name": "Acid",
+      "void": "#050b07", "deck": "#0a130d", "deck2": "#122117", "land": "#15251a", "line": "#1f3527",
+      "ink": "#e8f5eb", "ink2": "#aac6b2", "ink3": "#7e9b87", "now": "#c5ff3b", "nowInk": "#0e1700", "tint": "#9fe8b6"
+    },
+    {
+      "id": "ultraviolet", "name": "Ultraviolet",
+      "void": "#0b0614", "deck": "#140b22", "deck2": "#201335", "land": "#25163c", "line": "#352350",
+      "ink": "#f3eafd", "ink2": "#c0aedb", "ink3": "#9582b2", "now": "#ff6bd6", "nowInk": "#24041c", "tint": "#c9a3f2"
+    },
+    {
+      "id": "lagoon", "name": "Lagoon",
+      "void": "#031110", "deck": "#071a19", "deck2": "#0d2826", "land": "#102c2a", "line": "#193e3b",
+      "ink": "#e3f5f2", "ink2": "#a3c8c2", "ink3": "#769a94", "now": "#5ef0db", "nowInk": "#021512", "tint": "#87dccf"
+    },
+    {
+      "id": "graphite", "name": "Graphite",
+      "void": "#0a0a0b", "deck": "#121214", "deck2": "#1c1c1f", "land": "#1f1f22", "line": "#2c2c31",
+      "ink": "#eeeef0", "ink2": "#b4b4ba", "ink3": "#88888f", "now": "#ffffff", "nowInk": "#111113", "tint": "#c4c4cc"
+    }
+  ]
+}

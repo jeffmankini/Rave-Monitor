@@ -6,7 +6,7 @@
 __HEAD_START__
 <title>Rave Monitor - Electronic Music Map</title>
 <meta name="description" content="Rave Monitor - Electronic Music Map. Raves, club nights, festivals and DJ sets on a live world map, plus a searchable archive of past nights.">
-<meta name="author" content="split/shift">
+<meta name="author" content="Geff Bohm">
 <link rel="canonical" href="__SITE_URL__/">
 <!-- Link previews (iMessage, WhatsApp, Slack, Facebook, LinkedIn, X) -->
 <meta property="og:type" content="website">
@@ -14,18 +14,18 @@ __HEAD_START__
 <meta property="og:title" content="Rave Monitor - Electronic Music Map">
 <meta property="og:description" content="A live world map of raves, club nights and DJ sets, with the next 30 days of listings and a searchable archive of past nights.">
 <meta property="og:url" content="__SITE_URL__/">
-<meta property="og:image" content="__SITE_URL__/og-image.jpg?v=2">
+<meta property="og:image" content="__SITE_URL__/og-image.jpg?v=3">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Rave Monitor, an electronic music map by split/shift: a world map dotted with this week's raves, club nights and DJ sets">
+<meta property="og:image:alt" content="Rave Monitor, an electronic music map by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rave Monitor - Electronic Music Map">
 <meta name="twitter:description" content="A live world map of raves, club nights and DJ sets, with the next 30 days of listings and a searchable archive of past nights.">
-<meta name="twitter:image" content="__SITE_URL__/og-image.jpg?v=2">
-<meta name="twitter:image:alt" content="Rave Monitor, an electronic music map by split/shift: a world map dotted with this week's raves, club nights and DJ sets">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor - Electronic Music Map", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets, with the next 30 days of listings and a searchable archive of past nights.", "inLanguage": "en", "creator": {"@type": "Organization", "name": "split/shift", "url": "https://splitshift.fm"}}</script>
+<meta name="twitter:image" content="__SITE_URL__/og-image.jpg?v=3">
+<meta name="twitter:image:alt" content="Rave Monitor, an electronic music map by Geff Bohm: a world map dotted with this week's raves, club nights and DJ sets">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Rave Monitor", "alternateName": "Rave Monitor - Electronic Music Map", "url": "__SITE_URL__/", "description": "A live world map of raves, club nights and DJ sets, with the next 30 days of listings and a searchable archive of past nights.", "inLanguage": "en", "creator": {"@type": "Person", "name": "Geff Bohm", "url": "https://geffbohm.com", "sameAs": ["https://www.instagram.com/geffbohm", "https://buymeacoffee.com/geffbohm"]}}</script>
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -35,6 +35,7 @@ __HEAD_START__
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#070814">
+__THEME_HEAD__
 <link rel="preload" href="/fonts/archivo-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/fonts.css">
@@ -122,7 +123,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .support:hover, .support:focus-visible { border-color: var(--now); color: var(--now); }
 .support .cup { width: 17px; height: 17px; color: var(--now); flex: none; }
 .demo-chip {
-  height: 32px; padding: 0 10px; border-radius: 8px; border: 1px dashed #4a4f7c; background: transparent;
+  height: 32px; padding: 0 10px; border-radius: 8px; border: 1px dashed var(--dashed); background: transparent;
   color: var(--ink-2); font-size: var(--s-12);
 }
 
@@ -182,7 +183,7 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .tool.ly svg { display: none; width: 18px; height: 18px; }
 /* The spinning globe's caption: the city it's passing over. */
 .spincap {
-  pointer-events: none; padding: 7px 14px; border-radius: 18px; background: rgba(7,8,20,.72); border: 1px solid rgba(246,236,216,.16);
+  pointer-events: none; padding: 7px 14px; border-radius: 18px; background: rgba(var(--void-rgb),.72); border: 1px solid rgba(var(--now-rgb),.16);
   color: var(--ink-2); font-size: var(--s-13); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(4px);
 }
 .spincap[hidden] { display: none; }
@@ -190,12 +191,12 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
 .tool {
   height: 32px; min-width: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line);
-  background: rgba(12,15,34,.86); color: var(--ink); font-size: var(--s-13); backdrop-filter: blur(6px);
+  background: rgba(var(--deck-rgb),.86); color: var(--ink); font-size: var(--s-13); backdrop-filter: blur(6px);
 }
 .tool[aria-expanded="true"] { border-color: var(--now); }
 .layers {
   position: absolute; right: 12px; top: 50px; width: 236px; padding: 10px 12px; border-radius: 10px;
-  background: rgba(12,15,34,.96); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,.5);
+  background: rgba(var(--deck-rgb),.96); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,.5);
 }
 .layers label { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--s-13); color: var(--ink); cursor: pointer; }
 .layers small { display: block; color: var(--ink-3); font-size: var(--s-11); }
@@ -221,15 +222,15 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .tool.fs[aria-pressed="true"] { border-color: var(--now); }
 @keyframes rm-spin { to { transform: rotate(360deg); } }
 .maptoast {
-  max-width: min(420px, 100%); padding: 8px 12px; border-radius: 9px; background: rgba(12,15,34,.95); border: 1px solid var(--line); color: var(--ink);
+  max-width: min(420px, 100%); padding: 8px 12px; border-radius: 9px; background: rgba(var(--deck-rgb),.95); border: 1px solid var(--line); color: var(--ink);
   font-size: var(--s-12); line-height: 1.4; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.45);
 }
 .ltag { color: #9fc4f5; font-weight: 600; white-space: nowrap; }
-.linkish { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; text-decoration-color: rgba(236,234,246,.4); text-underline-offset: 2px; cursor: pointer; }
+.linkish { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; text-decoration-color: rgba(var(--ink-rgb),.4); text-underline-offset: 2px; cursor: pointer; }
 .linkish:hover, .linkish:focus-visible { color: var(--now); }
 .legend {
   position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
-  padding: 7px 10px; border-radius: 8px; background: rgba(7,8,20,.78); color: var(--ink-2); font-size: var(--s-11);
+  padding: 7px 10px; border-radius: 8px; background: rgba(var(--void-rgb),.78); color: var(--ink-2); font-size: var(--s-11);
   max-width: calc(100% - 24px); backdrop-filter: blur(4px);
 }
 .legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -237,9 +238,9 @@ body.narrow .stage { height: 58svh; min-height: 330px; max-height: 680px; border
 .lg-hollow { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink-2); }
 .lg-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); box-shadow: 0 0 0 2px var(--void), 0 0 0 3.5px var(--now); }
 .lg-fest { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink-2); }
-.lg-ring { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(169,171,203,.8); background: rgba(169,171,203,.18); }
-.lg-ring.lg-osm { width: 9px; height: 9px; border-style: dashed; border-color: rgba(169,171,203,.65); background: rgba(169,171,203,.06); }
-.lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(246,236,216,.08); }
+.lg-ring { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(var(--ink-2-rgb),.8); background: rgba(var(--ink-2-rgb),.18); }
+.lg-ring.lg-osm { width: 9px; height: 9px; border-style: dashed; border-color: rgba(var(--ink-2-rgb),.65); background: rgba(var(--ink-2-rgb),.06); }
+.lg-band { width: 14px; height: 9px; border-left: 1px dashed var(--now); border-right: 1px dashed var(--now); background: rgba(var(--now-rgb),.08); }
 .legend .demo-note { color: var(--ink-3); }
 /* One quiet line at the bottom: the archive, policies and privacy settings. */
 .sitefoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; padding: 6px 16px; border-top: 1px solid var(--line); background: var(--void); color: var(--ink-3); font-size: 12px; line-height: 1.5; }
@@ -251,7 +252,7 @@ body.narrow .sitefoot { justify-content: center; text-align: center; padding: 14
 .legend .lg-attrib a { color: inherit; }
 .tip {
   position: absolute; z-index: 5; pointer-events: none; max-width: 270px; padding: 8px 10px; border-radius: 8px;
-  background: rgba(12,15,34,.97); border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.5); font-size: var(--s-12); color: var(--ink-2);
+  background: rgba(var(--deck-rgb),.97); border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.5); font-size: var(--s-12); color: var(--ink-2);
 }
 .tip b { display: block; color: var(--ink); font-size: var(--s-13); font-weight: 650; margin-bottom: 2px; }
 .tip .tline { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
@@ -280,7 +281,7 @@ body.wide .tab, body.mid .tab { height: 34px; padding: 0 9px; }
 .rail-left .panel + .panel { border-top: 1px solid var(--line); }
 .pb { padding: 0 0 16px; }
 .fine { color: var(--ink-3); font-size: var(--s-12); padding: 4px 16px 0; margin: 0; max-width: 62ch; }
-.brief { margin: 0 16px 10px; padding: 10px 12px; border-left: 2px solid var(--now); background: rgba(246,236,216,.04); color: var(--ink-2); font-size: var(--s-13); line-height: 1.5; }
+.brief { margin: 0 16px 10px; padding: 10px 12px; border-left: 2px solid var(--now); background: rgba(var(--now-rgb),.04); color: var(--ink-2); font-size: var(--s-13); line-height: 1.5; }
 .brief b { color: var(--ink); font-weight: 650; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .more { display: block; margin: 10px 16px 0; height: 32px; width: calc(100% - 32px); border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: var(--s-13); }
@@ -316,8 +317,8 @@ body.wide .tab, body.mid .tab { height: 34px; padding: 0 9px; }
 .hrow .hname { min-width: 0; display: grid; line-height: 1.2; }
 .hrow .hname b { font-weight: 620; font-size: var(--s-13); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hrow .hname small { color: var(--ink-3); font-size: var(--s-11); }
-.hbar { position: relative; height: 18px; background: rgba(169,171,203,.08); border-radius: 3px; overflow: hidden; }
-.hbar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(246,236,216,.18), rgba(246,236,216,.55)); border-radius: 3px; }
+.hbar { position: relative; height: 18px; background: rgba(var(--ink-2-rgb),.08); border-radius: 3px; overflow: hidden; }
+.hbar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(var(--now-rgb),.18), rgba(var(--now-rgb),.55)); border-radius: 3px; }
 .hbar em { position: absolute; right: 6px; top: 0; line-height: 18px; font-style: normal; font-size: var(--s-11); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink); }
 .chg { font-size: var(--s-12); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .nights { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
@@ -360,7 +361,7 @@ body.wide .tab, body.mid .tab { height: 34px; padding: 0 9px; }
 .orow:hover, .orow:focus-visible { background: var(--deck-2); }
 .odds { display: grid; gap: 4px; justify-items: end; }
 .odds b { font-size: var(--s-14); font-weight: 650; font-variant-numeric: tabular-nums; }
-.odds .bar { width: 100%; height: 5px; border-radius: 3px; background: rgba(169,171,203,.12); overflow: hidden; }
+.odds .bar { width: 100%; height: 5px; border-radius: 3px; background: rgba(var(--ink-2-rgb),.12); overflow: hidden; }
 .odds .bar i { display: block; height: 100%; background: var(--ink-2); border-radius: 3px; }
 .subhead { margin: 18px 16px 6px; font-size: var(--s-12); color: var(--ink-3); font-weight: 600; }
 .subhead.first { margin-top: 10px; }
@@ -371,7 +372,7 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 /* Shown above a list while it only covers the map area. */
 .areabar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 16px 4px; padding: 6px 6px 6px 10px;
-  border-radius: 8px; background: rgba(246,236,216,.07); border: 1px solid rgba(246,236,216,.16); color: var(--ink-2); font-size: var(--s-12);
+  border-radius: 8px; background: rgba(var(--now-rgb),.07); border: 1px solid rgba(var(--now-rgb),.16); color: var(--ink-2); font-size: var(--s-12);
 }
 .areabar button {
   flex: none; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--deck);
@@ -384,7 +385,7 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .pc-num { font-family: var(--font-display); font-weight: 800; font-size: var(--s-56); line-height: 1; color: var(--now); }
 .pc-label { margin: 0 0 8px; font-size: var(--s-20); font-weight: 650; }
 .pc-steps { display: flex; gap: 3px; }
-.pc-steps span { display: grid; place-items: center; width: 30px; height: 22px; border-radius: 3px; background: rgba(169,171,203,.1); color: var(--ink-3); font-size: var(--s-11); font-weight: 650; }
+.pc-steps span { display: grid; place-items: center; width: 30px; height: 22px; border-radius: 3px; background: rgba(var(--ink-2-rgb),.1); color: var(--ink-3); font-size: var(--s-11); font-weight: 650; }
 .pc-steps span.on { background: var(--now); color: var(--now-ink); }
 .pc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 16px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .pc-stats > div { background: var(--deck); padding: 10px 12px; }
@@ -398,7 +399,7 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .chart .readout { min-height: 18px; color: var(--ink); font-size: var(--s-12); font-variant-numeric: tabular-nums; margin-top: 4px; }
 .regions { list-style: none; margin: 12px 16px 0; padding: 0; display: grid; gap: 6px; }
 .regions li { display: grid; grid-template-columns: 150px minmax(0, 1fr) 36px; gap: 10px; align-items: center; font-size: var(--s-12); color: var(--ink-2); }
-.regions .bar { height: 6px; border-radius: 3px; background: rgba(169,171,203,.12); overflow: hidden; }
+.regions .bar { height: 6px; border-radius: 3px; background: rgba(var(--ink-2-rgb),.12); overflow: hidden; }
 .regions .bar i { display: block; height: 100%; background: var(--now); opacity: .75; }
 .regions b { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
 
@@ -439,7 +440,7 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .vside { display: grid; justify-items: end; gap: 6px; }
 .vside b { font-size: var(--s-14); font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1; }
 .vside b.none { color: var(--ink-3); font-weight: 500; }
-.vbar { display: flex; gap: 1px; width: 100%; height: 5px; border-radius: 3px; overflow: hidden; background: rgba(169,171,203,.12); }
+.vbar { display: flex; gap: 1px; width: 100%; height: 5px; border-radius: 3px; overflow: hidden; background: rgba(var(--ink-2-rgb),.12); }
 .vbar i { display: block; height: 100%; min-width: 2px; background: var(--c); }
 .vbar.big { height: 7px; border-radius: 4px; margin: 12px 0 8px; }
 .vtag { display: inline-block; color: var(--ink-3); font-size: var(--s-11); border: 1px solid var(--line); border-radius: 9px; padding: 0 7px; line-height: 17px; white-space: nowrap; }
@@ -458,7 +459,7 @@ a.strow:hover .viewers, a.strow:focus-visible .viewers { color: var(--ink); }
 .vc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .vc-actions .btn { height: 34px; padding: 0 12px; }
 .vcard .fine { padding: 10px 0 0; }
-.dr-venue .linkish { text-decoration-color: rgba(169,171,203,.45); }
+.dr-venue .linkish { text-decoration-color: rgba(var(--ink-2-rgb),.45); }
 
 /* ---------- event drawer ---------- */
 .drawer {
@@ -493,7 +494,7 @@ body.narrow .dr-grip { display: block; }
 .facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .facts dt { color: var(--ink-3); font-size: var(--s-11); }
 .facts dd { margin: 3px 0 0; font-size: var(--s-13); font-weight: 600; }
-.fillbar { height: 6px; border-radius: 3px; background: rgba(169,171,203,.12); overflow: hidden; margin-top: 6px; }
+.fillbar { height: 6px; border-radius: 3px; background: rgba(var(--ink-2-rgb),.12); overflow: hidden; margin-top: 6px; }
 .fillbar i { display: block; height: 100%; background: var(--ink-2); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { border: 1px solid var(--line); border-radius: 12px; padding: 3px 9px; font-size: var(--s-12); color: var(--ink-2); }
@@ -596,6 +597,65 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 .acct-ts { min-height: 65px; }
 .acct .fine { padding: 0; }
 
+/* ---------- colors: the theme picker (config/themes.json), a popover under the palette button ---------- */
+.hbtn.theme { padding: 0; width: 32px; }
+.theme-pop {
+  position: fixed; inset: auto; margin: 0; width: min(300px, calc(100vw - 20px)); padding: 14px 14px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--deck); color: var(--ink); box-shadow: 0 18px 50px rgba(0,0,0,.55); z-index: 60;
+}
+.theme-pop fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.theme-pop legend { padding: 0; margin-bottom: 10px; font-size: var(--s-13); font-weight: 650; }
+.topts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; }
+.topt { position: relative; display: grid; gap: 6px; font-size: var(--s-12); color: var(--ink-2); cursor: pointer; }
+.topt input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; opacity: 0; }
+/* Each swatch is a scrap of that theme's map: night sea, a curve of land, a few listings in its accent. */
+.tsw {
+  display: block; height: 40px; border-radius: 8px; border: 1px solid var(--sk); forced-color-adjust: none;
+  background:
+    radial-gradient(circle at 68% 40%, var(--sn) 0 3px, transparent 3.6px),
+    radial-gradient(circle at 36% 58%, var(--sn) 0 2.2px, transparent 2.8px),
+    radial-gradient(circle at 54% 72%, var(--sn) 0 1.6px, transparent 2.2px),
+    radial-gradient(130% 95% at 50% 125%, var(--sl) 0 58%, transparent 59%),
+    var(--sv);
+}
+.topt:hover .tsw { border-color: var(--ink-3); }
+.topt:has(input:checked) { color: var(--ink); font-weight: 650; }
+.topt:has(input:checked) .tsw { outline: 2px solid var(--now); outline-offset: 2px; }
+.topt:has(input:focus-visible) .tsw { outline: 2px solid var(--now); outline-offset: 2px; box-shadow: 0 0 0 5px rgba(var(--now-rgb), .25); }
+.theme-note { margin: 12px 0 0; color: var(--ink-3); font-size: var(--s-12); }
+
+/* ---------- what's new (config/updates.json), opened from the footer ---------- */
+.upd-day { display: grid; gap: 8px; }
+.dlg .upd-day h3 { margin-top: 10px; font-size: var(--s-11); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.dlg .upd { list-style: none; padding: 0; gap: 9px; }
+.dlg .upd li { max-width: none; }
+.upd-k {
+  display: inline-block; margin-right: 3px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--deck-2); color: var(--ink-2);
+  font-size: 10px; font-weight: 700; line-height: 17px; letter-spacing: .05em; text-transform: uppercase; vertical-align: 1px;
+}
+.upd-k.upd-new { background: var(--now); border-color: var(--now); color: var(--now-ink); }
+/* Something new since the visitor last looked. */
+.sitefoot a.has-new::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--now); vertical-align: 2px; }
+@media (forced-colors: active) {
+  .sitefoot a.has-new::after { background: LinkText; forced-color-adjust: none; }
+  .search::before { background: CanvasText; forced-color-adjust: none; }
+}
+
+/* ---------- mid-size windows ----------
+   The header keeps room for the search: the coffee link becomes its icon, and below 1100px the feed chip
+   steps aside (its About panel is in the footer too). */
+@media (min-width: 760px) and (max-width: 1279px) and (min-height: 500px) {
+  .support { width: 32px; padding: 0; justify-content: center; }
+  .support span { display: none; }
+}
+@media (min-width: 760px) and (max-width: 1099px) and (min-height: 500px) {
+  .demo-chip { display: none; }
+}
+/* Below 900px Peakcon steps aside too; it has its own tab. */
+@media (min-width: 760px) and (max-width: 899px) and (min-height: 500px) {
+  .peak-pill { display: none; }
+}
+
 /* ---------- narrow screens ---------- */
 /* Phone-only controls, hidden on wider screens. */
 .win-pick, .lg-toggle, .mapfab { display: none; }
@@ -607,12 +667,14 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .clock, .peak-pill, .demo-chip { display: none; }
   .support span { display: none; }
   /* Accounts: the account button beside the search, carrying the alert count; no separate bell. */
-  .hbtn, .hbtn.in { width: 44px; height: 44px; padding: 0; border-radius: 12px; }
+  .hbtn, .hbtn.in, .hbtn.theme { width: 44px; height: 44px; padding: 0; border-radius: 12px; }
   .hbtn .acct-l { display: none; }
   .hbtn.bell { display: none; }
   .hbtn.acct .badge { display: block; }
   .top-acct { order: 4; margin-left: 0; }
   .top:has(.top-acct .hbtn:not([hidden])) .search { flex: 1 1 calc(100% - 56px); }
+  /* Two buttons beside the search (colors and the account; the bell is folded into the account). */
+  .top:has(.top-acct .hbtn:not([hidden]):not(.bell) ~ .hbtn:not([hidden]):not(.bell)) .search { flex-basis: calc(100% - 110px); }
   .acct-tabs button { height: 38px; }
   .acct-chips .btn, .acct-row .btn { height: 40px; }
   .fbtn.mini { width: 32px; height: 32px; margin: -8px 0 -8px 2px; }
@@ -626,9 +688,11 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .search { order: 3; flex-basis: 100%; max-width: none; }
   .search kbd { display: none; }
   /* 16px stops iOS Safari zooming in when the field is focused. */
-  .search input {
-    height: 44px; font-size: 16px; border-radius: 12px; padding-left: 40px;
-    background: var(--deck) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7fa3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat 13px 50% / 18px 18px;
+  .search input { height: 44px; font-size: 16px; border-radius: 12px; padding-left: 40px; }
+  /* The magnifier, in the theme's color. */
+  .search::before {
+    content: ''; position: absolute; left: 13px; top: 13px; z-index: 1; width: 18px; height: 18px; pointer-events: none; background: var(--ink-3);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat center / contain; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat center / contain;
   }
   .results { top: 50px; max-height: min(62vh, 460px); border-radius: 12px; }
   .results [role="option"] { min-height: 44px; align-items: center; padding: 8px 10px; font-size: var(--s-14); }
@@ -738,7 +802,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   /* Event details: a taller sheet you can drag down to close, with the ticket link always in reach. */
   body.narrow .drawer { max-height: 90dvh; touch-action: pan-y; }
   body.narrow .drawer.dragging { transition: none; }
-  body.narrow .dr-grip { width: 44px; height: 5px; margin: 0 auto; border-radius: 3px; background: #3a4170; box-sizing: content-box; border: 10px solid transparent; border-width: 10px 30px; background-clip: padding-box; cursor: grab; touch-action: none; }
+  body.narrow .dr-grip { width: 44px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--grip); box-sizing: content-box; border: 10px solid transparent; border-width: 10px 30px; background-clip: padding-box; cursor: grab; touch-action: none; }
   .dr-close { width: 40px; height: 40px; border-radius: 10px; font-size: 20px; }
   .dr-head { padding: 6px 18px 12px; }
   body.narrow .dr-head { touch-action: none; }
@@ -746,7 +810,7 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
   .facts dd { font-size: var(--s-14); }
   body.narrow .dr-actions {
     position: sticky; bottom: 0; z-index: 2; margin-top: 8px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
-    background: linear-gradient(to bottom, rgba(12,15,34,0), var(--deck) 16px); flex-wrap: nowrap;
+    background: linear-gradient(to bottom, rgba(var(--deck-rgb),0), var(--deck) 16px); flex-wrap: nowrap;
   }
   body.narrow .dr-actions .btn { height: 46px; justify-content: center; font-size: var(--s-14); border-radius: 12px; }
   body.narrow .dr-actions .btn.primary { flex: 1 1 auto; }
@@ -765,7 +829,8 @@ dialog::backdrop { background: rgba(3,4,10,.65); }
 }
 /* Phones held sideways: the search fits on the brand's row. */
 @media (max-height: 499px) and (min-width: 600px) and (max-width: 1099px) {
-  .search, .top:has(.top-acct .hbtn:not([hidden])) .search { order: 0; flex: 1 1 auto; flex-basis: auto; max-width: 460px; }
+  .search, .top:has(.top-acct .hbtn:not([hidden])) .search,
+  .top:has(.top-acct .hbtn:not([hidden]):not(.bell) ~ .hbtn:not([hidden]):not(.bell)) .search { order: 0; flex: 1 1 auto; flex-basis: auto; max-width: 460px; }
   .top-right { margin-left: 0; }
 }
 /* Touch screens zoom with two fingers, so the + and - buttons give way. */
@@ -798,10 +863,10 @@ body.ui-idle #map-over { cursor: none !important; }
 <body class="wide">
 <header class="top">
   <a class="brand" href="#" id="brand" aria-label="Rave Monitor, reset the view">
-    <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg>
+    <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" style="fill:var(--void)"/></svg>
     <span class="brand-word">Rave Monitor</span>
   </a>
-  <a class="byline" href="https://splitshift.fm" target="_blank" rel="noopener">by split/shift</a>
+  <a class="byline" href="https://geffbohm.com" target="_blank" rel="noopener">by Geff Bohm</a>
   <div class="search" role="search">
     <label class="sr-only" for="q">Search events, DJs, record labels, venues and cities</label>
     <input id="q" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search events, DJs, labels, venues, cities" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
@@ -815,6 +880,7 @@ body.ui-idle #map-over { cursor: none !important; }
     <a class="support" href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" aria-label="Buy me a coffee on Buy Me a Coffee"><svg class="cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h12v4.5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9.5z"/><path d="M16 11.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c0 1 .8 1.5.8 2.6M12 3.5c0 1 .8 1.5.8 2.6"/></svg><span>Buy me a coffee</span></a>
   </div>
   <div class="top-acct">
+    <button class="hbtn theme" id="theme-btn" type="button" popovertarget="theme-pop" aria-controls="theme-pop" aria-expanded="false" aria-label="Colors" title="Colors" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.2 0 1.9-.8 1.9-1.8 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8h2.2a4.2 4.2 0 0 0 4.2-4.2c0-4-4-7.3-9.1-7.3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="7.4" cy="12" r="1.35" fill="currentColor"/><circle cx="9.6" cy="7.7" r="1.35" fill="currentColor"/><circle cx="14.6" cy="7.5" r="1.35" fill="currentColor"/></svg></button>
     <button class="hbtn bell" id="bell-btn" type="button" aria-label="Alerts" hidden></button>
     <button class="hbtn acct" id="acct-btn" type="button" aria-label="Sign in" hidden></button>
   </div>
@@ -897,7 +963,7 @@ body.ui-idle #map-over { cursor: none !important; }
 </main>
 <button class="mapfab" type="button" id="mapfab" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Map</button>
 <footer class="sitefoot">
-  <span>Rave Monitor, by <a href="https://splitshift.fm" target="_blank" rel="noopener">split/shift</a></span>
+  <span>Rave Monitor, by <a href="https://geffbohm.com" target="_blank" rel="noopener">Geff Bohm</a></span>
   <nav aria-label="Archive and policies">__FOOTER_LINKS__</nav>
 </footer>
 
@@ -908,10 +974,10 @@ body.ui-idle #map-over { cursor: none !important; }
   <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>
   <div class="dlg">
     <h2 id="about-title">About Rave Monitor</h2>
-    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next.</p>
+    <p>Rave Monitor maps electronic music in real time: club nights, festivals, concerts and where touring DJs play next. It's made by <a href="https://geffbohm.com" target="_blank" rel="noopener" style="color:inherit">Geff Bohm</a>.</p>
     <p>It started inside <a href="https://splitshift.fm" target="_blank" rel="noopener" style="color:inherit">split/shift</a>, a Milwaukee dance-music nonprofit, out of a need for a better way to browse events and happenings, so we could plan our work and create new event experiences with the whole scene in view. Now it's open source and free for everyone.</p>
     <div id="about-data"></div>
-    <p>It's free to use. If it's useful to you, you can support it by <a href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" style="color:inherit">buying a coffee</a>.</p>
+    <p>It's free to use. If it's useful to you, you can support it by <a href="https://buymeacoffee.com/geffbohm" target="_blank" rel="noopener" style="color:inherit">buying Geff a coffee</a>.</p>
     <h3>The archive</h3>
     <p>Every listing is kept after the night is over, merged across platforms, so this grows into a living archive of the scene. <span id="about-archive-count"></span><a href="/archive/" style="color:inherit"><b>Search the archive</b></a> by artist, record label, venue, city and month, or download it as a <a href="archive/archive.sqlite" style="color:inherit">SQLite database</a> or a <a href="archive/events.csv" style="color:inherit">spreadsheet (CSV)</a>.</p>
     <p id="about-analytics" hidden>Visits are counted with Google Analytics, with no ad features.</p>
@@ -931,6 +997,20 @@ __ACCOUNTS_ABOUT__
     <p>Questions, listing fixes or accessibility needs: __CONTACT_LINK__<a href="mailto:hello@ravemonitor.com" style="color:inherit">hello@ravemonitor.com</a>.</p>
   </div>
 </dialog>
+
+<dialog id="updates" aria-labelledby="updates-title">
+  <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>
+  <div class="dlg">
+    <h2 id="updates-title">What's new</h2>
+    <p>New features and fixes on Rave Monitor, newest first. <a href="/updates/" style="color:inherit">Open it as a page</a>.</p>
+__UPDATES__
+  </div>
+</dialog>
+
+<div class="theme-pop" id="theme-pop" popover>
+  <fieldset><legend>Colors</legend><div class="topts" id="theme-opts"></div></fieldset>
+  <p class="theme-note">Saved in this browser, for every page.</p>
+</div>
 
 <dialog id="account" aria-labelledby="acct-title">
   <form method="dialog"><button class="dlg-x" aria-label="Close">&times;</button></form>

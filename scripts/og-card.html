@@ -11,8 +11,10 @@
       "http://localhost:8000/scripts/og-card.html" site/static/og-image.jpg
   ?feed= points at another events.json (default ../public/events.json).
 -->
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600&family=Unbounded:wght@800&display=block" rel="stylesheet">
 <style>
+  /* The site's own font files (site/static/fonts), so the card needs nothing from Google. */
+  @font-face { font-family: 'Archivo'; font-weight: 100 900; font-stretch: 62% 125%; font-display: block; src: url(../site/static/fonts/archivo-latin-standard-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Unbounded'; font-weight: 800; font-display: block; src: url(../site/static/fonts/unbounded-latin-800-normal.woff2) format('woff2'); }
   html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #070814; }
   canvas { position: absolute; inset: 0; }
   .shade { position: absolute; inset: 0; background:
@@ -39,7 +41,7 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg>
     <div class="word">Rave Monitor</div>
   </div>
-  <div class="by">by split/shift</div>
+  <div class="by">by Geff Bohm</div>
   <div class="tag">Electronic music map:<br>raves, club nights and DJ sets</div>
 </div>
 <div class="foot">

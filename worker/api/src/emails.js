@@ -13,7 +13,7 @@ function layout({ preheader, body, footer }) {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.page}"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden">
-<tr><td style="background:${C.void};padding:18px 24px"><a href="https://ravemonitor.com" style="color:${C.now};text-decoration:none;font-weight:800;letter-spacing:.08em;font-size:14px">RAVE MONITOR</a><span style="color:#7c7fa3;font-size:12px"> by split/shift</span></td></tr>
+<tr><td style="background:${C.void};padding:18px 24px"><a href="https://ravemonitor.com" style="color:${C.now};text-decoration:none;font-weight:800;letter-spacing:.08em;font-size:14px">RAVE MONITOR</a><span style="color:#7c7fa3;font-size:12px"> by Geff Bohm</span></td></tr>
 <tr><td style="padding:24px">${body}</td></tr>
 <tr><td style="padding:16px 24px 22px;border-top:1px solid ${C.line};color:${C.ink3};font-size:12px;line-height:1.6">${footer}</td></tr>
 </table></td></tr></table></body></html>`;
@@ -27,11 +27,11 @@ export function signInEmail({ link, siteUrl = 'https://ravemonitor.com' }) {
 <p style="margin:0;color:${C.ink2};font-size:15px;line-height:1.55">Use the button to sign in. The link works once, for the next 15 minutes.</p>
 ${button(link, 'Sign in')}
 <p style="margin:0;color:${C.ink3};font-size:13px;line-height:1.55">Or paste this into your browser:<br><a href="${esc(link)}" style="color:${C.ink2};word-break:break-all">${esc(link)}</a></p>`;
-  const footer = `If you didn't ask to sign in, you can ignore this email. Nothing happens until the link is used.<br>Rave Monitor, by split/shift · <a href="${esc(siteUrl)}" style="color:${C.ink3}">${esc(siteUrl.replace(/^https?:\/\//, ''))}</a>`;
+  const footer = `If you didn't ask to sign in, you can ignore this email. Nothing happens until the link is used.<br>Rave Monitor, by Geff Bohm · <a href="${esc(siteUrl)}" style="color:${C.ink3}">${esc(siteUrl.replace(/^https?:\/\//, ''))}</a>`;
   return {
     subject: 'Your Rave Monitor sign-in link',
     html: layout({ preheader: 'Sign in to follow artists and venues, save shows and get alerts.', body, footer }),
-    text: `Sign in to Rave Monitor\n\nOpen this link to sign in. It works once, for the next 15 minutes:\n${link}\n\nIf you didn't ask to sign in, you can ignore this email. Nothing happens until the link is used.\n\nRave Monitor, by split/shift\n${siteUrl}`
+    text: `Sign in to Rave Monitor\n\nOpen this link to sign in. It works once, for the next 15 minutes:\n${link}\n\nIf you didn't ask to sign in, you can ignore this email. Nothing happens until the link is used.\n\nRave Monitor, by Geff Bohm\n${siteUrl}`
   };
 }
 
@@ -108,11 +108,11 @@ export function alertsEmail({ items, freq = 'instant', siteUrl = 'https://ravemo
   }
   const how = freq === 'daily' ? 'a daily email' : freq === 'weekly' ? 'a weekly email' : 'emails as alerts happen';
   const footer = `You're getting this because you have a Rave Monitor account and chose ${how} for new shows; changes and reminders for shows you saved come right away.<br>
-<a href="${esc(settingsUrl)}" style="color:${C.ink3}">Change what we send</a> · <a href="${esc(unsubUrl)}" style="color:${C.ink3}">Unsubscribe from all emails</a><br>Rave Monitor, by split/shift · Milwaukee, WI`;
+<a href="${esc(settingsUrl)}" style="color:${C.ink3}">Change what we send</a> · <a href="${esc(unsubUrl)}" style="color:${C.ink3}">Unsubscribe from all emails</a><br>Rave Monitor, by Geff Bohm · Milwaukee, WI`;
   const intro = single ? '' : `<p style="margin:0;color:${C.ink2};font-size:15px;line-height:1.55">${freq === 'weekly' ? 'Here is your week.' : freq === 'daily' ? 'Here is what is new since yesterday.' : 'Here is what just changed.'}</p>`;
   return {
     subject,
     html: layout({ preheader: single ? metaLine(single.data || {}) : `${n} ${n === 1 ? 'alert' : 'alerts'} from Rave Monitor`, body: intro + html + button(siteUrl, 'Open Rave Monitor'), footer }),
-    text: `${single ? '' : (freq === 'weekly' ? 'Your week on Rave Monitor' : freq === 'daily' ? 'Your day on Rave Monitor' : 'New alerts from Rave Monitor') + '\n'}${text}\nOpen Rave Monitor: ${siteUrl}\n\nChange what we send: ${settingsUrl}\nUnsubscribe from all emails: ${unsubUrl}\nRave Monitor, by split/shift · Milwaukee, WI`
+    text: `${single ? '' : (freq === 'weekly' ? 'Your week on Rave Monitor' : freq === 'daily' ? 'Your day on Rave Monitor' : 'New alerts from Rave Monitor') + '\n'}${text}\nOpen Rave Monitor: ${siteUrl}\n\nChange what we send: ${settingsUrl}\nUnsubscribe from all emails: ${unsubUrl}\nRave Monitor, by Geff Bohm · Milwaukee, WI`
   };
 }

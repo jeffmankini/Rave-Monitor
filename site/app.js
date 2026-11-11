@@ -8,6 +8,11 @@
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FONT = '"Archivo", "Helvetica Neue", Arial, sans-serif';
+  // Color themes (config/themes.json, from the build). The page's colors are CSS variables that the
+  // head already set from the visitor's pick; the canvas map and the street map take theirs from here.
+  const THEMES = window.RM_THEMES && Array.isArray(window.RM_THEMES.list) && window.RM_THEMES.list.length ? window.RM_THEMES : null;
+  const themeById = id => (THEMES && THEMES.list.find(t => t.id === id)) || null;
+  const currentTheme = () => themeById(document.documentElement.getAttribute('data-theme')) || themeById(THEMES && THEMES.def);
   // Google Analytics events, only when the build added the tag (config/site.json). Consent is the
   // consent tool's job; the tag holds events back until it allows them.
   function track(name, params) {
@@ -402,10 +407,10 @@
     const pts = (a, off) => a.map((v, i) => (i ? 'L' : 'M') + x(i + off).toFixed(1) + ',' + y(v).toFixed(1)).join('');
     const past = pts(vals.slice(0, iNow + 1), 0), fut = pts(vals.slice(iNow), iNow);
     const area = past + 'L' + x(iNow).toFixed(1) + ',' + (h - 3) + 'L2,' + (h - 3) + 'Z';
-    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><path d="M2,' + (h - 2.5) + 'H' + (w - 2) + '" stroke="#1f2547" stroke-width="1"/>' +
-      '<path d="' + area + '" fill="#a9abcb" opacity=".16"/><path d="' + past + '" fill="none" stroke="#a9abcb" stroke-width="1.5" stroke-linejoin="round"/>' +
-      '<path d="' + fut + '" fill="none" stroke="#a9abcb" stroke-width="1.5" stroke-dasharray="2 2.5"/>' +
-      '<circle cx="' + x(iNow).toFixed(1) + '" cy="' + y(vals[iNow]).toFixed(1) + '" r="2.6" fill="#f6ecd8" stroke="#0c0f22" stroke-width="1.5"/></svg>';
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><path d="M2,' + (h - 2.5) + 'H' + (w - 2) + '" style="stroke:var(--line)" stroke-width="1"/>' +
+      '<path d="' + area + '" style="fill:var(--ink-2)" opacity=".16"/><path d="' + past + '" fill="none" style="stroke:var(--ink-2)" stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<path d="' + fut + '" fill="none" style="stroke:var(--ink-2)" stroke-width="1.5" stroke-dasharray="2 2.5"/>' +
+      '<circle cx="' + x(iNow).toFixed(1) + '" cy="' + y(vals[iNow]).toFixed(1) + '" r="2.6" style="fill:var(--now);stroke:var(--deck)" stroke-width="1.5"/></svg>';
   }
   function renderGenres() {
     const fmtChg = c => c == null ? '' : (c >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(c * 100)) + '%';
@@ -585,15 +590,15 @@
     const past = series.slice(0, iNow + 1).map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.n).toFixed(1)).join('');
     const area = line + 'L' + x(series.length - 1) + ',' + y(0) + 'L' + x(0) + ',' + y(0) + 'Z';
     let g = '';
-    [0, max / 2, max].forEach(v => { g += '<path d="M' + pl + ',' + y(v).toFixed(1) + 'H' + (Wc - pr) + '" stroke="#1f2547" stroke-width="1"/><text x="' + (pl - 6) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end" fill="#7c7fa3" font-size="10">' + Math.round(v) + '</text>'; });
+    [0, max / 2, max].forEach(v => { g += '<path d="M' + pl + ',' + y(v).toFixed(1) + 'H' + (Wc - pr) + '" style="stroke:var(--line)" stroke-width="1"/><text x="' + (pl - 6) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end" style="fill:var(--ink-3)" font-size="10">' + Math.round(v) + '</text>'; });
     let xt = '';
-    for (let i = 0; i < series.length; i += 6) xt += '<text x="' + x(i).toFixed(1) + '" y="' + (Hc - 6) + '" text-anchor="' + (i === 0 ? 'start' : i >= series.length - 1 ? 'end' : 'middle') + '" fill="#7c7fa3" font-size="10">' + (i === iNow ? 'Now' : F(null, { hour: 'numeric' }).format(series[i].t)) + '</text>';
+    for (let i = 0; i < series.length; i += 6) xt += '<text x="' + x(i).toFixed(1) + '" y="' + (Hc - 6) + '" text-anchor="' + (i === 0 ? 'start' : i >= series.length - 1 ? 'end' : 'middle') + '" style="fill:var(--ink-3)" font-size="10">' + (i === iNow ? 'Now' : F(null, { hour: 'numeric' }).format(series[i].t)) + '</text>';
     return '<svg viewBox="0 0 ' + Wc + ' ' + Hc + '" role="img" aria-label="Parties live worldwide each hour, from 12 hours ago to 24 hours ahead. Now: ' + series[iNow].n + '." data-chart="hourly">' + g +
-      '<path d="' + area + '" fill="#f6ecd8" opacity=".07"/><path d="' + line + '" fill="none" stroke="#a9abcb" stroke-width="1.5" stroke-dasharray="3 3"/>' +
-      '<path d="' + past + '" fill="none" stroke="#f6ecd8" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M' + x(iNow).toFixed(1) + ',' + pt + 'V' + y(0) + '" stroke="#f6ecd8" stroke-width="1" opacity=".5"/>' +
-      '<circle cx="' + x(iNow).toFixed(1) + '" cy="' + y(series[iNow].n).toFixed(1) + '" r="4" fill="#f6ecd8" stroke="#0c0f22" stroke-width="2"/>' + xt +
-      '<line class="hover-x" x1="0" x2="0" y1="' + pt + '" y2="' + y(0) + '" stroke="#eceaf6" stroke-width="1" opacity="0"/>' +
+      '<path d="' + area + '" style="fill:var(--now)" opacity=".07"/><path d="' + line + '" fill="none" style="stroke:var(--ink-2)" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+      '<path d="' + past + '" fill="none" style="stroke:var(--now)" stroke-width="2" stroke-linejoin="round"/>' +
+      '<path d="M' + x(iNow).toFixed(1) + ',' + pt + 'V' + y(0) + '" style="stroke:var(--now)" stroke-width="1" opacity=".5"/>' +
+      '<circle cx="' + x(iNow).toFixed(1) + '" cy="' + y(series[iNow].n).toFixed(1) + '" r="4" style="fill:var(--now);stroke:var(--deck)" stroke-width="2"/>' + xt +
+      '<line class="hover-x" x1="0" x2="0" y1="' + pt + '" y2="' + y(0) + '" style="stroke:var(--ink)" stroke-width="1" opacity="0"/>' +
       '<rect x="' + pl + '" y="' + pt + '" width="' + (Wc - pl - pr) + '" height="' + (Hc - pt - pb) + '" fill="transparent" class="hover-zone"/></svg>';
   }
   function renderPeakcon() {
@@ -1649,7 +1654,16 @@
       }
     } catch (err) { console.error('map data failed to load', err); }
     const grat = d3.geoGraticule10(), sphere = { type: 'Sphere' };
-    const C = { sea: '#070814', land: '#171c3a', grat: 'rgba(150,160,230,0.055)', border: 'rgba(160,170,230,0.14)', now: '#f6ecd8', ink: '#eceaf6', ink2: '#a9abcb', ink3: '#7c7fa3' };
+    // The map's colors: the theme's, or Midnight's when the build gave none.
+    const MIDNIGHT = { void: '#070814', land: '#171c3a', sphere: '#0a0c1d', shade: '#02030c', tint: '#a0aae6', now: '#f6ecd8', nowInk: '#15131f', ink: '#eceaf6', ink2: '#a9abcb', ink3: '#7c7fa3',
+      green: '#15283d', park: '#15293f', building: '#1f2650', runway: '#262e5c', motorway: '#b8bce4', waterLabel: '#555d93', streetLabel: '#8d90b5', venueLabel: '#6f7398', ring: '#8b8fa8' };
+    function palette() {
+      const c = Object.assign({}, MIDNIGHT, (currentTheme() || {}).c || {});
+      const n = parseInt(c.now.slice(1), 16);
+      c.sea = c.void; c.nowRgb = (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255); // for the pulses, whose opacity changes every frame
+      return c;
+    }
+    const C = palette();
     let W = 0, H = 0, DPR = 1, base = 1, kMin = 1, kMax = 500, lon0 = 10;
     let mapT = d3.zoomIdentity;
     const globe = { rot: [0, -26, 0], k: 1 };
@@ -1987,7 +2001,7 @@
       const label = (id, layer, filter, size, color, minzoom, maxzoom, layout) => ({
         id: id, type: 'symbol', source: 'omt', 'source-layer': layer, minzoom: minzoom, maxzoom: maxzoom, filter: filter,
         layout: Object.assign({ 'text-field': name, 'text-font': ['Noto Sans Regular'], 'text-size': size, 'text-max-width': 8 }, layout || {}),
-        paint: { 'text-color': color, 'text-halo-color': 'rgba(7,8,20,0.92)', 'text-halo-width': 1.4 }
+        paint: { 'text-color': color, 'text-halo-color': rgba(C.sea, 0.92), 'text-halo-width': 1.4 }
       });
       const caps = { 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 };
       return {
@@ -1996,25 +2010,25 @@
         glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
         layers: [
           { id: 'land', type: 'background', paint: { 'background-color': C.land } },
-          { id: 'green', type: 'fill', source: 'omt', 'source-layer': 'landcover', minzoom: 9, filter: ['all', isArea, ['match', ['get', 'class'], ['wood', 'grass'], true, false]], paint: { 'fill-color': '#15283d', 'fill-opacity': 0.6 } },
-          { id: 'park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 9, filter: isArea, paint: { 'fill-color': '#15293f', 'fill-opacity': 0.8 } },
+          { id: 'green', type: 'fill', source: 'omt', 'source-layer': 'landcover', minzoom: 9, filter: ['all', isArea, ['match', ['get', 'class'], ['wood', 'grass'], true, false]], paint: { 'fill-color': C.green, 'fill-opacity': 0.6 } },
+          { id: 'park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 9, filter: isArea, paint: { 'fill-color': C.park, 'fill-opacity': 0.8 } },
           { id: 'water', type: 'fill', source: 'omt', 'source-layer': 'water', filter: ['all', isArea, ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'fill-color': C.sea } },
           { id: 'waterway', type: 'line', source: 'omt', 'source-layer': 'waterway', minzoom: 9, filter: isLine, paint: { 'line-color': C.sea, 'line-width': width([9, 0.6, 14, 2, 18, 6]) } },
-          { id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': '#1f2650', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 15, 0.9] } },
-          { id: 'runway', type: 'line', source: 'omt', 'source-layer': 'aeroway', minzoom: 11, filter: ['all', isLine, ['match', ['get', 'class'], ['runway', 'taxiway'], true, false]], paint: { 'line-color': '#262e5c', 'line-width': width([11, 1, 16, 12]) } },
-          road('path', ['path', 'track'], 'rgba(169,171,203,0.10)', [14, 0.5, 18, 2], 14),
-          road('minor', ['minor', 'service'], 'rgba(169,171,203,0.15)', [12, 0.3, 14, 1.2, 18, 9], 12),
-          road('secondary', ['secondary', 'tertiary'], 'rgba(169,171,203,0.22)', [9, 0.4, 12, 1, 14, 2.4, 18, 12], 9),
-          road('primary', ['primary', 'trunk'], 'rgba(169,171,203,0.30)', [7, 0.4, 10, 1, 14, 3.2, 18, 15], 7),
-          road('motorway', ['motorway'], 'rgba(184,188,228,0.38)', [5, 0.4, 8, 1, 12, 2.4, 14, 4, 18, 18], 5),
-          { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 12, filter: ['all', isLine, ['match', ['get', 'class'], ['rail', 'transit'], true, false]], paint: { 'line-color': 'rgba(169,171,203,0.18)', 'line-width': width([12, 0.6, 18, 2.5]), 'line-dasharray': [3, 3] } },
-          { id: 'border', type: 'line', source: 'omt', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': 'rgba(160,170,230,0.3)', 'line-width': 1, 'line-dasharray': [3, 2] } },
-          label('water-name', 'water_name', ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false], 11, '#555d93', 8, 24, { 'text-font': ['Noto Sans Italic'] }),
-          label('street-name', 'transportation_name', ['all', isLine, ['!=', ['get', 'class'], 'motorway']], ['interpolate', ['linear'], ['zoom'], 13, 9.5, 17, 12], '#8d90b5', 13, 24,
+          { id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': C.building, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 15, 0.9] } },
+          { id: 'runway', type: 'line', source: 'omt', 'source-layer': 'aeroway', minzoom: 11, filter: ['all', isLine, ['match', ['get', 'class'], ['runway', 'taxiway'], true, false]], paint: { 'line-color': C.runway, 'line-width': width([11, 1, 16, 12]) } },
+          road('path', ['path', 'track'], rgba(C.ink2, 0.10), [14, 0.5, 18, 2], 14),
+          road('minor', ['minor', 'service'], rgba(C.ink2, 0.15), [12, 0.3, 14, 1.2, 18, 9], 12),
+          road('secondary', ['secondary', 'tertiary'], rgba(C.ink2, 0.22), [9, 0.4, 12, 1, 14, 2.4, 18, 12], 9),
+          road('primary', ['primary', 'trunk'], rgba(C.ink2, 0.30), [7, 0.4, 10, 1, 14, 3.2, 18, 15], 7),
+          road('motorway', ['motorway'], rgba(C.motorway, 0.38), [5, 0.4, 8, 1, 12, 2.4, 14, 4, 18, 18], 5),
+          { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 12, filter: ['all', isLine, ['match', ['get', 'class'], ['rail', 'transit'], true, false]], paint: { 'line-color': rgba(C.ink2, 0.18), 'line-width': width([12, 0.6, 18, 2.5]), 'line-dasharray': [3, 3] } },
+          { id: 'border', type: 'line', source: 'omt', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': rgba(C.tint, 0.3), 'line-width': 1, 'line-dasharray': [3, 2] } },
+          label('water-name', 'water_name', ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false], 11, C.waterLabel, 8, 24, { 'text-font': ['Noto Sans Italic'] }),
+          label('street-name', 'transportation_name', ['all', isLine, ['!=', ['get', 'class'], 'motorway']], ['interpolate', ['linear'], ['zoom'], 13, 9.5, 17, 12], C.streetLabel, 13, 24,
             { 'symbol-placement': 'line', 'symbol-spacing': 320, 'text-max-angle': 30, 'text-rotation-alignment': 'map', 'text-field': ['coalesce', ['get', 'name'], ''] }),
-          label('neighbourhood', 'place', ['match', ['get', 'class'], ['neighbourhood', 'quarter'], true, false], ['interpolate', ['linear'], ['zoom'], 12, 9.5, 16, 12], '#8d90b5', 12, 17, caps),
-          label('suburb', 'place', ['==', ['get', 'class'], 'suburb'], ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 13], '#a9abcb', 10, 16, caps),
-          label('town', 'place', ['match', ['get', 'class'], ['town', 'village'], true, false], ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 13], '#a9abcb', 8, 15)
+          label('neighbourhood', 'place', ['match', ['get', 'class'], ['neighbourhood', 'quarter'], true, false], ['interpolate', ['linear'], ['zoom'], 12, 9.5, 16, 12], C.streetLabel, 12, 17, caps),
+          label('suburb', 'place', ['==', ['get', 'class'], 'suburb'], ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 13], C.ink2, 10, 16, caps),
+          label('town', 'place', ['match', ['get', 'class'], ['town', 'village'], true, false], ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 13], C.ink2, 8, 15)
         ]
       };
     }
@@ -2106,6 +2120,12 @@
       areaChanged(ids);
     }
 
+    // A new color theme: the map's colors, the street map's style, then a redraw.
+    function restyle() {
+      Object.assign(C, palette());
+      if (streets.map) { try { streets.map.setStyle(streetStyle(), { diff: true }); } catch (err) { console.warn('street map restyle:', err && err.message); } }
+      changed(true);
+    }
     function changed(baseToo) {
       if (baseToo) { baseDirty = true; clearTimeout(areaTimer); areaTimer = setTimeout(updateArea, 160); }
       posDirty = true; overDirty = true;
@@ -2147,23 +2167,23 @@
       if (S.view === 'globe') {
         const R = globeR();
         const g = ctx.createRadialGradient(W / 2, H / 2, R * 0.92, W / 2, H / 2, R * 1.14);
-        g.addColorStop(0, 'rgba(150,160,255,0.14)'); g.addColorStop(1, 'rgba(150,160,255,0)');
+        g.addColorStop(0, rgba(C.tint, 0.14)); g.addColorStop(1, rgba(C.tint, 0));
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(W / 2, H / 2, R * 1.14, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); path(sphere); ctx.fillStyle = '#0a0c1d'; ctx.fill();
+        ctx.beginPath(); path(sphere); ctx.fillStyle = C.sphere; ctx.fill();
       }
-      ctx.beginPath(); path(grat); ctx.strokeStyle = C.grat; ctx.lineWidth = 0.6; ctx.stroke();
+      ctx.beginPath(); path(grat); ctx.strokeStyle = rgba(C.tint, 0.055); ctx.lineWidth = 0.6; ctx.stroke();
       if (geo) {
         ctx.beginPath(); path(ppd > 6 && !spinActive() ? geo.landHi : geo.landLo); ctx.fillStyle = C.land; ctx.fill();
-        ctx.beginPath(); path(geo.lakes); ctx.fillStyle = S.view === 'globe' ? '#0a0c1d' : C.sea; ctx.fill();
-        ctx.beginPath(); path(geo.borders); ctx.strokeStyle = C.border; ctx.lineWidth = 0.6; ctx.stroke();
+        ctx.beginPath(); path(geo.lakes); ctx.fillStyle = S.view === 'globe' ? C.sphere : C.sea; ctx.fill();
+        ctx.beginPath(); path(geo.borders); ctx.strokeStyle = rgba(C.tint, 0.14); ctx.lineWidth = 0.6; ctx.stroke();
       }
       if (S.layers.belt) {
         const sun = RM.subsolar(S.now), anti = [sun[0] + 180, -sun[1]];
-        ctx.fillStyle = 'rgba(2,3,12,0.22)';
+        ctx.fillStyle = rgba(C.shade, 0.22);
         [90, 84, 78].forEach(r => { ctx.beginPath(); path(d3.geoCircle().center(anti).radius(r).precision(3)()); ctx.fill(); });
         const band = RM.clubBand(S.now);
-        ctx.beginPath(); path(bandRing(band.raw)); ctx.fillStyle = 'rgba(246,236,216,0.065)'; ctx.fill();
-        ctx.setLineDash([2, 5]); ctx.strokeStyle = 'rgba(246,236,216,0.38)'; ctx.lineWidth = 1;
+        ctx.beginPath(); path(bandRing(band.raw)); ctx.fillStyle = rgba(C.now, 0.065); ctx.fill();
+        ctx.setLineDash([2, 5]); ctx.strokeStyle = rgba(C.now, 0.38); ctx.lineWidth = 1;
         [band.west, band.east].forEach(lon => { ctx.beginPath(); path({ type: 'LineString', coordinates: d3.range(-60, 80.1, 2).map(lat => [lon, lat]) }); ctx.stroke(); });
         ctx.setLineDash([]);
       }
@@ -2253,9 +2273,9 @@
           let px, py;
           if (vl) { px = vl.x; py = vl.y; }
           else { if (!vis(x.lon, x.lat)) return; const p = proj([x.lon, x.lat]); if (!onScreen(p)) return; px = p[0]; py = p[1]; }
-          if (x.unlisted) { ringMarks.push({ ve: x, x: px, y: py, r: 2.2 * k + 0.8, active: false, quiet: true, osm: !!x.osmOnly, col: '#a9abcb' }); return; }
+          if (x.unlisted) { ringMarks.push({ ve: x, x: px, y: py, r: 2.2 * k + 0.8, active: false, quiet: true, osm: !!x.osmOnly, col: C.ink2 }); return; }
           const r = (2.6 + Math.sqrt(Math.max(1, x.nights)) * 0.85) * k;
-          ringMarks.push({ ve: x, x: px, y: py, r: vl ? Math.max(vl.R + 3.5, r) : r, active: !!vl, col: x.main ? RM.GENRE[x.main].color : '#8b8fa8' });
+          ringMarks.push({ ve: x, x: px, y: py, r: vl ? Math.max(vl.R + 3.5, r) : r, active: !!vl, col: x.main ? RM.GENRE[x.main].color : C.ring });
         });
       }
       const osm = ringMarks.some(rm => rm.osm || rm.ve.osm);
@@ -2281,20 +2301,20 @@
           if (!cm.heat) return;
           const rad = (8 + cm.heat * 0.42) * boost;
           const g = ctx.createRadialGradient(cm.x, cm.y, 0, cm.x, cm.y, rad);
-          g.addColorStop(0, 'rgba(246,236,216,0.14)'); g.addColorStop(0.45, 'rgba(246,236,216,0.05)'); g.addColorStop(1, 'rgba(246,236,216,0)');
+          g.addColorStop(0, rgba(C.now, 0.14)); g.addColorStop(0.45, rgba(C.now, 0.05)); g.addColorStop(1, rgba(C.now, 0));
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cm.x, cm.y, rad, 0, Math.PI * 2); ctx.fill();
         });
       }
       const flow = reduceMotion ? 0 : -(time / 45) % 18;
       if (S.layers.tours && D.tours.length) {
-        ctx.save(); ctx.setLineDash([3, 6]); ctx.lineDashOffset = flow; ctx.strokeStyle = 'rgba(246,236,216,0.26)'; ctx.lineWidth = 1;
+        ctx.save(); ctx.setLineDash([3, 6]); ctx.lineDashOffset = flow; ctx.strokeStyle = rgba(C.now, 0.26); ctx.lineWidth = 1;
         D.tours.forEach(seg => { ctx.beginPath(); path({ type: 'LineString', coordinates: seg }); ctx.stroke(); });
         ctx.restore();
       }
       if (S.route) {
         const gigs = routeGigs(S.route);
         if (gigs.length > 1) {
-          ctx.save(); ctx.setLineDash([7, 5]); ctx.lineDashOffset = flow * 1.4; ctx.strokeStyle = 'rgba(246,236,216,0.9)'; ctx.lineWidth = 1.6;
+          ctx.save(); ctx.setLineDash([7, 5]); ctx.lineDashOffset = flow * 1.4; ctx.strokeStyle = rgba(C.now, 0.9); ctx.lineWidth = 1.6;
           ctx.beginPath(); path({ type: 'LineString', coordinates: gigs.map(e => [venue(e).lon, venue(e).lat]) }); ctx.stroke();
           ctx.restore();
         }
@@ -2316,25 +2336,25 @@
         const col = gen(m.e).color;
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
         if (m.so) { ctx.fillStyle = C.sea; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = col; ctx.stroke(); }
-        else { ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(7,8,20,0.85)'; ctx.stroke(); }
+        else { ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = rgba(C.sea, 0.85); ctx.stroke(); }
       });
       marks.forEach(m => {
         if (!m.live) return;
         const ph = reduceMotion ? 0.3 : ((time / 1900) + m.seed) % 1;
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 1.4 + ph * 6, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(246,236,216,' + (reduceMotion ? 0.7 : (1 - ph) * 0.75).toFixed(3) + ')'; ctx.lineWidth = 1.1; ctx.stroke();
+        ctx.strokeStyle = 'rgba(' + C.nowRgb + ',' + (reduceMotion ? 0.7 : (1 - ph) * 0.75).toFixed(3) + ')'; ctx.lineWidth = 1.1; ctx.stroke();
       });
       festMarks.forEach(f => {
         const col = gen(f.e).color, r = f.r;
         ctx.beginPath(); ctx.moveTo(f.x, f.y - r * 1.25); ctx.lineTo(f.x + r * 1.25, f.y); ctx.lineTo(f.x, f.y + r * 1.25); ctx.lineTo(f.x - r * 1.25, f.y); ctx.closePath();
         ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.ink; ctx.stroke();
-        if (f.live) { const ph = reduceMotion ? 0.3 : ((time / 1900)) % 1; ctx.beginPath(); ctx.arc(f.x, f.y, r * 1.6 + ph * 8, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(246,236,216,' + (reduceMotion ? 0.7 : (1 - ph) * 0.8).toFixed(3) + ')'; ctx.lineWidth = 1.2; ctx.stroke(); }
+        if (f.live) { const ph = reduceMotion ? 0.3 : ((time / 1900)) % 1; ctx.beginPath(); ctx.arc(f.x, f.y, r * 1.6 + ph * 8, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(' + C.nowRgb + ',' + (reduceMotion ? 0.7 : (1 - ph) * 0.8).toFixed(3) + ')'; ctx.lineWidth = 1.2; ctx.stroke(); }
       });
       if (stopMarks.length) {
         ctx.font = '700 11px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         stopMarks.forEach(s => {
           ctx.beginPath(); ctx.arc(s.x, s.y, 9, 0, Math.PI * 2); ctx.fillStyle = C.now; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = C.sea; ctx.stroke();
-          ctx.fillStyle = '#15131f'; ctx.fillText(String(s.i + 1), s.x, s.y + 0.5);
+          ctx.fillStyle = C.nowInk; ctx.fillText(String(s.i + 1), s.x, s.y + 0.5);
         });
         ctx.textAlign = 'left';
       }
@@ -2357,7 +2377,7 @@
         if (box[0] < 4 || box[2] > W - 4 || box[1] < 4 || box[3] > H - 4) return false;
         for (let i = 0; i < boxes.length; i++) { const b = boxes[i]; if (!(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3])) return false; }
         boxes.push(box);
-        ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(7,8,20,0.92)';
+        ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3.2; ctx.strokeStyle = rgba(C.sea, 0.92);
         ctx.strokeText(text, x0, y); ctx.fillStyle = color; ctx.fillText(text, x0, y);
         return box;
       };
@@ -2409,7 +2429,7 @@
           });
           // Closer still, the places with no listings yet.
           ringMarks.filter(rm => rm.quiet && rm !== fr && ppd >= 900).sort((a, b) => isF(b.ve) - isF(a.ve)).forEach(rm => {
-            const on = isF(rm.ve), box = put(rm.ve.name, rm.x + rm.r + 4, rm.y, on ? C.now : '#6f7398', on ? '700 12px ' + FONT : '500 10px ' + FONT);
+            const on = isF(rm.ve), box = put(rm.ve.name, rm.x + rm.r + 4, rm.y, on ? C.now : C.venueLabel, on ? '700 12px ' + FONT : '500 10px ' + FONT);
             if (box) labelHits.push({ box: box, ve: rm.ve });
           });
         }
@@ -2481,7 +2501,7 @@
     }
     function hideTip() { tip.hidden = true; }
 
-    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets, inView: inView, center: center, setSpin: setSpin, spinning: () => spin.on };
+    return { init: init, changed: changed, setView: setView, home: home, flyTo: flyTo, flyToCity: flyToCity, flyToVenue: flyToVenue, flyToEvent: flyToEvent, fitEvents: fitEvents, focusNear: focusNear, zoomBy: zoomBy, resize: resize, setStreets: setStreets, restyle: restyle, inView: inView, center: center, setSpin: setSpin, spinning: () => spin.on };
   })();
 
   /* ---------- live feed (events.json written by the pipeline) ---------- */
@@ -2618,6 +2638,8 @@
       if (a === 'live-all') { S.liveAll = true; renderLive(); return; }
       if (a === 'list-all') { S.listAll = true; renderListings(); return; }
       if (a === 'privacy-settings') { ev.preventDefault(); privacySettings(); return; }
+      if (a === 'about') { ev.preventDefault(); openAbout(); return; }
+      if (a === 'updates') { ev.preventDefault(); openUpdates(); return; }
       if (a === 'area-all') { MapView.home(true); return; }
     }
     const opt = t.closest('#results [role="option"]');
@@ -2643,6 +2665,7 @@
       const tag = (ev.target.tagName || '').toLowerCase(), typing = tag === 'input' || tag === 'textarea';
       if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.getAttribute && ev.target.getAttribute('role') === 'button' && ev.target.tagName !== 'BUTTON') { ev.preventDefault(); onActivate(ev); return; }
       if (ev.key === 'Escape') {
+        if (themeOpen()) return; // the colors popover closes itself
         if (!$('#results').hidden) return hideResults();
         if (S.sel) return closeDrawer();
         if (!$('#layers').hidden) return toggleLayers(false);
@@ -2733,6 +2756,86 @@
   function toggleLayers(open) { $('#layers').hidden = !open; $('#layers-btn').setAttribute('aria-expanded', String(open)); }
   function openAbout() { renderAboutData(); loadArchiveCount(); $('#about-analytics').hidden = !window.RM_GA; const d = $('#about'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
 
+  /* ---------- colors: the theme picker under the palette button ---------- */
+  // A popover (light dismiss, Esc, above everything) placed under its button. Browsers without
+  // popovers get the same panel, opened and closed here.
+  const POP = typeof HTMLElement !== 'undefined' && Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover');
+  function themeOpen() {
+    const pop = $('#theme-pop');
+    if (!pop) return false;
+    try { return POP ? pop.matches(':popover-open') : !pop.hidden; } catch (err) { return false; }
+  }
+  function placeThemePop() {
+    const btn = $('#theme-btn'), pop = $('#theme-pop');
+    const r = btn.getBoundingClientRect(), w = Math.min(300, window.innerWidth - 20);
+    pop.style.top = Math.round(r.bottom + 8) + 'px';
+    pop.style.left = Math.round(Math.max(10, Math.min(window.innerWidth - w - 10, r.right - w))) + 'px';
+  }
+  function setTheme(t, save) {
+    if (!t) return;
+    document.documentElement.setAttribute('data-theme', t.id);
+    const m = $('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', t.c.void);
+    if (save) { try { localStorage.setItem('rm_theme', t.id); } catch (err) { /* private browsing: for this visit only */ } }
+    const box = $('#theme-opts'), r = box && box.querySelector('input[value="' + t.id + '"]');
+    if (r) r.checked = true;
+    MapView.restyle();
+  }
+  function buildThemePicker() {
+    const btn = $('#theme-btn'), pop = $('#theme-pop'), box = $('#theme-opts');
+    if (!btn || !pop || !box || !THEMES || THEMES.list.length < 2) return;
+    const cur = currentTheme();
+    box.innerHTML = THEMES.list.map(t => '<label class="topt"><input type="radio" name="rm-theme" value="' + esc(t.id) + '"' + (t === cur ? ' checked' : '') + '>' +
+      '<span class="tsw" aria-hidden="true" style="--sv:' + t.c.void + ';--sl:' + t.c.land + ';--sn:' + t.c.now + ';--sk:' + t.c.line + '"></span><span class="tn">' + esc(t.name) + '</span></label>').join('');
+    const opened = open => {
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) { const r = box.querySelector('input:checked') || box.querySelector('input'); if (r) r.focus(); track('open_colors', {}); }
+    };
+    if (POP) {
+      pop.addEventListener('beforetoggle', ev => { if (ev.newState === 'open') placeThemePop(); });
+      pop.addEventListener('toggle', ev => opened(ev.newState === 'open'));
+    } else {
+      // No popovers: a panel this script opens and closes (outside click and Esc close it too).
+      btn.removeAttribute('popovertarget'); pop.removeAttribute('popover'); pop.hidden = true;
+      const shut = () => { if (!pop.hidden) { pop.hidden = true; opened(false); } };
+      btn.addEventListener('click', () => { if (pop.hidden) { placeThemePop(); pop.hidden = false; opened(true); } else shut(); });
+      document.addEventListener('pointerdown', ev => { if (!ev.target.closest('#theme-pop') && !ev.target.closest('#theme-btn')) shut(); });
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !pop.hidden) { shut(); btn.focus(); } });
+    }
+    box.addEventListener('change', ev => {
+      const t = themeById(ev.target.value);
+      if (!t) return;
+      setTheme(t, true);
+      track('set_colors', { theme: t.id });
+    });
+    window.addEventListener('resize', () => { if (themeOpen()) placeThemePop(); });
+    // A pick in another tab follows here.
+    window.addEventListener('storage', ev => { if (ev.key === 'rm_theme') setTheme(themeById(ev.newValue) || themeById(THEMES.def), false); });
+    btn.hidden = false;
+  }
+
+  /* ---------- what's new (config/updates.json), from the footer ---------- */
+  // A dot by the footer link while the latest change is under three weeks old and unseen here.
+  const UPD_SEEN = 'rm_updates_seen';
+  function markUpdates() {
+    const latest = window.RM_UPDATES_LATEST, link = $('.sitefoot a[data-act="updates"]');
+    if (!latest || !link) return;
+    let seen = null;
+    try { seen = localStorage.getItem(UPD_SEEN); } catch (err) { /* private browsing */ }
+    const fresh = Date.now() - Date.parse(latest + 'T00:00:00Z') < 21 * DAY;
+    const unseen = fresh && (!seen || seen < latest);
+    link.classList.toggle('has-new', unseen);
+    link.setAttribute('aria-label', unseen ? 'What\'s new (something you haven\'t seen)' : 'What\'s new');
+  }
+  function openUpdates() {
+    const d = $('#updates');
+    if (!d) { location.href = '/updates/'; return; }
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    try { localStorage.setItem(UPD_SEEN, window.RM_UPDATES_LATEST || ''); } catch (err) { /* private browsing */ }
+    markUpdates();
+    track('open_updates', {});
+  }
+
   /* ---------- start ---------- */
   async function boot() {
     const streamsP = Promise.all([loadStreamFile(), loadNtsLive()]);
@@ -2744,6 +2847,8 @@
     buildGenreChips();
     layout();
     wire();
+    buildThemePicker();
+    markUpdates();
     renderAll();
     MapView.init();
     startNear();

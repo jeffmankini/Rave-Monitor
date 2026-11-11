@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 __HEAD_START__
 <title>__TITLE__ · Rave Monitor</title>
-<meta name="description" content="__TITLE__ for Rave Monitor, the electronic music map and archive by split/shift.">
+<meta name="description" content="__TITLE__ for Rave Monitor, the electronic music map and archive by Geff Bohm.">
 <link rel="canonical" href="__SITE_URL__/__SLUG__/">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#070814">
+__THEME_HEAD__
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
 :root { color-scheme: dark; --void: #070814; --deck: #0c0f22; --line: #1f2547; --ink: #eceaf6; --ink-2: #a9abcb; --ink-3: #7c7fa3; --now: #f6ecd8; }
@@ -36,11 +37,18 @@ footer { border-top: 1px solid var(--line); padding: 18px 20px 28px; text-align:
   footer { line-height: 2.2; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
 }
 footer a { color: var(--ink-2); }
+/* What's new (/updates/) */
+.upd-intro { margin: -12px 0 8px; }
+.upd-day h2 { margin: 28px 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.upd { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.upd b { color: var(--ink); font-weight: 650; }
+.upd-k { display: inline-block; margin-right: 4px; padding: 0 7px; border-radius: 5px; border: 1px solid var(--line); background: var(--deck); color: var(--ink-2); font-size: 11px; font-weight: 700; line-height: 19px; letter-spacing: .05em; text-transform: uppercase; vertical-align: 2px; }
+.upd-k.upd-new { background: var(--now); border-color: var(--now); color: var(--now-ink, #15131f); }
 </style>
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="#070814"/></svg><span>Rave Monitor</span></a>
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="currentColor"/><circle cx="12" cy="12" r="2.2" style="fill:var(--void)"/></svg><span>Rave Monitor</span></a>
   <a class="back" href="/">Back to the map</a>
 </header>
 <main>

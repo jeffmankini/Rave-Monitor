@@ -379,7 +379,6 @@
       '<p class="fine">Digests go out in your time zone (' + esc(me.tz) + ')' + (me.tz !== tz() ? '. <button type="button" class="linkish" data-acct-act="tz">Use this device\'s, ' + esc(tz()) + '</button>' : '') + '.</p>' +
       '<h3>Your account</h3><div class="acct-row">' +
       '<button type="button" class="btn" data-acct-act="signout">Sign out</button>' +
-      '<button type="button" class="btn" data-acct-act="export">Download your data</button>' +
       '<button type="button" class="btn danger" data-acct-act="delete">Delete your account</button></div>' +
       '<div class="acct-confirm" id="acct-confirm" hidden><p>Delete your account, your follows, saved shows and alerts? This can\'t be undone.</p><div class="acct-row"><button type="button" class="btn danger" data-acct-act="delete-yes">Delete everything</button><button type="button" class="btn" data-acct-act="delete-no">Keep my account</button></div></div>' +
       '</form>';
@@ -419,16 +418,6 @@
     if (a === 'again') { A.view = 'signin'; render(); return; }
     if (a === 'tz') { patch({ local: { tz: tz() }, send: { tz: tz() } }); render(); return; }
     if (a === 'signout') { try { await api('POST', '/auth/signout', {}); } catch (err) { /* signed out anyway */ } setMe(null); dlg().close(); flash('You\'re signed out.'); track('sign_out', {}); return; }
-    if (a === 'export') {
-      try {
-        const r = await fetch(API + '/me/export', { credentials: 'include' });
-        if (!r.ok) throw new Error('http_' + r.status);
-        const url = URL.createObjectURL(await r.blob()), link = document.createElement('a');
-        link.href = url; link.download = 'rave-monitor-account.json'; document.body.appendChild(link); link.click(); link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      } catch (err) { flash('Couldn\'t download your data. Try again in a moment.'); }
-      return;
-    }
     if (a === 'delete') { $('#acct-confirm').hidden = false; $('[data-acct-act="delete-no"]').focus(); return; }
     if (a === 'delete-no') { $('#acct-confirm').hidden = true; return; }
     if (a === 'delete-yes') {

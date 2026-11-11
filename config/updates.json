@@ -1,0 +1,35 @@
+{
+  "_about": "What's new: the changes visitors see, newest first. Shown in the map page's What's new panel (footer) and on /updates/. kind is new, better or fixed. Keep each one to a sentence or two, in plain words; test/updates.test.js checks the order and the fields.",
+  "updates": [
+    { "date": "2026-11-10", "kind": "new", "title": "Color themes", "text": "Pick the site's colors with the palette button at the top: Midnight, Ember, Acid, Ultraviolet, Lagoon or Graphite. The map changes with them, and your browser remembers the choice." },
+    { "date": "2026-11-10", "kind": "new", "title": "What's new", "text": "This list of what's changed on Rave Monitor, from launch on. A dot by What's new at the bottom of the map page means there's something you haven't seen." },
+    { "date": "2026-11-10", "kind": "new", "title": "Accounts", "text": "Sign in with a link sent to your email, no password needed. Follow artists, venues, promoters and record labels, save shows, and choose your cities and genres." },
+    { "date": "2026-11-10", "kind": "new", "title": "Alerts", "text": "New shows from who you follow, a reminder the day before a show you saved, and a heads-up if it sells out, is cancelled or is postponed. They collect under the bell and come by email right away or as a daily or weekly digest." },
+    { "date": "2026-11-10", "kind": "new", "title": "Weekly picks", "text": "Every Thursday, picks for the week ahead in your cities and genres." },
+    { "date": "2026-11-10", "kind": "better", "title": "Faster fonts", "text": "The fonts now load from Rave Monitor itself instead of Google Fonts, so pages show sooner and nothing goes to Google to draw the text." },
+
+    { "date": "2026-11-09", "kind": "new", "title": "Promoters and record labels", "text": "A Promoters tab lists who's throwing nights where you're looking, busiest first, with where they play and their next night. Switch it to record labels too." },
+    { "date": "2026-11-09", "kind": "new", "title": "Tampa and St. Petersburg", "text": "Listings for Tampa and St. Pete, Florida." },
+    { "date": "2026-11-09", "kind": "new", "title": "Venues", "text": "A Venues tab and venue cards, with each club's next nights and the sounds it books. Zoom in and the map shows every club, including ones with nothing listed yet, from OpenStreetMap." },
+    { "date": "2026-11-09", "kind": "new", "title": "Venues added by hand", "text": "Places the listing sites miss can now be added with their address, starting with split/shift's space in Milwaukee." },
+    { "date": "2026-11-09", "kind": "new", "title": "Record label filter", "text": "Search for a record label to see its nights on the map, including label nights listed under a promoter's name." },
+    { "date": "2026-11-09", "kind": "new", "title": "Near me", "text": "Jump to the listings around you. Your location stays in your browser and is never sent anywhere." },
+    { "date": "2026-11-09", "kind": "new", "title": "Full-screen map", "text": "Give the map the whole screen with the full-screen button, or press F." },
+    { "date": "2026-11-09", "kind": "new", "title": "Spin the globe", "text": "In globe view, Spin turns the earth slowly like a screensaver. In full screen the controls fade until you move." },
+    { "date": "2026-11-09", "kind": "new", "title": "More genres", "text": "Dance/electronic and Misc join the genre filters, and the genres are now in order of how many nights each one has." },
+    { "date": "2026-11-09", "kind": "new", "title": "Contact form", "text": "Send questions, listing fixes and removals, or a city to add, from the Contact page." },
+    { "date": "2026-11-09", "kind": "better", "title": "Phones", "text": "A rebuilt phone layout: a compact header, filters in one row, listings first, an event sheet you can drag down to close, and a faster start." },
+    { "date": "2026-11-09", "kind": "better", "title": "New title and share image", "text": "Rave Monitor - Electronic Music Map, with a new picture when you share a link." },
+    { "date": "2026-11-09", "kind": "fixed", "title": "Posh listings", "text": "Nights listed on Posh are coming in again." },
+
+    { "date": "2026-11-08", "kind": "new", "title": "Rave Monitor goes live", "text": "A live world map of raves, club nights, festivals and DJ sets, with listings from Resident Advisor, Posh, Partiful, Luma, Ticketmaster and Skiddle merged into one map. See where it's night and club hours right now, which scenes are busiest, and where headliners play next." },
+    { "date": "2026-11-08", "kind": "new", "title": "Livestreams", "text": "A Streams tab with what's live and coming up on NTS Radio and on YouTube channels like Boiler Room, Cercle and HÖR." },
+    { "date": "2026-11-08", "kind": "new", "title": "Street map", "text": "Zoom in far enough and streets and neighborhoods appear under the listings." },
+    { "date": "2026-11-08", "kind": "better", "title": "Lists follow the map", "text": "Zoom in and the lists beside the map show just the area on screen." },
+    { "date": "2026-11-08", "kind": "new", "title": "30 days ahead", "text": "Plan ahead with listings up to 30 days out, grouped by night." },
+    { "date": "2026-11-08", "kind": "new", "title": "The archive", "text": "Every listing is kept after the night is over, merged across platforms. Search it by artist, record label, venue, city and month, or download it as a spreadsheet or database." },
+    { "date": "2026-11-08", "kind": "new", "title": "Link previews", "text": "Links to Rave Monitor show a proper preview card in messages and social apps." },
+    { "date": "2026-11-08", "kind": "new", "title": "Privacy settings", "text": "Privacy and cookie policies, and a Privacy Settings link at the bottom of every page to change your choices at any time." },
+    { "date": "2026-11-08", "kind": "new", "title": "Buy Me a Coffee", "text": "A link at the top for anyone who'd like to chip in." }
+  ]
+}
