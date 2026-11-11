@@ -187,17 +187,21 @@ jobs:
           ok() { echo "$1" | jq -e 'has("error") | not' > /dev/null; }
           fail() { echo "::error::$1: $(echo "$2" | jq -r '.error.message // "no answer"')"; exit 1; }
           api=https://api.stripe.com/v1
-          # 1. The product every gift is for. Its id is fixed, so the Worker needs no lookup.
-          prod=$(s "$api/products/rm_donation")
-          if ok "$prod"; then
-            [ "$(echo "$prod" | jq -r .active)" = "true" ] || s "$api/products/rm_donation" -d active=true > /dev/null
-            echo "Donation product: in place."
-          else
-            made=$(s "$api/products" -d id=rm_donation -d 'name=Donation to Rave Monitor' -d 'description=Keeps Rave Monitor free for everyone.' \
-              -d 'images[]=https://ravemonitor.com/apple-touch-icon.png' -d 'metadata[app]=ravemonitor')
-            ok "$made" || fail "The key can't create the donation product (it needs Products: Write)" "$made"
-            echo "Created the donation product."
-          fi
+          # 1. The products gifts are for, one-time and monthly (Stripe's page reads "Subscribe to <name>" for
+          #    those). Their ids are fixed, so the Worker needs no lookup.
+          for spec in "rm_donation|Donation to Rave Monitor" "rm_donation_monthly|Monthly support for Rave Monitor"; do
+            pid=${spec%%|*}; pname=${spec#*|}
+            prod=$(s "$api/products/$pid")
+            if ok "$prod"; then
+              [ "$(echo "$prod" | jq -r .active)" = "true" ] || s "$api/products/$pid" -d active=true > /dev/null
+              echo "Product $pid: in place."
+            else
+              made=$(s "$api/products" -d "id=$pid" -d "name=$pname" -d 'description=Keeps Rave Monitor free for everyone.' \
+                -d 'images[]=https://ravemonitor.com/apple-touch-icon.png' -d 'metadata[app]=ravemonitor')
+              ok "$made" || fail "The key can't create the product $pid (it needs Products: Write)" "$made"
+              echo "Created the product $pid: $pname."
+            fi
+          done
           # 2. The customer portal: monthly donors sign in with their email to change their card or cancel.
           confs=$(s -G "$api/billing_portal/configurations" -d active=true -d limit=50)
           ok "$confs" || fail "The key can't read the customer portal settings (it needs Customer portal: Write)" "$confs"

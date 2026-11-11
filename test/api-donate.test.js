@@ -125,6 +125,7 @@ test('a monthly gift inside the pop-up, with the publishable key', { skip }, asy
   const b = lastCheckout(stripeCalls).body;
   assert.deepEqual([b.mode, b.ui_mode, b.redirect_on_completion], ['subscription', 'embedded_page', 'if_required']);
   assert.equal(b['line_items[0][price_data][recurring][interval]'], 'month');
+  assert.equal(b['line_items[0][price_data][product]'], 'rm_donation_monthly');
   assert.equal(b['line_items[0][price_data][unit_amount]'], '500');
   assert.equal(b.return_url, SITE + '/?donated={CHECKOUT_SESSION_ID}');
   assert.equal(b.cancel_url, undefined);

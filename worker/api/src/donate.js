@@ -9,13 +9,14 @@
 // Worker a publishable key in the same mode as its secret key (STRIPE_PUBLISHABLE_KEY). Without one,
 // it sends people to Stripe's own page and back.
 //
-// The deploy (.github/workflows/api-worker.yml) makes the product (id rm_donation) and turns on the
+// The deploy (.github/workflows/api-worker.yml) makes the products (rm_donation and rm_donation_monthly) and turns on the
 // portal's login page, from STRIPE_SECRET_KEY alone. Every call pins the API version, so the account's
 // default can move on without changing what these calls mean. Logs carry Stripe's error codes, never
 // names or addresses.
 
 export const STRIPE_VERSION = '2026-10-28.endive';
-export const PRODUCT = 'rm_donation';
+// One product for one-time gifts and one for monthly ones, since Stripe's page reads "Subscribe to <name>".
+export const PRODUCT = 'rm_donation', PRODUCT_MONTHLY = 'rm_donation_monthly';
 export const MIN_CENTS = 100, MAX_CENTS = 100000;   // $1 to $1,000
 const HEX = /^#[0-9a-f]{6}$/i;
 const SESSION_RE = /^cs_(?:live|test)_[A-Za-z0-9]{10,250}$/;
@@ -78,7 +79,7 @@ export function sessionParams({ amount, monthly, embedded, site, colors }) {
     mode: monthly ? 'subscription' : 'payment',
     ui_mode: embedded ? 'embedded_page' : 'hosted_page',
     submit_type: 'donate',
-    line_items: [{ quantity: 1, price_data: { currency: 'usd', product: PRODUCT, unit_amount: amount, recurring: monthly ? { interval: 'month' } : undefined } }],
+    line_items: [{ quantity: 1, price_data: { currency: 'usd', product: monthly ? PRODUCT_MONTHLY : PRODUCT, unit_amount: amount, recurring: monthly ? { interval: 'month' } : undefined } }],
     metadata: { app: 'ravemonitor', gift: monthly ? 'monthly' : 'once' },
     integration_identifier: 'ravemonitor-donate',
     // The account has Stripe's merchant of record (Managed Payments) on by default, which is for selling
