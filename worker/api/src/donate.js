@@ -81,6 +81,9 @@ export function sessionParams({ amount, monthly, embedded, site, colors }) {
     line_items: [{ quantity: 1, price_data: { currency: 'usd', product: PRODUCT, unit_amount: amount, recurring: monthly ? { interval: 'month' } : undefined } }],
     metadata: { app: 'ravemonitor', gift: monthly ? 'monthly' : 'once' },
     integration_identifier: 'ravemonitor-donate',
+    // The account has Stripe's merchant of record (Managed Payments) on by default, which is for selling
+    // digital products; a donation isn't one, so it goes through as an ordinary payment.
+    managed_payments: { enabled: false },
     branding_settings: {
       display_name: 'Rave Monitor', border_style: 'rounded',
       background_color: colors ? colors.bg : undefined, button_color: colors ? colors.accent : undefined

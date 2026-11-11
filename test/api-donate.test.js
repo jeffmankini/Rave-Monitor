@@ -103,6 +103,7 @@ test('a one-time gift on Stripe\'s page: no account needed, only from the site',
   assert.equal(b.cancel_url, SITE + '/?donate=open');
   assert.equal(b['payment_intent_data[description]'], 'Donation to Rave Monitor');
   assert.equal(b['metadata[app]'], 'ravemonitor');
+  assert.equal(b['managed_payments[enabled]'], 'false'); // a donation isn't a digital product sale
   assert.deepEqual([b['branding_settings[background_color]'], b['branding_settings[button_color]']], ['#0c0f22', '#f6ecd8']);
   // Nothing about the visitor goes to Stripe from here.
   assert.ok(!Object.keys(b).some(k => /customer|email/.test(k)));
