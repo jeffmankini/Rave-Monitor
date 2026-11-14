@@ -1,10 +1,10 @@
 {
  "updatedAt": "2026-11-14",
- "events": 1840,
+ "events": 1839,
  "firstEvent": "2026-11-05T00:30:00.000Z",
  "lastEvent": "2026-12-14T06:00:00.000Z",
  "months": {
-  "2026-11": 1494,
+  "2026-11": 1493,
   "2026-12": 346
  },
  "cities": {
@@ -37,9 +37,9 @@
   "dublin": 13,
   "tampa": 12,
   "dubai": 12,
-  "copenhagen": 9,
   "prague": 9,
   "stpete": 8,
+  "copenhagen": 8,
   "milwaukee": 8,
   "austin": 7,
   "istanbul": 6,
@@ -58,7 +58,7 @@
   "electronic": 881,
   "house": 547,
   "techno": 316,
-  "misc": 215,
+  "misc": 214,
   "garage": 177,
   "trance": 119,
   "dnb": 111,
@@ -67,7 +67,7 @@
   "afro": 48
  },
  "sources": {
-  "Ticketmaster": 717,
+  "Ticketmaster": 716,
   "Resident Advisor": 609,
   "Skiddle": 502,
   "Posh": 55,
