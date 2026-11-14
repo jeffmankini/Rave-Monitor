@@ -1,19 +1,19 @@
 {
  "updatedAt": "2026-11-14",
- "events": 1839,
+ "events": 1861,
  "firstEvent": "2026-11-05T00:30:00.000Z",
- "lastEvent": "2026-12-14T06:00:00.000Z",
+ "lastEvent": "2026-12-15T01:00:00.000Z",
  "months": {
-  "2026-11": 1493,
-  "2026-12": 346
+  "2026-11": 1506,
+  "2026-12": 355
  },
  "cities": {
-  "london": 235,
-  "manchester": 142,
+  "london": 247,
+  "manchester": 149,
   "losangeles": 118,
-  "newyork": 115,
+  "newyork": 116,
   "glasgow": 112,
-  "bristol": 96,
+  "bristol": 97,
   "leeds": 82,
   "berlin": 81,
   "chicago": 75,
@@ -32,7 +32,7 @@
   "seattle": 27,
   "tokyo": 26,
   "lasvegas": 26,
-  "montreal": 17,
+  "montreal": 18,
   "tbilisi": 16,
   "dublin": 13,
   "tampa": 12,
@@ -55,21 +55,21 @@
   "auckland": 1
  },
  "genres": {
-  "electronic": 881,
-  "house": 547,
-  "techno": 316,
+  "electronic": 884,
+  "house": 565,
+  "techno": 322,
   "misc": 214,
-  "garage": 177,
-  "trance": 119,
-  "dnb": 111,
-  "disco": 105,
+  "garage": 182,
+  "trance": 120,
+  "dnb": 112,
+  "disco": 107,
   "bass": 76,
   "afro": 48
  },
  "sources": {
-  "Ticketmaster": 716,
+  "Ticketmaster": 718,
   "Resident Advisor": 609,
-  "Skiddle": 502,
+  "Skiddle": 523,
   "Posh": 55,
   "Luma": 21,
   "Partiful": 14
